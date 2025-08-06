@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Excel Sheet Viewer</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        #login-container { display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; background-color: #f4f4f4; }
+        /* The container should scroll vertically so the table header can stick */
+        #table-container {
+            display: none;
+            padding: 20px;
+            /* Do not set overflow here to allow sticky header to work properly */
+        }
+        table {
+            /* Use separate borders to allow sticky header to work properly */
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        th { background-color: #4CAF50; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        /* Sticky header: apply sticky positioning to the entire header row */
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        thead th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        input[type="password"], input[type="text"] { padding: 10px; margin-bottom: 10px; font-size: 16px; }
+        button { padding: 6px 10px; font-size: 14px; cursor: pointer; }
+        #error-message { color: red; margin-top: 10px; }
+        .delete-row { background-color: #f44336; color: white; border: none; }
+        .undo-button { background-color: #2196F3; color: white; border: none; margin-left: 10px; }
+        .export-button { background-color: #4CAF50; color: white; border: none; }
+        .add-row-button { background-color: #FF9800; color: white; border: none; margin-left: 10px; }
+        /* Buttons for exporting to different formats */
+        .excel-button { background-color: #8BC34A; color: white; border: none; margin-left: 10px; }
+        .pdf-button { background-color: #E91E63; color: white; border: none; margin-left: 10px; }
+        .image-button { background-color: #9C27B0; color: white; border: none; margin-left: 10px; }
+
+        /* Floating add row icon displayed at the bottom of the table */
+        .add-row-icon {
+            display: inline-block;
+            border: 2px solid #4CAF50;
+            color: #4CAF50;
+            font-size: 24px;
+            width: 36px;
+            height: 36px;
+            line-height: 30px;
+            text-align: center;
+            border-radius: 50%;
+            cursor: pointer;
+            margin-top: 15px;
+            user-select: none;
+        }
+
+        /* Highlight selected row */
+        .highlighted {
+            /* Use a bright yellow and !important to override row striping */
+            background-color: #fff9c4 !important;
+        }
+
+        /* Styles for sticky cloned header */
+        #header-clone {
+            border-collapse: separate;
+            border-spacing: 0;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            width: 100%;
+            table-layout: auto;
+        }
+        #header-clone th {
+            background-color: #4CAF50;
+            color: white;
+            border: 1px solid #ddd;
+            padding: 6px;
+        }
+
+        /* Ensure consistent column widths between header and body. Use auto layout so columns adjust to content width */
+        #data-table {
+            table-layout: auto;
+            width: 100%;
+        }
+
+        /* Hide the original table header since we are rendering a sticky clone */
+        #data-table thead {
+            visibility: collapse;
+        }
+        /* Make the row number column narrower */
+        .row-number,
+        #data-table td.row-number,
+        #header-clone th:first-child {
+            /* The width of the first column follows the header text "No" */
+            padding-left: 0;
+            padding-right: 0;
+            text-align: center;
+        }
+
+        /* Narrow the action column (Delete button) */
+        #data-table td:nth-child(2),
+        #header-clone th:nth-child(2) {
+            /* The width of the second column follows the header text "Action" */
+            padding-left: 0;
+            padding-right: 0;
+            text-align: center;
+        }
+        /* Minimal delete button to fit very narrow column */
+        button.delete-row {
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            font-size: 0; /* hide the text inside the button */
+            line-height: 1;
+        }
+        button.delete-row::after {
+            content: '\00d7'; /* Unicode multiplication sign */
+            font-size: 12px;
+            display: inline-block;
+            line-height: 1;
+        }
+
+        /* Increase width of Diagnostic_initial column (8th column) */
+        #data-table td:nth-child(8),
+        #header-clone th:nth-child(8) {
+            min-width: 200px;
+        }
+        .date-entry { min-width: 90px; }
+        .show-password { margin-top: 5px; font-size: 14px; }
+    </style>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+</head>
+<body>
+    <div id='login-container'>
+        <h2>Enter Password</h2>
+        <input type='password' id='password' placeholder='Password'>
+        <label class='show-password'><input type='checkbox' id='toggle-password'> Show password</label>
+        <button onclick='checkPassword()'>Submit</button>
+        <p id='error-message'></p>
+    </div>
+    <div id='table-container'>
+        <h2 style="display:inline-block; margin-right: 10px;">Excel Sheet</h2>
+        <!-- Button bar placed next to the heading -->
+        <div id="button-bar" style="display:inline-flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px;">
+            <button class='export-button' onclick='exportToCSV()'>Export to CSV</button>
+            <button class='excel-button' onclick='exportToExcel()'>Export to Excel</button>
+            <button class='pdf-button' onclick='exportToPDF()'>Export to PDF</button>
+            <button class='image-button' onclick='exportToImage()'>Export to Image</button>
+            <button class='undo-button' onclick='undoChange()'>Undo</button>
+            <button class='excel-button' onclick="document.getElementById('excel-upload').click()">Import Excel</button>
+        </div>
+        <!-- Hidden file input for importing Excel -->
+        <input type="file" id="excel-upload" accept=".xlsx,.xls" style="display:none" onchange="importFromExcel(event)">
+        <!-- Cloned header table for sticky header -->
+        <table id='header-clone'></table>
+
+        <table id='data-table'>
+  <thead>
+    <tr>
+      <th>No</th>
+      <th>Action</th>
+      <th>Date of Entry</th>
+      <th>PEC finale</th>
+      <th>prise en charge initiale</th>
+      <th>Nom_Prénom</th>
+      <th>JJ/MM/AAAA</th>
+      <th>Diagnostic_initial</th>
+      <th>information complementaire</th>
+      <th>numero_tel</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>&times;</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>lundi</td>
+      <td contenteditable='true'>Meaux</td>
+      <td contenteditable='true'>Ismaili rayane</td>
+      <td contenteditable='true'>21/08/2003</td>
+      <td contenteditable='true'>Fracture M1 de la main droite</td>
+      <td contenteditable='true'>GAV (Prison de Meaux)</td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>&times;</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>jeudi</td>
+      <td contenteditable='true'>MLV&gt;Mx-service</td>
+      <td contenteditable='true'>ROUSSEAU Monique</td>
+      <td contenteditable='true'>14/12/1942</td>
+      <td contenteditable='true'>fracture periprothetique pth gauche</td>
+      <td contenteditable='true'>sous xarelto dernière prise le 30/07</td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>&times;</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>jeudi MLV</td>
+      <td contenteditable='true'>mlv/DOM</td>
+      <td contenteditable='true'>delafollye didier</td>
+      <td contenteditable='true'>26/05/1961</td>
+      <td contenteditable='true'>luxation acromioclaviculaire</td>
+      <td contenteditable='true'></td>
+      <td contenteditable='true'>749390332.0</td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>&times;</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>cs dr kassab mercredi</td>
+      <td contenteditable='true'>CLM dom</td>
+      <td contenteditable='true'>Le Maitre Pascal</td>
+      <td contenteditable='true'>1961-08-08 00:00:00</td>
+      <td contenteditable='true'>rupture du tendon quadricipital</td>
+      <td contenteditable='true'>778194870</td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>CLM (mercredi)</td>
+      <td contenteditable='true'>CLM DOM</td>
+      <td contenteditable='true'>Ferrer Fetnandez Santiage</td>
+      <td contenteditable='true'>1964-09-09 00:00:00</td>
+      <td contenteditable='true'>fracture condyl externe coude gauche</td>
+      <td contenteditable='true'>614211846</td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>CLM(vendredi)</td>
+      <td contenteditable='true'>MLV urgence</td>
+      <td contenteditable='true'>Mehdaoui fethi</td>
+      <td contenteditable='true'>26/02/1980</td>
+      <td contenteditable='true'>fracture plateau tibial externe gauche</td>
+      <td contenteditable='true'>06 07 14 71 17</td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>CLM(vendredi)</td>
+      <td contenteditable='true'>Consult-dom</td>
+      <td contenteditable='true'>Cerbelaud Alexandre</td>
+      <td contenteditable='true'>30/07/1982</td>
+      <td contenteditable='true'>Fracture de la tete radial droite + scaphoide gauche</td>
+      <td contenteditable='true'>06 08 18 77 78</td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>mardi</td>
+      <td contenteditable='true'>Mx service</td>
+      <td contenteditable='true'>bouchand sandra</td>
+      <td contenteditable='true'>1973-05-08 00:00:00</td>
+      <td contenteditable='true'>Fracture de l&#x27;extrémité supérieure de l&#x27;humeur gauche</td>
+      <td contenteditable='true'></td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>CLM(mercredi)</td>
+      <td contenteditable='true'>MLV&gt;Mx&gt;domicile</td>
+      <td contenteditable='true'>rosique corinne</td>
+      <td contenteditable='true'>1965-05-01 00:00:00</td>
+      <td contenteditable='true'>Fracture des extrémités inférieures des 2 os de l&#x27;avant bras gauche</td>
+      <td contenteditable='true'></td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>mercredi mx</td>
+      <td contenteditable='true'>MLV</td>
+      <td contenteditable='true'>Schwab Fabienne</td>
+      <td contenteditable='true'>1959-12-09 00:00:00</td>
+      <td contenteditable='true'>fracture col femur droit</td>
+      <td contenteditable='true'></td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>CLM</td>
+      <td contenteditable='true'>MLV / CLM</td>
+      <td contenteditable='true'>Maillard Hannelore</td>
+      <td contenteditable='true'>1940-02-03 00:00:00</td>
+      <td contenteditable='true'>Fr col fémoral gauche</td>
+      <td contenteditable='true'>Sous Clopidogrel (01-08-2025)</td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>vendredi(dr kassab)</td>
+      <td contenteditable='true'>Meaux</td>
+      <td contenteditable='true'>Philip Marie france</td>
+      <td contenteditable='true'>15/01/1930</td>
+      <td contenteditable='true'>Fr humerus proximal gauche + EIR</td>
+      <td contenteditable='true'>Sous Eliquis (01-08-2025)</td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>mardi</td>
+      <td contenteditable='true'>Mx hosp</td>
+      <td contenteditable='true'>DELEM JEAN YANN</td>
+      <td contenteditable='true'>19/12/1993</td>
+      <td contenteditable='true'>fracture ouverte rotule droite</td>
+      <td contenteditable='true'></td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>mardi</td>
+      <td contenteditable='true'>mx UHCD chambre secu</td>
+      <td contenteditable='true'>MENDY LAWRENCE</td>
+      <td contenteditable='true'>23/07/0193</td>
+      <td contenteditable='true'>fracture M4 main droite</td>
+      <td contenteditable='true'></td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>mardi</td>
+      <td contenteditable='true'>mlv-hosp Mx</td>
+      <td contenteditable='true'>davalo yannick</td>
+      <td contenteditable='true'>1968-05-07 00:00:00</td>
+      <td contenteditable='true'>fracture sous trochanterienne gauche</td>
+      <td contenteditable='true'></td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>CLM</td>
+      <td contenteditable='true'>clm-dom</td>
+      <td contenteditable='true'>monteverdi anne marie</td>
+      <td contenteditable='true'>1964-09-03 00:00:00</td>
+      <td contenteditable='true'>fractire EIR G</td>
+      <td contenteditable='true'></td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>mercredi mx</td>
+      <td contenteditable='true'>mlv-hosp Mx</td>
+      <td contenteditable='true'>roger christophe</td>
+      <td contenteditable='true'>14/091969</td>
+      <td contenteditable='true'>fracture plateau tibiale d</td>
+      <td contenteditable='true'></td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>CLM</td>
+      <td contenteditable='true'>clm-hosp chir complete</td>
+      <td contenteditable='true'>brouck andree</td>
+      <td contenteditable='true'>1945-08-06 00:00:00</td>
+      <td contenteditable='true'>fracture pertroch G</td>
+      <td contenteditable='true'></td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>surveillance antibio crp 48H</td>
+      <td contenteditable='true'>mx hosp</td>
+      <td contenteditable='true'>leiser andre</td>
+      <td contenteditable='true'>2908/1937</td>
+      <td contenteditable='true'>tenosynovite infectieuse poignet droit suite a infiltration cortisone pour canal carpien</td>
+      <td contenteditable='true'>ELquis pour acfa</td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>jeudi</td>
+      <td contenteditable='true'>avis med poly</td>
+      <td contenteditable='true'>aufray yves</td>
+      <td contenteditable='true'>1959-10-11 00:00:00</td>
+      <td contenteditable='true'>fracture diaphyse humerale gauche</td>
+      <td contenteditable='true'></td>
+      <td contenteditable='true'></td>
+    </tr>
+    <tr>
+      <td class='row-number'></td>
+      <td><button class='delete-row'>Delete</button></td>
+      <td class='date-entry'></td>
+      <td contenteditable='true'>sos rachis tranfer</td>
+      <td contenteditable='true'>urgence de mx</td>
+      <td contenteditable='true'>charageat jean pierre</td>
+      <td contenteditable='true'>17/04/1958</td>
+      <td contenteditable='true'>fracture tassement D8 et D7 avec multiple fracture de coté</td>
+      <td contenteditable='true'></td>
+      <td contenteditable='true'></td>
+    </tr>
+  </tbody>
+</table>
+
+        <!-- Plus sign at bottom to add a new row -->
+        <div id="add-row-icon" class="add-row-icon" onclick="addRow()">+</div>
+    </div>
+    <script>
+        const correctPassword = 'p123';
+
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyCnxx3ckaefFa1GJWVyq3rhxcV5xk65ce0",
+  authDomain: "tableau-de-staff.firebaseapp.com",
+  databaseURL: "https://tableau-de-staff-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "tableau-de-staff",
+  storageBucket: "tableau-de-staff.firebasedatabase.app",
+  messagingSenderId: "884339188189",
+  appId: "1:884339188189:web:409fafd5737006302d1634",
+  measurementId: "G-GPNXBKSHMW"
+};
+
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+// Save table body to Firebase
+function saveToFirebase() {
+    const tbody = document.querySelector('#data-table tbody');
+    if (tbody) {
+        database.ref('staffTable').set(tbody.innerHTML);
+    }
+}
+
+// Load data from Firebase on login
+function loadFromFirebase(callback) {
+    database.ref('staffTable').once('value').then(snapshot => {
+        const data = snapshot.val();
+        if (data) {
+            const tbody = document.querySelector('#data-table tbody');
+            if (tbody) {
+                tbody.innerHTML = data;
+            }
+        }
+        if (callback) callback();
+    });
+}
+
+        let historyStack = [];
+        const originalColumns = 7;
+        // Toggle password visibility
+        document.getElementById('toggle-password').addEventListener('change', function() {
+            const pwdInput = document.getElementById('password');
+            pwdInput.type = this.checked ? 'text' : 'password';
+        });
+
+        // Allow submission of password with Enter key
+        document.getElementById('password').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                checkPassword();
+            }
+        });
+        // Format date as DD/MM/YY
+        function getFormattedDate() {
+            const date = new Date();
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = String(date.getFullYear()).slice(-2);
+            return `${day}/${month}/${year}`;
+        }
+
+        // Convert Excel serial date number to DD/MM/YY string
+        function formatExcelDate(value) {
+            // Excel stores dates as days since 1899-12-30; adjust accordingly
+            const serial = Number(value);
+            if (isNaN(serial)) return '';
+            const utc_days = Math.floor(serial - 25569);
+            const utc_value = utc_days * 86400; // seconds
+            const date_info = new Date(utc_value * 1000);
+            const day = String(date_info.getDate()).padStart(2, '0');
+            const month = String(date_info.getMonth() + 1).padStart(2, '0');
+            const year = String(date_info.getFullYear()).slice(-2);
+            return `${day}/${month}/${year}`;
+        }
+
+        // Load persisted table body from localStorage, if it exists
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('tableData');
+            if (saved) {
+                const tbody = document.querySelector('#data-table tbody');
+                if (tbody) {
+                    tbody.innerHTML = saved;
+                }
+            }
+        }
+        function checkPassword() {
+            const passwordInput = document.getElementById('password').value;
+            if (passwordInput === correctPassword) {
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('table-container').style.display = 'block';
+                // Load saved table data from localStorage if available
+                loadFromFirebase(() => {
+                attachEventListeners();
+                initializeDateEntries();
+                updateRowNumbers();
+                setStickyHeader();
+                saveState();
+            });
+                attachEventListeners();
+                initializeDateEntries();
+                updateRowNumbers();
+                setStickyHeader();
+                saveState();
+            } else {
+                document.getElementById('error-message').textContent = 'Incorrect password. Please try again.';
+            }
+        }
+        function saveState() {
+            const table = document.getElementById('data-table');
+            if (table) {
+                historyStack.push(table.outerHTML);
+                // Persist current table body to localStorage for autosave
+                saveToFirebase();
+                const tbody = table.querySelector('tbody');
+                if (tbody) {
+                    localStorage.setItem('tableData', tbody.innerHTML);
+                }
+                // Adjust sticky header widths after any state change to keep alignment
+                setStickyHeader();
+            }
+        }
+        function undoChange() {
+            if (historyStack.length > 1) {
+                historyStack.pop();
+                const prev = historyStack[historyStack.length - 1];
+                const table = document.getElementById('data-table');
+                table.outerHTML = prev;
+                attachEventListeners();
+                updateRowNumbers();
+                setStickyHeader();
+            }
+        }
+        function exportToCSV() {
+            const table = document.getElementById('data-table');
+            let csvContent = '';
+            for (let i = 0; i < table.rows.length; i++) {
+                const row = table.rows[i];
+                let rowData = [];
+                for (let j = 2; j < row.cells.length; j++) {
+                    const cell = row.cells[j];
+                    let cellText = cell.innerText.replace(/"/g, '""');
+                    rowData.push('"' + cellText + '"');
+                }
+                csvContent += rowData.join(',') + '\n';
+            }
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'export.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Export table as Excel (.xlsx) using SheetJS
+        function exportToExcel() {
+            const table = document.getElementById('data-table');
+            // Use SheetJS to convert table to workbook
+            const wb = XLSX.utils.table_to_book(table, { sheet: 'Sheet1' });
+            XLSX.writeFile(wb, 'table.xlsx');
+        }
+
+        // Export table as PDF using html2canvas and jsPDF
+        function exportToPDF() {
+            const table = document.getElementById('data-table');
+            const thead = table.querySelector('thead');
+            // Temporarily show the original header for export
+            const prevVisibility = thead.style.visibility;
+            thead.style.visibility = 'visible';
+            html2canvas(table).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jspdf.jsPDF({
+                    orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+                    unit: 'pt',
+                    format: [canvas.width, canvas.height]
+                });
+                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                pdf.save('table.pdf');
+                // Restore header visibility
+                thead.style.visibility = prevVisibility;
+            });
+        }
+
+        // Export table as PNG image using html2canvas
+        function exportToImage() {
+            const table = document.getElementById('data-table');
+            const thead = table.querySelector('thead');
+            // Temporarily show the original header for export
+            const prevVisibility = thead.style.visibility;
+            thead.style.visibility = 'visible';
+            html2canvas(table).then(canvas => {
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = 'table.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                // Restore header visibility
+                thead.style.visibility = prevVisibility;
+            });
+        }
+
+        // Import data from an Excel file and populate the table.
+        function importFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                let workbook;
+                try {
+                    workbook = XLSX.read(data, { type: 'array' });
+                } catch (err) {
+                    alert('Error reading Excel file.');
+                    return;
+                }
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                if (rows.length === 0) return;
+                // Extract header row and build a mapping of column names to indices
+                const headers = rows.shift();
+                const headerMap = {};
+                headers.forEach((h, i) => {
+                    if (h !== undefined && h !== null) {
+                        const key = String(h).trim().toLowerCase();
+                        headerMap[key] = i;
+                    }
+                });
+                // Define the field names we care about in the order of our table
+                const fieldOrder = [
+                    'pec finale',
+                    'prise en charge initiale',
+                    'nom_prénom',
+                    'jj/mm/aaaa',
+                    'diagnostic_initial',
+                    'information complementaire',
+                    'numero_tel'
+                ];
+                // Determine index of date-of-entry column if present
+                let dateIndex = -1;
+                ['date of entry', 'date entry', 'date de entry', 'date'].some(key => {
+                    const idx = headerMap[key];
+                    if (idx !== undefined) { dateIndex = idx; return true; }
+                    return false;
+                });
+                const tbody = document.querySelector('#data-table tbody');
+                tbody.innerHTML = '';
+                rows.forEach(rowData => {
+                    if (!rowData || rowData.length === 0) return;
+                    const newRow = document.createElement('tr');
+                    // Determine date-of-entry: use value from file if present or default to current date
+                    let dateVal;
+                    if (dateIndex >= 0 && rowData[dateIndex] !== undefined && String(rowData[dateIndex]).trim() !== '') {
+                        const rawDate = rowData[dateIndex];
+                        // Convert numeric or numeric-string Excel dates, otherwise preserve string
+                        if (typeof rawDate === 'number' || (typeof rawDate === 'string' && /^\d+(\.\d+)?$/.test(rawDate.trim()))) {
+                            dateVal = formatExcelDate(rawDate);
+                        } else {
+                            dateVal = rawDate;
+                        }
+                    } else {
+                        dateVal = getFormattedDate();
+                    }
+                    newRow.innerHTML = "<td class='row-number'></td>" +
+                        "<td><button class='delete-row'>Delete</button></td>" +
+                        "<td class='date-entry' contenteditable='true'>" + dateVal + "</td>";
+                    // Populate the remaining fields in our predefined order
+                    fieldOrder.forEach(field => {
+                        const idx = headerMap[field];
+                        let val = '';
+                        if (idx !== undefined && rowData[idx] !== undefined && String(rowData[idx]).trim() !== '') {
+                            val = rowData[idx];
+                            // Convert JJ/MM/AAAA numeric value if needed (only if actual number or numeric string)
+                            if (field === 'jj/mm/aaaa') {
+                                if (typeof val === 'number' || (typeof val === 'string' && /^\d+(\.\d+)?$/.test(val.trim()))) {
+                                    val = formatExcelDate(val);
+                                }
+                            }
+                        }
+                        newRow.innerHTML += "<td contenteditable='true'>" + String(val) + "</td>";
+                    });
+                    tbody.appendChild(newRow);
+                });
+                updateRowNumbers();
+                // Convert numeric date serials and initialize date cells after import
+                initializeDateEntries();
+                attachEventListeners();
+                setStickyHeader();
+                saveState();
+                // Reset file input after processing
+                event.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        function updateRowNumbers() {
+            const rows = document.querySelectorAll('#data-table tbody tr');
+            rows.forEach((row, index) => {
+                const numCell = row.querySelector('.row-number');
+                if (numCell) numCell.textContent = index + 1;
+            });
+        }
+        function initializeDateEntries() {
+            const rows = document.querySelectorAll('#data-table tbody tr');
+            rows.forEach(row => {
+                const dateCell = row.querySelector('.date-entry');
+                if (dateCell) {
+                    // Make the date cell editable
+                    dateCell.setAttribute('contenteditable', 'true');
+                    // If empty, fill with current date
+                    if (dateCell.textContent.trim() === '') {
+                        dateCell.textContent = getFormattedDate();
+                    } else {
+                        // If the cell contains a pure numeric value (Excel serial date), convert it
+                        const txt = dateCell.textContent.trim();
+                        if (/^\d+(\.\d+)?$/.test(txt)) {
+                            dateCell.textContent = formatExcelDate(parseFloat(txt));
+                        }
+                    }
+                }
+            });
+        }
+        function addRow() {
+            saveState();
+            const table = document.getElementById('data-table');
+            const tbody = table.querySelector('tbody');
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = "<td class='row-number'></td>" +
+                "<td><button class='delete-row'>Delete</button></td>" +
+                "<td class='date-entry' contenteditable='true'>" + getFormattedDate() + "</td>";
+            for (let i = 0; i < originalColumns; i++) {
+                newRow.innerHTML += "<td contenteditable='true'></td>";
+            }
+            tbody.appendChild(newRow);
+            updateRowNumbers();
+            attachEventListeners();
+            setStickyHeader();
+        }
+        function attachEventListeners() {
+            const table = document.getElementById('data-table');
+            table.querySelectorAll('button.delete-row').forEach(btn => {
+                btn.onclick = function() {
+                    // Save pre-deletion state for undo
+                    saveState();
+                    const row = this.parentElement.parentElement;
+                    row.parentElement.removeChild(row);
+                    updateRowNumbers();
+                    // Recompute sticky header widths
+                    setStickyHeader();
+                    // Save post-deletion state for autosave and undo
+                    saveState();
+                };
+            });
+            table.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
+                cell.onkeydown = function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        const row = this.parentElement;
+                        const cellIndex = Array.prototype.indexOf.call(row.children, this);
+                        const nextRow = row.nextElementSibling;
+                        if (nextRow) {
+                            const nextCell = nextRow.children[cellIndex];
+                            if (nextCell) nextCell.focus();
+                        }
+                    }
+                };
+                cell.oninput = function() { saveState(); };
+            });
+
+            // Highlight row when clicking on the row number cell
+            table.querySelectorAll('td.row-number').forEach(cell => {
+                cell.onclick = function() {
+                    saveState();
+                    const row = this.parentElement;
+                    row.classList.toggle('highlighted');
+                };
+            });
+        }
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undoChange(); }
+        });
+
+        // Allow deleting highlighted row(s) by pressing the Backspace key when not editing a cell
+        document.addEventListener('keydown', function(e) {
+            // Only handle the Backspace key
+            if (e.key === 'Backspace') {
+                // Determine the currently focused element
+                const active = document.activeElement;
+                // If focus is on an editable cell or input, allow normal deletion
+                if (active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+                    return;
+                }
+                // Find all highlighted rows
+                const highlighted = document.querySelectorAll('#data-table tbody tr.highlighted');
+                if (highlighted.length > 0) {
+                    e.preventDefault();
+                    saveState();
+                    highlighted.forEach(row => {
+                        row.parentElement.removeChild(row);
+                    });
+                    updateRowNumbers();
+                    setStickyHeader();
+                }
+            }
+        });
+
+        // Create a sticky clone of the header row and adjust its column widths
+        function setStickyHeader() {
+            const dataTable = document.getElementById('data-table');
+            const headerCloneTable = document.getElementById('header-clone');
+            if (!dataTable || !headerCloneTable) return;
+            const originalThead = dataTable.querySelector('thead');
+            if (!originalThead) return;
+            // Clear any existing cloned header content
+            headerCloneTable.innerHTML = '';
+            // Clone the header row
+            const clonedThead = originalThead.cloneNode(true);
+            headerCloneTable.appendChild(clonedThead);
+            // Match column widths
+            const originalCells = originalThead.querySelectorAll('th');
+            const cloneCells = clonedThead.querySelectorAll('th');
+            originalCells.forEach((cell, index) => {
+                const width = cell.getBoundingClientRect().width;
+                cloneCells[index].style.width = width + 'px';
+            });
+            // Match overall width of the table
+            const tableWidth = dataTable.getBoundingClientRect().width;
+            headerCloneTable.style.width = tableWidth + 'px';
+        }
+
+        // Adjust sticky header widths on window resize
+        window.addEventListener('resize', function() {
+            setStickyHeader();
+        });
+    </script>
+    <!-- External libraries for exporting -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.17.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.0.0-rc.7/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+</body>
+</html>
