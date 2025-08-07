@@ -1,0 +1,980 @@
+﻿<!DOCTYPE html>
+<html lang='fr'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Tableau de Staff synchronisé - Supabase</title>
+    <!-- Tailwind CSS CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles not easily done with Tailwind */
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+        }
+
+        /* Table styles for sticky header and border-collapse */
+        #data-table {
+            border-collapse: collapse;
+            border-spacing: 0;
+            margin-bottom: 50px;
+            width: 100%; /* Make the table take up the full width */
+        }
+
+            /* Add black borders to each cell for a grid effect */
+            #data-table th,
+            #data-table td {
+                border: 1px solid #000;
+            }
+
+            /* Sticky header ensures it stays visible during scroll */
+            #data-table thead {
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                background-color: #15803d; /* Darker green for a more professional look */
+            }
+
+            /* Sticky footer for the add button */
+            #data-table tfoot {
+                position: sticky;
+                bottom: 0;
+                z-index: 10;
+                background-color: white; /* Match table background */
+                border-top: 2px solid #ddd;
+            }
+
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+
+        .sync-pending-animation {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* Styles for a static 3D thickness */
+        #table-container {
+            position: relative;
+            transform-style: preserve-3d;
+            perspective: 1000px; /* Add a 3D perspective effect */
+            transform: rotateX(2deg) translateY(0px) scale(1); /* A slight rotation to show thickness */
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3), 0 8px 16px -4px rgba(0, 0, 0, 0.15);
+        }
+
+            /* Pseudo-element to simulate the table's side "face" */
+            #table-container::after {
+                content: '';
+                position: absolute;
+                bottom: -15px; /* Add a 15px thickness at the bottom */
+                left: 0;
+                right: 0;
+                height: 15px;
+                background-color: #f3f4f6; /* Side face color */
+                transform: rotateX(90deg) translateZ(-15px); /* Position and rotate the thickness */
+                transform-origin: bottom;
+                box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+                z-index: -1;
+                border-bottom-left-radius: 1rem;
+                border-bottom-right-radius: 1rem;
+            }
+
+        #button-bar button {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+            #button-bar button:hover {
+                transform: translateY(-1px);
+                box-shadow: 6px 8px -1px rgba(0, 0, 0, 0.15), 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+
+        /* Cell styles to match the screenshot */
+        #data-table td {
+            background-color: #fff;
+            color: #4b5563; /* Dark gray text color */
+        }
+
+        /* Hover style to match the screenshot (very light gray) */
+        #data-table tbody tr:hover td {
+            background-color: #f3f4f6; /* Light gray */
+        }
+
+        /* --- Logique pour la disposition réactive --- */
+        @media (max-width: 768px) {
+            /* Cache l'en-tête du tableau sur mobile */
+            thead {
+                display: none;
+            }
+
+            /* Chaque ligne devient un bloc */
+            #data-table tr {
+                display: block;
+                margin-bottom: 15px;
+                border: 1px solid #cbd5e0;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+
+            /* Chaque cellule devient un bloc */
+            #data-table td {
+                display: block;
+                text-align: right; /* Aligne la donnée à droite */
+                border-bottom: 1px solid #e2e8f0;
+                position: relative;
+                width: 100%;
+                border-left: none;
+                border-right: none;
+            }
+
+            /* Pour la première et la dernière cellule de chaque ligne, on enlève les bordures inutiles */
+            #data-table tr td:first-child,
+            #data-table tr td:last-child {
+                border-left: none;
+                border-right: none;
+            }
+
+            /* Les boutons d'action deviennent plus grands */
+            #data-table td:nth-child(2) {
+                text-align: center;
+            }
+
+            #data-table td:not(:first-child, :nth-child(2), :last-child) {
+                border-top: none;
+                border-bottom: none;
+            }
+
+            /* Crée un "label" pour chaque cellule en utilisant un pseudo-élément */
+            #data-table td::before {
+                content: attr(data-label); /* Utilise l'attribut data-label de la cellule */
+                position: absolute;
+                left: 15px;
+                font-weight: bold;
+                text-align: left;
+                width: calc(50% - 30px);
+                color: #4a5568;
+            }
+        }
+    </style>
+</head>
+<!-- h-screen, flex-col, and overflow-hidden on body to manage overall layout -->
+<body class="bg-gray-100 flex flex-col h-screen overflow-hidden text-sm md:text-base lg:text-lg">
+
+    <!-- Login Container -->
+    <div id='login-container' class="bg-white p-8 md:p-10 lg:p-12 rounded-xl shadow-lg w-full max-w-md mx-auto my-auto flex flex-col items-center space-y-4 md:space-y-6 transition-all duration-300 ease-in-out hidden">
+        <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800">Accéder au tableau</h2>
+        <input type='password' id='password' placeholder='Mot de passe' class="w-full p-3 md:p-4 lg:p-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+        <div class="flex items-center space-x-2 w-full">
+            <input type='checkbox' id='toggle-password' class="w-4 h-4 md:w-5 md:h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
+            <label for="toggle-password" class="text-sm md:text-base font-medium text-gray-700">Afficher le mot de passe</label>
+        </div>
+        <button onclick='checkPassword()' class="w-full bg-green-500 text-white font-bold p-3 md:p-4 lg:p-5 rounded-lg shadow-md hover:bg-green-600 transition-colors">
+            Valider
+        </button>
+        <p id='error-message' class="text-red-500 font-medium text-sm md:text-base"></p>
+    </div>
+
+    <!-- Main Table Container -->
+    <!-- Reduced vertical padding and margin for mobile -->
+    <div id='table-container' class="bg-white p-2 md:p-6 lg:p-8 rounded-xl w-full flex-grow overflow-y-auto hidden transition-all duration-300 ease-in-out flex flex-col">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-2 md:mb-6">
+            <div class="flex-grow">
+                <div class="flex flex-wrap items-center space-x-2 md:space-x-4 mb-1 md:mb-2">
+                    <h2 class="text-xl md:text-2xl lg:text-3xl font-extrabold text-gray-800">Tableau de Staff</h2>
+                    <span id="sync-status" class="sync-pending-animation px-2 py-1 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm font-bold border-2">Initialisation...</span>
+                </div>
+                <div class="flex flex-col md:flex-row items-start md:items-center space-y-1 md:space-y-0 md:space-x-4 text-xs md:text-sm">
+                    <span id="save-info" class="text-gray-500">Dernière sauvegarde : <span id="last-save-time" class="font-semibold text-gray-700">jamais</span></span>
+                    <span id="current-time" class="font-bold text-gray-900"></span>
+                </div>
+            </div>
+            <div id="master-indicator" class="flex-shrink-0 px-2 py-1 md:px-4 md:py-2 bg-green-50 text-green-700 font-bold rounded-lg border-2 border-green-300 text-xs md:text-sm mt-2 md:mt-0">
+                🎯 Source Maître: <span id="master-source">Supabase</span>
+            </div>
+        </div>
+
+        <div class="conflict-banner hidden bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500 p-2 md:p-6 rounded-lg shadow mb-2 md:mb-6" role="alert" id="conflict-banner">
+            <div class="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0">
+                <div>
+                    <p class="font-bold text-sm md:text-base">⚠️ Conflit de données détecté !</p>
+                    <p class="text-xs md:text-sm">Une version plus récente du tableau est disponible sur le serveur.</p>
+                </div>
+                <button onclick="resolveMasterData()" class="bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-yellow-700 transition-colors text-sm">
+                    Résoudre & Synchroniser
+                </button>
+            </div>
+        </div>
+
+        <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
+
+        <!-- Button Bar (for other actions, Add Row button is now in the table footer) -->
+        <div id="button-bar" class="flex flex-wrap items-center gap-2 mb-2 md:mb-6">
+            <button class='bg-blue-500 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-blue-600 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm' onclick='pullFromMaster()'>
+                <span>⬇️</span> <span>Tirer la dernière version</span>
+            </button>
+            <button onclick='saveManually()' class='bg-yellow-400 text-gray-800 font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-yellow-500 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm'>
+                <span>💾</span> <span>Sauvegarder</span>
+            </button>
+            <button id="undo-button" onclick="undo()" disabled class="bg-gray-300 text-gray-700 font-bold p-2 md:p-3 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm">
+                <span>↩️</span> <span>Annuler</span>
+            </button>
+            <button onclick="downloadExcel()" class="bg-green-600 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-green-700 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm">
+                <span>Excel</span> <span>⬇️</span>
+            </button>
+            <button onclick="downloadPDF()" class="bg-red-600 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-red-700 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm">
+                <span>PDF</span> <span>⬇️</span>
+            </button>
+            <button onclick="downloadImage()" class="bg-purple-600 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-purple-700 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm">
+                <span>Image</span> <span>⬇️</span>
+            </button>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-scroll w-full relative">
+            <table id='data-table' class="w-full text-left text-gray-500 text-xs md:text-sm lg:text-base">
+                <thead class="text-xs text-white uppercase bg-green-700">
+                    <tr>
+                        <th scope="col" class="py-2 px-2 md:px-4 rounded-tl-lg">No</th>
+                        <th scope="col" class="py-2 px-1 text-center">Effacer</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">Date de saisie</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">PEC finale</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">PEC initiale</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">Nom_Prénom</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">Diagnostic_initial</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">information complementaire</th>
+                        <th scope="col" class="py-2 px-2 md:px-4 rounded-tr-lg">numero_tel</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Table data will be injected here -->
+                </tbody>
+                <!-- Add row button placed in the table footer, spanning columns to align with "No" -->
+                <tfoot class="bg-white border-t-2 border-gray-300">
+                    <tr>
+                        <td colspan="2" class="py-1 px-1">
+                            <button class="bg-green-500 text-white font-bold p-3 md:p-4 rounded-full shadow-lg hover:bg-green-600 transition-colors text-xl md:text-2xl w-10 h-10 md:w-12 md:h-12 flex items-center justify-center mx-auto" onclick="addRow()">
+                                +
+                            </button>
+                        </td>
+                        <!-- This colspan ensures the button is correctly aligned under the first two columns -->
+                        <td colspan="7" class="bg-white"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Confirmation Modal -->
+        <div id="confirmation-modal" class="fixed inset-0 modal-overlay h-full w-full hidden">
+            <div class="relative top-1/4 mx-auto p-5 border w-11/12 max-w-sm shadow-lg rounded-md bg-white">
+                <div class="mt-3 text-center">
+                    <h3 class="text-lg md:text-xl leading-6 font-medium text-gray-900" id="modal-message"></h3>
+                    <div class="mt-4 flex justify-around">
+                        <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">Oui</button>
+                        <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-300 text-black text-base font-medium rounded-md w-24 shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">Non</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <!-- Supabase Client Library -->
+    <script type="module">import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        // === CONFIGURATION ===
+        const APP_CONFIG = {
+            password: 'p123',
+            version: '2.3.0-responsive'
+        };
+
+        // --- SUPABASE CONFIGURATION ---
+        // CORRECTED API KEY: Now using your own identifiers.
+        const supabaseConfig = {
+            supabaseUrl: 'https://fiecugxopjxzqfdnaqsu.supabase.co',
+            supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw',
+            tableName: 'staffTable',
+            primaryKeyColumn: 'No'
+        };
+
+        const supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
+        let realtimeSubscription = null;
+
+        // === APPLICATION STATE ===
+        const appState = {
+            isLoggedIn: false,
+            masterSource: 'supabase',
+            dataHash: null,
+            localData: null,
+            conflictDetected: false
+        };
+
+        let isDirty = false;
+        let saveTimeout = null;
+        let history = [];
+        const MAX_HISTORY_SIZE = 10;
+        let historyDebounceTimeout = null;
+
+        // === UTILITY FUNCTIONS ===
+        function log(message, type = 'info') {
+            console.log(`[${new Date().toLocaleTimeString()}] ${type.toUpperCase()}: ${message}`);
+        }
+
+        function updateStatus(message, type = 'pending') {
+            const statusEl = document.getElementById('sync-status');
+            statusEl.textContent = message;
+            statusEl.className = `sync-pending-animation px-2 py-1 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm font-bold border-2 ${getSyncStatusClasses(type)}`;
+        }
+
+        function getSyncStatusClasses(type) {
+            switch (type) {
+                case 'success':
+                    return 'bg-green-100 text-green-700 border-green-500';
+                case 'error':
+                    return 'bg-red-100 text-red-700 border-red-500';
+                case 'saving':
+                    return 'bg-blue-100 text-blue-700 border-blue-500 sync-pending-animation';
+                case 'pending':
+                default:
+                    return 'bg-yellow-100 text-yellow-700 border-yellow-500 sync-pending-animation';
+            }
+        }
+
+        function updateLastSaveTime() {
+            const now = new Date();
+            document.getElementById('last-save-time').textContent = now.toLocaleTimeString();
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            document.getElementById('current-time').textContent = timeString;
+        }
+
+        function updateUndoButtonState() {
+            const undoButton = document.getElementById('undo-button');
+            undoButton.disabled = history.length <= 1;
+        }
+
+        function collectTableData() {
+            const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
+            const rows = [];
+            document.querySelectorAll('#data-table tbody tr').forEach(rowEl => {
+                const rowData = {};
+                const cells = Array.from(rowEl.querySelectorAll('td')).slice(2);
+
+                if (rowEl.dataset.key) {
+                    rowData[supabaseConfig.primaryKeyColumn] = rowEl.dataset.key;
+                }
+
+                cells.forEach((td, index) => {
+                    const key = headers[index];
+                    rowData[key] = td.textContent === '' ? null : td.textContent;
+                });
+                rows.push(rowData);
+            });
+            return { headers, rows };
+        }
+
+        function getFormattedDate() {
+            const date = new Date();
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = String(date.getFullYear()).slice(-2);
+            return `${day}/${month}/${year}`;
+        }
+
+        function generateDataHash(data) {
+            return JSON.stringify(data.rows.map(row => ({ ...row, [supabaseConfig.primaryKeyColumn]: undefined }))).split('').reduce((a, b) => {
+                a = ((a << 5) - a) + b.charCodeAt(0);
+                return a & a;
+            }, 0).toString(16);
+        }
+
+        function saveStateToHistory() {
+            if (historyDebounceTimeout) {
+                clearTimeout(historyDebounceTimeout);
+            }
+            historyDebounceTimeout = setTimeout(() => {
+                const currentState = collectTableData();
+                const lastState = history[history.length - 1];
+                if (!lastState || generateDataHash(currentState) !== generateDataHash(lastState)) {
+                    history.push(currentState);
+                    if (history.length > MAX_HISTORY_SIZE) {
+                        history.shift();
+                    }
+                    updateUndoButtonState();
+                    log('État de l’historique enregistré.', 'info');
+                }
+            }, 500);
+        }
+
+        // Debounce function for auto-saving
+        function debouncedSave() {
+            isDirty = true;
+            if (saveTimeout) {
+                clearTimeout(saveTimeout);
+            }
+            saveTimeout = setTimeout(() => {
+                syncToMaster();
+            }, 2000); // Save 2 seconds after typing stops
+        }
+
+        // === TABLE MANAGEMENT FUNCTIONS ===
+        function loadTableData(data) {
+            if (!data) {
+                log('Invalid data structure', 'error');
+                return false;
+            }
+
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+
+            const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
+
+            data.forEach((rowData, index) => {
+                const row = document.createElement('tr');
+                row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+                if (rowData[supabaseConfig.primaryKeyColumn]) {
+                    row.dataset.key = rowData[supabaseConfig.primaryKeyColumn];
+                }
+
+                const numCell = document.createElement('td');
+                numCell.textContent = index + 1;
+                numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap';
+                numCell.setAttribute('data-label', 'No');
+                row.appendChild(numCell);
+
+                const deleteCell = document.createElement('td');
+                deleteCell.className = 'p-0 text-center';
+                deleteCell.setAttribute('data-label', 'Effacer');
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'w-full h-full text-lg text-red-600 hover:text-red-800 hover:bg-red-100 transition-colors flex items-center justify-center rounded-md';
+                deleteBtn.innerHTML = '❌';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation(); // Stop propagation to prevent row highlight
+                    showConfirmationModal('Effacer cette ligne ?', () => {
+                        saveStateToHistory();
+                        row.remove();
+                        updateRowNumbers();
+                        debouncedSave(); // Trigger save after deletion
+                    });
+                };
+                deleteCell.appendChild(deleteBtn);
+                row.appendChild(deleteCell);
+
+                headers.forEach((header) => {
+                    const cell = document.createElement('td');
+                    cell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800';
+                    cell.contentEditable = 'true';
+                    cell.textContent = rowData[header] || '';
+                    cell.setAttribute('data-label', header);
+                    cell.addEventListener('input', () => {
+                        saveStateToHistory();
+                        debouncedSave();
+                    });
+                    row.appendChild(cell);
+                });
+
+                tbody.appendChild(row);
+            });
+            updateUndoButtonState();
+            return true;
+        }
+
+        function addRow() {
+            saveStateToHistory();
+            const tbody = document.getElementById('table-body');
+            const rowCount = tbody.children.length;
+            const row = document.createElement('tr');
+            row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+
+            const numCell = document.createElement('td');
+            numCell.textContent = rowCount + 1;
+            numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap';
+            numCell.setAttribute('data-label', 'No');
+            row.appendChild(numCell);
+
+            const deleteCell = document.createElement('td');
+            deleteCell.className = 'p-0 text-center';
+            deleteCell.setAttribute('data-label', 'Effacer');
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'w-full h-full text-lg text-red-600 hover:text-red-800 hover:bg-red-100 transition-colors flex items-center justify-center rounded-md';
+            deleteBtn.innerHTML = '❌';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation(); // Stop propagation to prevent row highlight
+                showConfirmationModal('Effacer cette ligne ?', () => {
+                    saveStateToHistory();
+                    row.remove();
+                    updateRowNumbers();
+                    debouncedSave(); // Trigger save after deletion
+                });
+            };
+            deleteCell.appendChild(deleteBtn);
+            row.appendChild(deleteCell);
+
+            const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2);
+            headers.forEach((header) => {
+                const cell = document.createElement('td');
+                cell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800';
+                cell.contentEditable = 'true';
+                cell.setAttribute('data-label', header.textContent);
+                if (header.textContent === 'Date de saisie') {
+                    cell.textContent = getFormattedDate();
+                } else {
+                    cell.textContent = '';
+                }
+
+                cell.addEventListener('input', () => {
+                    saveStateToHistory();
+                    debouncedSave();
+                });
+                row.appendChild(cell);
+            });
+
+            tbody.appendChild(row);
+            updateRowNumbers();
+            debouncedSave(); // Trigger save after addition
+        }
+
+        function updateRowNumbers() {
+            document.querySelectorAll('#table-body tr').forEach((row, index) => {
+                row.querySelector('td:first-child').textContent = index + 1;
+            });
+        }
+
+        function undo() {
+            if (history.length > 1) {
+                history.pop();
+                const previousState = history[history.length - 1];
+                loadTableData(previousState.rows);
+                log('Annulation réussie.', 'info');
+                debouncedSave(); // Trigger save after undo
+            }
+        }
+
+        function resolveMasterData() {
+            log('Résolution des conflits... écrasement des données locales.', 'info');
+            appState.conflictDetected = false;
+            document.getElementById('conflict-banner').classList.add('hidden');
+            syncToMaster(true);
+        }
+
+        function showConfirmationModal(message, onConfirm) {
+            const modalOverlay = document.getElementById('confirmation-modal');
+            const modalMessage = document.getElementById('modal-message');
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            const cancelBtn = document.getElementById('modal-cancel-btn');
+
+            modalMessage.textContent = message;
+            modalOverlay.classList.remove('hidden');
+
+            const handleConfirm = () => {
+                onConfirm();
+                modalOverlay.classList.add('hidden');
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+                document.removeEventListener('keydown', handleKeyDown);
+            };
+
+            const handleCancel = () => {
+                modalOverlay.classList.add('hidden');
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+                document.removeEventListener('keydown', handleKeyDown);
+            };
+
+            const handleKeyDown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleConfirm();
+                }
+            };
+
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+            document.addEventListener('keydown', handleKeyDown);
+        }
+
+        // === SYNCHRONIZATION FUNCTIONS ===
+        async function loadFromSupabase() {
+            log('Chargement depuis Supabase...');
+            try {
+                const { data, error } = await supabase
+                    .from(supabaseConfig.tableName)
+                    .select('*')
+                    .order(supabaseConfig.primaryKeyColumn, { ascending: true });
+                if (error) {
+                    document.getElementById('error-display').classList.remove('hidden');
+                    document.getElementById('error-display').textContent = `❌ Erreur de chargement: ${error.message}`;
+                    throw error;
+                }
+                log(`Chargement réussi depuis Supabase. Nombre de lignes: ${data.length}`);
+                document.getElementById('error-display').classList.add('hidden');
+                return data;
+            } catch (error) {
+                log(`Échec du chargement depuis Supabase: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function syncToSupabase(localData) {
+            log('Synchronisation avec Supabase...');
+            try {
+                const { data: dbData, error: dbError } = await supabase.from(supabaseConfig.tableName).select(supabaseConfig.primaryKeyColumn);
+                if (dbError) throw dbError;
+
+                const dbKeys = new Set(dbData.map(row => row[supabaseConfig.primaryKeyColumn]));
+                const localKeys = new Set(localData.rows.filter(row => row[supabaseConfig.primaryKeyColumn]).map(row => row[supabaseConfig.primaryKeyColumn]));
+
+                const keysToDelete = [...dbKeys].filter(key => !localKeys.has(key));
+                if (keysToDelete.length > 0) {
+                    const { error: deleteError } = await supabase.from(supabaseConfig.tableName).delete().in(supabaseConfig.primaryKeyColumn, keysToDelete);
+                    if (deleteError) throw deleteError;
+                    log(`Deleted ${keysToDelete.length} rows from Supabase.`, 'success');
+                }
+
+                const rowsToInsert = localData.rows.filter(row => !row[supabaseConfig.primaryKeyColumn]);
+                const rowsToUpdate = localData.rows.filter(row => row[supabaseConfig.primaryKeyColumn]);
+
+                let upsertData = [];
+                if (rowsToInsert.length > 0) {
+                    const { data: newRows, error: insertError } = await supabase
+                        .from(supabaseConfig.tableName)
+                        .insert(rowsToInsert)
+                        .select();
+                    if (insertError) throw insertError;
+                    log(`Inserted ${newRows.length} new rows.`, 'success');
+                    upsertData = [...upsertData, ...newRows];
+                }
+
+                if (rowsToUpdate.length > 0) {
+                    const { data: updatedRows, error: upsertError } = await supabase
+                        .from(supabaseConfig.tableName)
+                        .upsert(rowsToUpdate, { onConflict: supabaseConfig.primaryKeyColumn })
+                        .select();
+                    if (upsertError) throw upsertError;
+                    log(`Updated ${updatedRows.length} existing rows.`, 'success');
+                    upsertData = [...upsertData, ...updatedRows];
+                }
+
+                upsertData.forEach(upsertedRow => {
+                    const localRow = document.querySelector(`tr:not([data-key])`);
+                    if (localRow) {
+                        localRow.dataset.key = upsertedRow[supabaseConfig.primaryKeyColumn];
+                    }
+                });
+
+                log('Synchronisation avec Supabase réussie.', 'success');
+                document.getElementById('error-display').classList.add('hidden');
+                updateLastSaveTime();
+                return true;
+            } catch (error) {
+                log(`Échec de la synchronisation avec Supabase: ${error.message}`, 'error');
+                document.getElementById('error-display').classList.remove('hidden');
+                document.getElementById('error-display').textContent = `❌ Erreur de synchronisation: ${error.message}`;
+                throw error;
+            }
+        }
+
+        async function syncToMaster(force = false) {
+            // No save if data hasn't changed
+            if (!isDirty && !force) {
+                log('Synchronisation non nécessaire.');
+                return;
+            }
+            log('Démarrage de la synchronisation avec le master...');
+            updateStatus('Sauvegarde en cours...', 'saving');
+
+            try {
+                const localData = collectTableData();
+                await syncToSupabase(localData);
+                appState.dataHash = generateDataHash(localData);
+                updateStatus('✅ Données sauvegardées', 'success');
+                isDirty = false;
+            } catch (error) {
+                updateStatus('❌ Échec de la synchronisation', 'error');
+                log('Échec de la synchronisation', 'error');
+            }
+        }
+
+        async function pullFromMaster() {
+            if (appState.masterSource !== 'supabase') return;
+            log('Tirage des dernières données depuis le master...');
+            updateStatus('Mise à jour...', 'pending');
+            try {
+                const masterData = await loadFromSupabase();
+                if (masterData) {
+                    loadTableData(masterData);
+                    const localData = collectTableData();
+                    appState.dataHash = generateDataHash(localData);
+                    updateStatus('✅ Données mises à jour', 'success');
+                    updateLastSaveTime();
+                    history = [localData];
+                    updateUndoButtonState();
+                    isDirty = false;
+                }
+            } catch (error) {
+                updateStatus('❌ Échec de la mise à jour', 'error');
+                log('Échec du tirage des données', 'error');
+            }
+        }
+
+        function setupRealtimeSubscription() {
+            if (realtimeSubscription) {
+                supabase.removeChannel(realtimeSubscription);
+            }
+            realtimeSubscription = supabase
+                .channel('public:staffTable')
+                .on('postgres_changes', { event: '*', schema: 'public', table: supabaseConfig.tableName }, payload => {
+                    log('Real-time update detected!', 'info');
+                    pullFromMaster();
+                })
+                .subscribe();
+            log('Real-time subscription active.', 'info');
+        }
+
+        async function initializeApp() {
+            log('Liaison avec Supabase en cours...');
+            updateStatus('Initialisation...', 'pending');
+            try {
+                const masterData = await loadFromSupabase();
+                if (masterData) {
+                    loadTableData(masterData);
+                    const localData = collectTableData();
+                    appState.dataHash = generateDataHash(localData);
+                    updateLastSaveTime();
+                } else {
+                    const initialData = [];
+                    loadTableData(initialData);
+                }
+                updateStatus('✅ Chargement terminé', 'success');
+                const initialTableState = collectTableData();
+                history = [initialTableState];
+                updateUndoButtonState();
+
+                updateClock();
+                setInterval(updateClock, 1000);
+
+                setupRealtimeSubscription();
+
+            } catch (error) {
+                log(`Échec de l'initialisation: ${error.message}`, 'error');
+                document.getElementById('error-display').classList.remove('hidden');
+                document.getElementById('error-display').textContent = `❌ Échec de l'initialisation: ${error.message}`;
+                updateStatus('❌ Initialisation échouée', 'error');
+            }
+        }
+
+        // === EXPORT FUNCTIONS ===
+        function downloadExcel() {
+            const table = document.getElementById('data-table');
+            const ws = XLSX.utils.table_to_sheet(table, { raw: false });
+
+            // Apply a basic style to the header row to match the green theme
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cellRef = XLSX.utils.encode_cell({ r: range.s.r, c: C });
+                if (ws[cellRef]) {
+                    if (!ws[cellRef].s) ws[cellRef].s = {};
+                    ws[cellRef].s.fill = { fgColor: { rgb: "15803d" } }; // Green-700
+                    ws[cellRef].s.font = { color: { rgb: "FFFFFF" } }; // White text
+                }
+            }
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Tableau de Staff");
+            XLSX.writeFile(wb, "staff_data.xlsx");
+        }
+
+
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.autoTable({
+                html: '#data-table',
+                startY: 15,
+                didDrawPage: (data) => {
+                    doc.text("Tableau de Staff", data.settings.margin.left, 10);
+                }
+            });
+            doc.save('staff_data.pdf');
+        }
+
+        function downloadImage() {
+            html2canvas(document.getElementById('data-table')).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'staff_data.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+
+
+        // === AUTHENTICATION MANAGEMENT ===
+        function checkPassword() {
+            const passwordInput = document.getElementById('password').value;
+            if (passwordInput === APP_CONFIG.password) {
+                appState.isLoggedIn = true;
+                document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('table-container').classList.remove('hidden');
+                initializeApp();
+            } else {
+                document.getElementById('error-message').textContent = 'Mot de passe incorrect.';
+            }
+        }
+
+        // === EVENTS ===
+        document.getElementById('toggle-password').addEventListener('change', function () {
+            document.getElementById('password').type = this.checked ? 'text' : 'password';
+        });
+
+        document.getElementById('password').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                checkPassword();
+            }
+        });
+
+        // Add a single, efficient click listener to the table body
+        document.getElementById('table-body').addEventListener('click', function (e) {
+            // Find the closest table row (tr) from the clicked element
+            const clickedRow = e.target.closest('tr');
+            if (!clickedRow) return;
+
+            // Check if the Ctrl (Windows) or Cmd (Mac) key is pressed
+            if (e.ctrlKey || e.metaKey) {
+                // If a modifier key is pressed, toggle the darker highlight class
+                clickedRow.classList.toggle('bg-yellow-400');
+                // Ensure the lighter highlight is removed
+                clickedRow.classList.remove('bg-yellow-100');
+            } else {
+                // If no modifier key is pressed, it's a simple click
+
+                // Clear any existing timeouts to prevent race conditions
+                clearTimeout(clickedRow.dataset.highlightTimeout);
+
+                // Deselect all other rows and remove all highlights
+                document.querySelectorAll('#table-body tr').forEach(row => {
+                    row.classList.remove('bg-yellow-100', 'bg-yellow-400');
+                });
+
+                // Add the light highlight class immediately
+                clickedRow.classList.add('bg-yellow-100');
+
+                // Set a timeout to remove the highlight after 500ms
+                const timeoutId = setTimeout(() => {
+                    clickedRow.classList.remove('bg-yellow-100');
+                }, 500);
+
+                // Store the timeout ID on the row element for future clearing
+                clickedRow.dataset.highlightTimeout = timeoutId;
+            }
+        });
+
+        // --- New feature for double-click text selection ---
+        document.getElementById('table-body').addEventListener('dblclick', function (e) {
+            // Check if the double-clicked element is a table cell
+            const clickedCell = e.target.closest('td');
+            // Prevent selection if the user double-clicks the delete button
+            if (clickedCell && clickedCell.contentEditable === 'true') {
+                const range = document.createRange();
+                const sel = window.getSelection();
+
+                // The 'firstChild' allows to select the text inside the cell
+                range.selectNodeContents(clickedCell);
+
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Backspace') {
+                const selectedRows = document.querySelectorAll('#table-body tr.bg-yellow-400');
+                if (selectedRows.length > 0) {
+                    e.preventDefault();
+                    showConfirmationModal(`Effacer les ${selectedRows.length} lignes sélectionnées ?`, () => {
+                        saveStateToHistory();
+                        selectedRows.forEach(row => row.remove());
+                        updateRowNumbers();
+                        debouncedSave();
+                    });
+                }
+            }
+        });
+
+        // --- New feature for the Enter key ---
+        document.addEventListener('keydown', function (e) {
+            // Check if the key is 'Enter' and the active element is a table cell
+            if (e.key === 'Enter' && document.activeElement && document.activeElement.tagName === 'TD') {
+                e.preventDefault(); // Prevent default behavior (e.g., adding a new line)
+
+                const currentCell = document.activeElement;
+                const currentRow = currentCell.closest('tr');
+                const currentIndex = currentCell.cellIndex;
+
+                const nextRow = currentRow.nextElementSibling;
+                if (nextRow) {
+                    // If a next row exists, find the cell at the same index and focus it
+                    const nextCell = nextRow.cells[currentIndex];
+                    if (nextCell) {
+                        nextCell.focus();
+                    }
+                } else {
+                    // If no next row, add a new one and focus the first editable cell
+                    addRow();
+                    // Wait for the DOM to update, then focus the new cell
+                    setTimeout(() => {
+                        const newRow = document.querySelector('#table-body tr:last-child');
+                        if (newRow && newRow.cells.length > currentIndex) {
+                            newRow.cells[currentIndex].focus();
+                        }
+                    }, 0);
+                }
+            }
+        });
+
+        function saveManually() {
+            syncToMaster(true);
+        }
+
+        window.checkPassword = checkPassword;
+        window.pullFromMaster = pullFromMaster;
+        window.syncToMaster = syncToMaster;
+        window.resolveMasterData = resolveMasterData;
+        window.addRow = addRow;
+        window.saveManually = saveManually;
+        window.undo = undo;
+        window.downloadExcel = downloadExcel;
+        window.downloadPDF = downloadPDF;
+        window.downloadImage = downloadImage;
+
+        window.addEventListener('load', function () {
+            document.getElementById('login-container').classList.remove('hidden');
+        });</script>
+</body>
+</html>
