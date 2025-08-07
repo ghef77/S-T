@@ -2,8 +2,7 @@
 <html lang='fr'>
 <head>
     <meta charset='UTF-8'>
-    <!-- Modification pour désactiver le zoom du navigateur par défaut -->
-    <meta name='viewport' content='width=device-width, initial-scale=1.0, user-scalable=no'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>Tableau de Staff synchronisé - Supabase</title>
     <!-- Tailwind CSS CDN for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -12,7 +11,7 @@
         body {
             font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
         }
-        
+
         /* Table styles for sticky header and border-collapse */
         #data-table {
             border-collapse: collapse;
@@ -21,32 +20,32 @@
             width: 100%; /* Make the table take up the full width */
         }
 
-        /* Add black borders to each cell for a grid effect */
-        #data-table th,
-        #data-table td {
-            border: 1px solid #000;
-        }
+            /* Add black borders to each cell for a grid effect */
+            #data-table th,
+            #data-table td {
+                border: 1px solid #000;
+            }
 
-        /* Sticky header ensures it stays visible during scroll */
-        #data-table thead {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background-color: #15803d; /* Darker green for a more professional look */
-        }
-        
-        /* Sticky footer for the add button */
-        #data-table tfoot {
-            position: sticky;
-            bottom: 0;
-            z-index: 10;
-            background-color: white; /* Match table background */
-            border-top: 2px solid #ddd;
-        }
-        
+            /* Sticky header ensures it stays visible during scroll */
+            #data-table thead {
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                background-color: #15803d; /* Darker green for a more professional look */
+            }
+
+            /* Sticky footer for the add button */
+            #data-table tfoot {
+                position: sticky;
+                bottom: 0;
+                z-index: 10;
+                background-color: white; /* Match table background */
+                border-top: 2px solid #ddd;
+            }
+
         .modal-overlay {
             background-color: rgba(0, 0, 0, 0.5);
-            z-index: 50; 
+            z-index: 50;
         }
 
         .sync-pending-animation {
@@ -57,14 +56,16 @@
             0% {
                 opacity: 1;
             }
+
             50% {
                 opacity: 0.5;
             }
+
             100% {
                 opacity: 1;
             }
         }
-        
+
         /* Styles for a static 3D thickness */
         #table-container {
             position: relative;
@@ -75,32 +76,32 @@
             box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3), 0 8px 16px -4px rgba(0, 0, 0, 0.15);
         }
 
-        /* Pseudo-element to simulate the table's side "face" */
-        #table-container::after {
-            content: '';
-            position: absolute;
-            bottom: -15px; /* Add a 15px thickness at the bottom */
-            left: 0;
-            right: 0;
-            height: 15px;
-            background-color: #f3f4f6; /* Side face color */
-            transform: rotateX(90deg) translateZ(-15px); /* Position and rotate the thickness */
-            transform-origin: bottom;
-            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-            z-index: -1;
-            border-bottom-left-radius: 1rem;
-            border-bottom-right-radius: 1rem;
-        }
+            /* Pseudo-element to simulate the table's side "face" */
+            #table-container::after {
+                content: '';
+                position: absolute;
+                bottom: -15px; /* Add a 15px thickness at the bottom */
+                left: 0;
+                right: 0;
+                height: 15px;
+                background-color: #f3f4f6; /* Side face color */
+                transform: rotateX(90deg) translateZ(-15px); /* Position and rotate the thickness */
+                transform-origin: bottom;
+                box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+                z-index: -1;
+                border-bottom-left-radius: 1rem;
+                border-bottom-right-radius: 1rem;
+            }
 
         #button-bar button {
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        #button-bar button:hover {
-            transform: translateY(-1px);
-            box-shadow: 6px 8px -1px rgba(0, 0, 0, 0.15), 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
+            #button-bar button:hover {
+                transform: translateY(-1px);
+                box-shadow: 6px 8px -1px rgba(0, 0, 0, 0.15), 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
 
         /* Cell styles to match the screenshot */
         #data-table td {
@@ -119,7 +120,7 @@
             thead {
                 display: none;
             }
-            
+
             /* Chaque ligne devient un bloc */
             #data-table tr {
                 display: block;
@@ -128,7 +129,7 @@
                 border-radius: 8px;
                 overflow: hidden;
             }
-            
+
             /* Chaque cellule devient un bloc */
             #data-table td {
                 display: block;
@@ -146,17 +147,17 @@
                 border-left: none;
                 border-right: none;
             }
-            
+
             /* Les boutons d'action deviennent plus grands */
             #data-table td:nth-child(2) {
                 text-align: center;
             }
-            
+
             #data-table td:not(:first-child, :nth-child(2), :last-child) {
                 border-top: none;
                 border-bottom: none;
             }
-            
+
             /* Crée un "label" pour chaque cellule en utilisant un pseudo-élément */
             #data-table td::before {
                 content: attr(data-label); /* Utilise l'attribut data-label de la cellule */
@@ -205,7 +206,7 @@
                 🎯 Source Maître: <span id="master-source">Supabase</span>
             </div>
         </div>
-        
+
         <div class="conflict-banner hidden bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500 p-2 md:p-6 rounded-lg shadow mb-2 md:mb-6" role="alert" id="conflict-banner">
             <div class="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0">
                 <div>
@@ -275,7 +276,7 @@
                 </tfoot>
             </table>
         </div>
-        
+
         <!-- Confirmation Modal -->
         <div id="confirmation-modal" class="fixed inset-0 modal-overlay h-full w-full hidden">
             <div class="relative top-1/4 mx-auto p-5 border w-11/12 max-w-sm shadow-lg rounded-md bg-white">
@@ -296,13 +297,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <!-- Supabase Client Library -->
-    <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    <script type="module">import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
         // === CONFIGURATION ===
         const APP_CONFIG = {
             password: 'p123',
-            version: '2.4.0-pinch-zoom'
+            version: '2.3.0-responsive'
         };
 
         // --- SUPABASE CONFIGURATION ---
@@ -344,7 +344,7 @@
         }
 
         function getSyncStatusClasses(type) {
-            switch(type) {
+            switch (type) {
                 case 'success':
                     return 'bg-green-100 text-green-700 border-green-500';
                 case 'error':
@@ -379,9 +379,9 @@
             document.querySelectorAll('#data-table tbody tr').forEach(rowEl => {
                 const rowData = {};
                 const cells = Array.from(rowEl.querySelectorAll('td')).slice(2);
-                
+
                 if (rowEl.dataset.key) {
-                    rowData[supabaseConfig.primaryKeyColumn] = rowEl.dataset.key; 
+                    rowData[supabaseConfig.primaryKeyColumn] = rowEl.dataset.key;
                 }
 
                 cells.forEach((td, index) => {
@@ -446,14 +446,14 @@
 
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
-            
+
             const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
-            
+
             data.forEach((rowData, index) => {
                 const row = document.createElement('tr');
-                row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer'; 
+                row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
                 if (rowData[supabaseConfig.primaryKeyColumn]) {
-                    row.dataset.key = rowData[supabaseConfig.primaryKeyColumn]; 
+                    row.dataset.key = rowData[supabaseConfig.primaryKeyColumn];
                 }
 
                 const numCell = document.createElement('td');
@@ -492,7 +492,7 @@
                     });
                     row.appendChild(cell);
                 });
-                
+
                 tbody.appendChild(row);
             });
             updateUndoButtonState();
@@ -504,7 +504,7 @@
             const tbody = document.getElementById('table-body');
             const rowCount = tbody.children.length;
             const row = document.createElement('tr');
-            row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer'; 
+            row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
 
             const numCell = document.createElement('td');
             numCell.textContent = rowCount + 1;
@@ -548,7 +548,7 @@
                 });
                 row.appendChild(cell);
             });
-            
+
             tbody.appendChild(row);
             updateRowNumbers();
             debouncedSave(); // Trigger save after addition
@@ -622,9 +622,9 @@
                     .select('*')
                     .order(supabaseConfig.primaryKeyColumn, { ascending: true });
                 if (error) {
-                     document.getElementById('error-display').classList.remove('hidden');
-                     document.getElementById('error-display').textContent = `❌ Erreur de chargement: ${error.message}`;
-                     throw error;
+                    document.getElementById('error-display').classList.remove('hidden');
+                    document.getElementById('error-display').textContent = `❌ Erreur de chargement: ${error.message}`;
+                    throw error;
                 }
                 log(`Chargement réussi depuis Supabase. Nombre de lignes: ${data.length}`);
                 document.getElementById('error-display').classList.add('hidden');
@@ -769,7 +769,7 @@
                 const initialTableState = collectTableData();
                 history = [initialTableState];
                 updateUndoButtonState();
-                
+
                 updateClock();
                 setInterval(updateClock, 1000);
 
@@ -853,7 +853,7 @@
         });
 
         // Add a single, efficient click listener to the table body
-        document.getElementById('table-body').addEventListener('click', function(e) {
+        document.getElementById('table-body').addEventListener('click', function (e) {
             // Find the closest table row (tr) from the clicked element
             const clickedRow = e.target.closest('tr');
             if (!clickedRow) return;
@@ -866,7 +866,7 @@
                 clickedRow.classList.remove('bg-yellow-100');
             } else {
                 // If no modifier key is pressed, it's a simple click
-                
+
                 // Clear any existing timeouts to prevent race conditions
                 clearTimeout(clickedRow.dataset.highlightTimeout);
 
@@ -877,7 +877,7 @@
 
                 // Add the light highlight class immediately
                 clickedRow.classList.add('bg-yellow-100');
-                
+
                 // Set a timeout to remove the highlight after 500ms
                 const timeoutId = setTimeout(() => {
                     clickedRow.classList.remove('bg-yellow-100');
@@ -887,18 +887,18 @@
                 clickedRow.dataset.highlightTimeout = timeoutId;
             }
         });
-        
+
         // --- New feature for double-click text selection ---
-        document.getElementById('table-body').addEventListener('dblclick', function(e) {
+        document.getElementById('table-body').addEventListener('dblclick', function (e) {
             // Check if the double-clicked element is a table cell
             const clickedCell = e.target.closest('td');
             // Prevent selection if the user double-clicks the delete button
-            if (clickedCell && clickedCell.contentEditable === 'true') { 
+            if (clickedCell && clickedCell.contentEditable === 'true') {
                 const range = document.createRange();
                 const sel = window.getSelection();
 
                 // The 'firstChild' allows to select the text inside the cell
-                range.selectNodeContents(clickedCell); 
+                range.selectNodeContents(clickedCell);
 
                 sel.removeAllRanges();
                 sel.addRange(range);
@@ -911,7 +911,7 @@
                 undo();
             }
         });
-        
+
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Backspace') {
                 const selectedRows = document.querySelectorAll('#table-body tr.bg-yellow-400');
@@ -957,50 +957,11 @@
                 }
             }
         });
-        
+
         function saveManually() {
             syncToMaster(true);
         }
 
-        // === PINCH-TO-ZOOM LOGIC ===
-        let initialPinchDistance = 0;
-        let currentScale = 1;
-        const table = document.getElementById('data-table');
-
-        table.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2) {
-                e.preventDefault();
-                // Calculate the initial distance between the two fingers
-                initialPinchDistance = getPinchDistance(e);
-            }
-        });
-
-        table.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2 && initialPinchDistance > 0) {
-                e.preventDefault();
-                const newPinchDistance = getPinchDistance(e);
-                const scaleFactor = newPinchDistance / initialPinchDistance;
-
-                // Apply the new scale, clamping between 0.5x and 2.5x
-                currentScale = Math.min(Math.max(scaleFactor, 0.5), 2.5);
-                table.style.transform = `scale(${currentScale})`;
-            }
-        });
-
-        table.addEventListener('touchend', (e) => {
-            // Reset the pinch state when fingers are lifted
-            initialPinchDistance = 0;
-        });
-        
-        function getPinchDistance(e) {
-            const touch1 = e.touches[0];
-            const touch2 = e.touches[1];
-            return Math.sqrt(
-                Math.pow(touch2.clientX - touch1.clientX, 2) +
-                Math.pow(touch2.clientY - touch1.clientY, 2)
-            );
-        }
-        
         window.checkPassword = checkPassword;
         window.pullFromMaster = pullFromMaster;
         window.syncToMaster = syncToMaster;
@@ -1014,7 +975,6 @@
 
         window.addEventListener('load', function () {
             document.getElementById('login-container').classList.remove('hidden');
-        });
-    </script>
+        });</script>
 </body>
 </html>
