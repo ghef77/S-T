@@ -17,15 +17,12 @@
             border-spacing: 0;
             margin-bottom: 50px;
             min-width: 800px;
-            /* Ajout de la propriété CSS pour fixer la largeur des colonnes */
             table-layout: fixed;
         }
 
-            /* Ajoutez des bordures noires à chaque cellule pour un effet de grille */
             #data-table th,
             #data-table td {
                 border: 1px solid #000;
-                /* Permet au contenu de passer à la ligne si la cellule est trop étroite */
                 overflow: hidden;
                 text-overflow: ellipsis;
                 word-wrap: break-word;
@@ -135,7 +132,7 @@
         <p id='error-message' class="text-red-500 font-medium"></p>
     </div>
 
-    <div id='table-container' class="bg-white p-6 rounded-xl w-full flex-grow overflow-y-auto hidden transition-all duration-300 ease-in-out flex flex-col">
+    <div id='table-container' class="md:block hidden bg-white p-6 rounded-xl w-full flex-grow overflow-y-auto transition-all duration-300 ease-in-out flex flex-col">
         <div class="flex flex-col md:flex-row items-center justify-between mb-6">
             <div class="flex-grow">
                 <div class="flex items-center space-x-4 mb-2 md:mb-0">
@@ -203,7 +200,7 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    </tbody>
+                </tbody>
                 <tfoot class="bg-white border-t-2 border-gray-300">
                     <tr>
                         <td colspan="2" class="py-1 px-1">
@@ -228,6 +225,9 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div id="mobile-cards-container" class="md:hidden p-4 space-y-4">
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -330,14 +330,6 @@
             return { headers, rows };
         }
 
-        function getFormattedDate() {
-            const date = new Date();
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = String(date.getFullYear()).slice(-2);
-            return `${day}/${month}/${year}`;
-        }
-
         function generateDataHash(data) {
             return JSON.stringify(data.rows.map(row => ({ ...row, [supabaseConfig.primaryKeyColumn]: undefined }))).split('').reduce((a, b) => {
                 a = ((a << 5) - a) + b.charCodeAt(0);
@@ -430,7 +422,81 @@
                 tbody.appendChild(row);
             });
             updateUndoButtonState();
+            loadMobileCards(data); // <-- Ajout de l'appel pour la vue mobile
             return true;
+        }
+
+        function loadMobileCards(data) {
+            const mobileCardsContainer = document.getElementById('mobile-cards-container');
+            mobileCardsContainer.innerHTML = '';
+
+            if (!data || data.length === 0) {
+                mobileCardsContainer.innerHTML = '<p class="text-center text-gray-500 mt-8">Aucune donnée à afficher.</p>';
+                return;
+            }
+
+            const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
+
+            data.forEach((rowData, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-white shadow-lg rounded-xl p-4 border border-gray-200 relative';
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'absolute top-2 right-2 text-lg text-red-600 hover:text-red-800 hover:bg-red-100 p-1 rounded-full transition-colors';
+                deleteBtn.innerHTML = '❌';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    showConfirmationModal('Effacer cette ligne ?', () => {
+                        saveStateToHistory();
+                        const rowToDelete = document.querySelector(`tr[data-key='${rowData[supabaseConfig.primaryKeyColumn]}']`);
+                        if (rowToDelete) {
+                            rowToDelete.remove();
+                        }
+                        card.remove();
+                        updateRowNumbers();
+                        debouncedSave();
+                    });
+                };
+                card.appendChild(deleteBtn);
+
+                const number = document.createElement('div');
+                number.className = 'text-xl font-extrabold text-green-700 mb-2';
+                number.textContent = `No ${index + 1}`;
+                card.appendChild(number);
+
+                headers.forEach(header => {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'mb-1';
+
+                    const label = document.createElement('span');
+                    label.className = 'font-semibold text-gray-600';
+                    label.textContent = `${header} : `;
+
+                    const value = document.createElement('span');
+                    value.className = 'text-gray-800';
+                    value.textContent = rowData[header] || 'N/A';
+                    value.contentEditable = 'true';
+
+                    value.addEventListener('input', (e) => {
+                        const rowToUpdate = document.querySelector(`tr[data-key='${rowData[supabaseConfig.primaryKeyColumn]}']`);
+                        if (rowToUpdate) {
+                            const cells = Array.from(rowToUpdate.querySelectorAll('td')).slice(2);
+                            const headerIndex = headers.indexOf(header);
+                            if (cells[headerIndex]) {
+                                cells[headerIndex].textContent = e.target.textContent;
+                            }
+                        }
+                        saveStateToHistory();
+                        debouncedSave();
+                    });
+
+                    rowDiv.appendChild(label);
+                    rowDiv.appendChild(value);
+                    card.appendChild(rowDiv);
+                });
+
+                mobileCardsContainer.appendChild(card);
+            });
         }
 
         function addRow() {
@@ -482,6 +548,7 @@
 
             tbody.appendChild(row);
             updateRowNumbers();
+            loadMobileCards(collectTableData().rows); // <-- Ajout de l'appel pour la vue mobile
             debouncedSave(); // Déclenche la sauvegarde après un ajout
         }
 
@@ -496,6 +563,7 @@
                 history.pop();
                 const previousState = history[history.length - 1];
                 loadTableData(previousState.rows);
+                loadMobileCards(previousState.rows); // <-- Ajout de l'appel pour la vue mobile
                 log('Annulation réussie.', 'info');
                 debouncedSave(); // Déclenche la sauvegarde après une annulation
             }
@@ -626,7 +694,6 @@
         }
 
         async function syncToMaster(force = false) {
-            // Pas de sauvegarde si les données n'ont pas changé
             if (!isDirty && !force) {
                 log('Synchronisation non nécessaire.');
                 return;
@@ -654,6 +721,7 @@
                 const masterData = await loadFromSupabase();
                 if (masterData) {
                     loadTableData(masterData);
+                    loadMobileCards(masterData);
                     const localData = collectTableData();
                     appState.dataHash = generateDataHash(localData);
                     updateStatus('✅ Données mises à jour', 'success');
@@ -679,233 +747,121 @@
                     pullFromMaster();
                 })
                 .subscribe();
-            log('Real-time subscription active.', 'info');
-        }
-
-        async function initializeApp() {
-            log('Liaison avec Supabase en cours...');
-            updateStatus('Initialisation...', 'pending');
-            try {
-                const masterData = await loadFromSupabase();
-                if (masterData) {
-                    loadTableData(masterData);
-                    const localData = collectTableData();
-                    appState.dataHash = generateDataHash(localData);
-                    updateLastSaveTime();
-                } else {
-                    const initialData = [];
-                    loadTableData(initialData);
-                }
-                updateStatus('✅ Chargement terminé', 'success');
-                const initialTableState = collectTableData();
-                history = [initialTableState];
-                updateUndoButtonState();
-
-                updateClock();
-                setInterval(updateClock, 1000);
-
-                setupRealtimeSubscription();
-
-            } catch (error) {
-                log(`Échec de l'initialisation: ${error.message}`, 'error');
-                document.getElementById('error-display').classList.remove('hidden');
-                document.getElementById('error-display').textContent = `❌ Échec de l'initialisation: ${error.message}`;
-                updateStatus('❌ Initialisation échouée', 'error');
-            }
         }
 
         // === FONCTIONS D'EXPORTATION ===
         function downloadExcel() {
             const table = document.getElementById('data-table');
-            const ws = XLSX.utils.table_to_sheet(table, { raw: false });
-
-            // Apply a basic style to the header row to match the green theme
-            const range = XLSX.utils.decode_range(ws['!ref']);
-            for (let C = range.s.c; C <= range.e.c; ++C) {
-                const cellRef = XLSX.utils.encode_cell({ r: range.s.r, c: C });
-                if (ws[cellRef]) {
-                    if (!ws[cellRef].s) ws[cellRef].s = {};
-                    ws[cellRef].s.fill = { fgColor: { rgb: "15803d" } }; // Green-700
-                    ws[cellRef].s.font = { color: { rgb: "FFFFFF" } }; // White text
-                }
-            }
-
+            const ws = XLSX.utils.table_to_sheet(table);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Tableau de Staff");
+            XLSX.utils.book_append_sheet(wb, ws, "Staff Data");
             XLSX.writeFile(wb, "staff_data.xlsx");
         }
 
-
         function downloadPDF() {
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
+            const doc = new jsPDF('l', 'pt'); // 'l' pour paysage
             doc.autoTable({
                 html: '#data-table',
-                startY: 15,
-                didDrawPage: (data) => {
-                    doc.text("Tableau de Staff", data.settings.margin.left, 10);
+                theme: 'grid',
+                headStyles: { fillColor: '#15803d' },
+                styles: { fontSize: 8 },
+                columnStyles: {
+                    0: { cellWidth: 30 },
+                    1: { cellWidth: 30 },
+                    2: { cellWidth: 60 },
+                    3: { cellWidth: 80 },
+                    4: { cellWidth: 80 },
+                    5: { cellWidth: 90 },
+                    6: { cellWidth: 100 },
+                    7: { cellWidth: 120 },
+                    8: { cellWidth: 80 }
+                },
+                didParseCell: function(data) {
+                    // Supprimer le bouton de suppression
+                    if (data.column.index === 1) {
+                        data.cell.text = '';
+                    }
                 }
             });
             doc.save('staff_data.pdf');
         }
 
         function downloadImage() {
-            html2canvas(document.getElementById('data-table')).then(canvas => {
+            const tableContainer = document.getElementById('table-container');
+            html2canvas(tableContainer, {
+                scale: 2, // Améliore la qualité de l'image
+                useCORS: true,
+                ignoreElements: (element) => {
+                    return element.classList.contains('p-0'); // Ignore les boutons de suppression
+                }
+            }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = 'staff_data.png';
                 link.href = canvas.toDataURL('image/png');
+                link.download = 'staff_data.png';
                 link.click();
             });
         }
 
-
-        // === GESTION DE L'AUTHENTIFICATION ===
+        // === GESTION DE LA CONNEXION ===
         function checkPassword() {
-            const passwordInput = document.getElementById('password').value;
-            if (passwordInput === APP_CONFIG.password) {
+            const passwordInput = document.getElementById('password');
+            const errorMessage = document.getElementById('error-message');
+            if (passwordInput.value === APP_CONFIG.password) {
                 appState.isLoggedIn = true;
+                log('Connexion réussie', 'success');
                 document.getElementById('login-container').classList.add('hidden');
                 document.getElementById('table-container').classList.remove('hidden');
-                initializeApp();
+                document.getElementById('mobile-cards-container').classList.remove('hidden');
+                initApp();
             } else {
-                document.getElementById('error-message').textContent = 'Mot de passe incorrect.';
+                errorMessage.textContent = 'Mot de passe incorrect.';
+                log('Échec de la connexion', 'error');
             }
         }
 
-        // === ÉVÉNEMENTS ===
-        document.getElementById('toggle-password').addEventListener('change', function () {
-            document.getElementById('password').type = this.checked ? 'text' : 'password';
+        document.getElementById('toggle-password').addEventListener('change', (e) => {
+            const passwordInput = document.getElementById('password');
+            passwordInput.type = e.target.checked ? 'text' : 'password';
         });
 
-        document.getElementById('password').addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-                checkPassword();
-            }
-        });
-
-        // Add a single, efficient click listener to the table body
-        document.getElementById('table-body').addEventListener('click', function (e) {
-            // Find the closest table row (tr) from the clicked element
-            const clickedRow = e.target.closest('tr');
-            if (!clickedRow) return;
-
-            // Check if the Ctrl (Windows) or Cmd (Mac) key is pressed
-            if (e.ctrlKey || e.metaKey) {
-                // If a modifier key is pressed, toggle the darker highlight class
-                clickedRow.classList.toggle('bg-yellow-400');
-                // Ensure the lighter highlight is removed
-                clickedRow.classList.remove('bg-yellow-100');
-            } else {
-                // If no modifier key is pressed, it's a simple click
-
-                // Clear any existing timeouts to prevent race conditions
-                clearTimeout(clickedRow.dataset.highlightTimeout);
-
-                // Deselect all other rows and remove all highlights
-                document.querySelectorAll('#table-body tr').forEach(row => {
-                    row.classList.remove('bg-yellow-100', 'bg-yellow-400');
-                });
-
-                // Add the light highlight class immediately
-                clickedRow.classList.add('bg-yellow-100');
-
-                // Set a timeout to remove the highlight after 500ms
-                const timeoutId = setTimeout(() => {
-                    clickedRow.classList.remove('bg-yellow-100');
-                }, 500);
-
-                // Store the timeout ID on the row element for future clearing
-                clickedRow.dataset.highlightTimeout = timeoutId;
-            }
-        });
-
-        // --- Nouvelle fonctionnalité pour la sélection de texte au double-clic ---
-        document.getElementById('table-body').addEventListener('dblclick', function (e) {
-            // Vérifie si l'élément double-cliqué est une cellule de tableau
-            const clickedCell = e.target.closest('td');
-            // Empêche la sélection si l'utilisateur double-clique sur le bouton de suppression
-            if (clickedCell && clickedCell.contentEditable === 'true') {
-                const range = document.createRange();
-                const sel = window.getSelection();
-
-                // Le 'firstChild' permet de sélectionner le texte à l'intérieur de la cellule
-                range.selectNodeContents(clickedCell);
-
-                sel.removeAllRanges();
-                sel.addRange(range);
-            }
-        });
-
-        document.addEventListener('keydown', function (e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-                e.preventDefault();
-                undo();
-            }
-        });
-
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Backspace') {
-                const selectedRows = document.querySelectorAll('#table-body tr.bg-yellow-400');
-                if (selectedRows.length > 0) {
-                    e.preventDefault();
-                    showConfirmationModal(`Effacer les ${selectedRows.length} lignes sélectionnées ?`, () => {
-                        saveStateToHistory();
-                        selectedRows.forEach(row => row.remove());
-                        updateRowNumbers();
-                        debouncedSave();
-                    });
-                }
-            }
-        });
-
-        // --- Nouvelle fonctionnalité pour la touche Entrée ---
-        document.addEventListener('keydown', function (e) {
-            // Check if the key is 'Enter' and the active element is a table cell
-            if (e.key === 'Enter' && document.activeElement && document.activeElement.tagName === 'TD') {
-                e.preventDefault(); // Prevent default behavior (e.g., adding a new line)
-
-                const currentCell = document.activeElement;
-                const currentRow = currentCell.closest('tr');
-                const currentIndex = currentCell.cellIndex;
-
-                const nextRow = currentRow.nextElementSibling;
-                if (nextRow) {
-                    // If a next row exists, find the cell at the same index and focus it
-                    const nextCell = nextRow.cells[currentIndex];
-                    if (nextCell) {
-                        nextCell.focus();
-                    }
+        // === INITIALISATION ===
+        async function initApp() {
+            try {
+                const masterData = await loadFromSupabase();
+                if (masterData) {
+                    loadTableData(masterData);
+                    const localData = collectTableData();
+                    appState.dataHash = generateDataHash(localData);
+                    history.push(localData);
+                    updateStatus('✅ Prêt', 'success');
+                    updateLastSaveTime();
+                    setupRealtimeSubscription();
                 } else {
-                    // If no next row, add a new one and focus the first editable cell
-                    addRow();
-                    // Wait for the DOM to update, then focus the new cell
-                    setTimeout(() => {
-                        const newRow = document.querySelector('#table-body tr:last-child');
-                        if (newRow && newRow.cells.length > currentIndex) {
-                            newRow.cells[currentIndex].focus();
-                        }
-                    }, 0);
+                    updateStatus('⚠️ Données introuvables', 'error');
                 }
+            } catch (error) {
+                updateStatus('❌ Erreur critique', 'error');
+                log('Erreur lors de l\'initialisation', 'error');
             }
-        });
-
-        function saveManually() {
-            syncToMaster(true);
         }
 
-        window.checkPassword = checkPassword;
-        window.pullFromMaster = pullFromMaster;
-        window.syncToMaster = syncToMaster;
-        window.resolveMasterData = resolveMasterData;
+        function init() {
+            setInterval(updateClock, 1000);
+            updateClock();
+            document.getElementById('login-container').classList.remove('hidden');
+        }
+
+        window.onload = init;
         window.addRow = addRow;
-        window.saveManually = saveManually;
         window.undo = undo;
+        window.checkPassword = checkPassword;
+        window.syncToMaster = syncToMaster;
+        window.pullFromMaster = pullFromMaster;
+        window.resolveMasterData = resolveMasterData;
+        window.showConfirmationModal = showConfirmationModal;
         window.downloadExcel = downloadExcel;
         window.downloadPDF = downloadPDF;
-        window.downloadImage = downloadImage;
-
-        window.addEventListener('load', function () {
-            document.getElementById('login-container').classList.remove('hidden');
-        });</script>
+        window.downloadImage = downloadImage;</script>
 </body>
 </html>
