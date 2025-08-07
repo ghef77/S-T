@@ -17,13 +17,14 @@
             border-collapse: separate;
             border-spacing: 0;
             margin-bottom: 50px;
-            min-width: 800px;
+            width: 100%; /* Make the table take up the full width */
         }
 
-        /* Ajoutez des bordures noires à chaque cellule pour un effet de grille */
+        /* Add black borders to each cell for a grid effect */
         #data-table th,
         #data-table td {
             border: 1px solid #000;
+            /* Font size is now handled by responsive Tailwind classes on the body */
         }
 
         /* Sticky header ensures it stays visible during scroll */
@@ -64,26 +65,26 @@
             }
         }
         
-        /* Styles pour une épaisseur 3D statique */
+        /* Styles for a static 3D thickness */
         #table-container {
             position: relative;
             transform-style: preserve-3d;
-            perspective: 1000px; /* Ajoute un effet de perspective 3D */
-            transform: rotateX(2deg) translateY(0px) scale(1); /* Une légère rotation pour montrer l'épaisseur */
+            perspective: 1000px; /* Add a 3D perspective effect */
+            transform: rotateX(2deg) translateY(0px) scale(1); /* A slight rotation to show thickness */
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3), 0 8px 16px -4px rgba(0, 0, 0, 0.15);
         }
 
-        /* Pseudo-élément pour simuler la "face" latérale du tableau */
+        /* Pseudo-element to simulate the table's side "face" */
         #table-container::after {
             content: '';
             position: absolute;
-            bottom: -15px; /* Ajoute une épaisseur de 15px en bas */
+            bottom: -15px; /* Add a 15px thickness at the bottom */
             left: 0;
             right: 0;
             height: 15px;
-            background-color: #f3f4f6; /* Couleur de la face latérale */
-            transform: rotateX(90deg) translateZ(-15px); /* Positionne et fait pivoter l'épaisseur */
+            background-color: #f3f4f6; /* Side face color */
+            transform: rotateX(90deg) translateZ(-15px); /* Position and rotate the thickness */
             transform-origin: bottom;
             box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
             z-index: -1;
@@ -98,109 +99,108 @@
 
         #button-bar button:hover {
             transform: translateY(-1px);
-            box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 6px 8px -1px rgba(0, 0, 0, 0.15), 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
-        /* Style des cellules pour correspondre à la capture d'écran */
+        /* Cell styles to match the screenshot */
         #data-table td {
             background-color: #fff;
-            color: #4b5563; /* Couleur de texte gris foncé */
+            color: #4b5563; /* Dark gray text color */
         }
 
-        /* Style de survol pour correspondre à la capture d'écran (gris très clair) */
+        /* Hover style to match the screenshot (very light gray) */
         #data-table tbody tr:hover td {
-            background-color: #f3f4f6; /* Gris clair */
+            background-color: #f3f4f6; /* Light gray */
         }
 
     </style>
 </head>
 <!-- h-screen, flex-col, and overflow-hidden on body to manage overall layout -->
-<body class="bg-gray-100 flex flex-col h-screen overflow-hidden">
+<body class="bg-gray-100 flex flex-col h-screen overflow-hidden text-sm md:text-base lg:text-lg">
 
     <!-- Login Container -->
-    <div id='login-container' class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md mx-auto my-auto flex flex-col items-center space-y-4 transition-all duration-300 ease-in-out hidden">
-        <h2 class="text-3xl font-bold text-gray-800">Accéder au tableau</h2>
-        <input type='password' id='password' placeholder='Mot de passe' class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+    <div id='login-container' class="bg-white p-8 md:p-10 lg:p-12 rounded-xl shadow-lg w-full max-w-md mx-auto my-auto flex flex-col items-center space-y-4 md:space-y-6 transition-all duration-300 ease-in-out hidden">
+        <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800">Accéder au tableau</h2>
+        <input type='password' id='password' placeholder='Mot de passe' class="w-full p-3 md:p-4 lg:p-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
         <div class="flex items-center space-x-2 w-full">
-            <input type='checkbox' id='toggle-password' class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
-            <label for="toggle-password" class="text-sm font-medium text-gray-700">Afficher le mot de passe</label>
+            <input type='checkbox' id='toggle-password' class="w-4 h-4 md:w-5 md:h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
+            <label for="toggle-password" class="text-sm md:text-base font-medium text-gray-700">Afficher le mot de passe</label>
         </div>
-        <button onclick='checkPassword()' class="w-full bg-green-500 text-white font-bold p-3 rounded-lg shadow-md hover:bg-green-600 transition-colors">
+        <button onclick='checkPassword()' class="w-full bg-green-500 text-white font-bold p-3 md:p-4 lg:p-5 rounded-lg shadow-md hover:bg-green-600 transition-colors">
             Valider
         </button>
-        <p id='error-message' class="text-red-500 font-medium"></p>
+        <p id='error-message' class="text-red-500 font-medium text-sm md:text-base"></p>
     </div>
 
     <!-- Main Table Container -->
     <!-- flex-grow and overflow-y-auto allow the content to scroll vertically while the rest of the page remains fixed -->
-    <div id='table-container' class="bg-white p-6 rounded-xl w-full flex-grow overflow-y-auto hidden transition-all duration-300 ease-in-out flex flex-col">
-        <div class="flex flex-col md:flex-row items-center justify-between mb-6">
+    <div id='table-container' class="bg-white p-4 md:p-6 lg:p-8 rounded-xl w-full flex-grow overflow-y-auto hidden transition-all duration-300 ease-in-out flex flex-col">
+        <div class="flex flex-col md:flex-row items-center justify-between mb-4 md:mb-6">
             <div class="flex-grow">
-                <div class="flex items-center space-x-4 mb-2 md:mb-0">
-                    <h2 class="text-3xl font-extrabold text-gray-800">Tableau de Staff</h2>
-                    <span id="sync-status" class="sync-pending-animation px-4 py-1.5 rounded-full text-sm font-bold border-2">Initialisation...</span>
+                <div class="flex items-center space-x-2 md:space-x-4 mb-2 md:mb-0">
+                    <h2 class="text-xl md:text-2xl lg:text-3xl font-extrabold text-gray-800">Tableau de Staff</h2>
+                    <span id="sync-status" class="sync-pending-animation px-2 py-1 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm font-bold border-2">Initialisation...</span>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <span id="save-info" class="text-sm text-gray-500">Dernière sauvegarde : <span id="last-save-time" class="font-semibold text-gray-700">jamais</span></span>
-                    <span id="current-time" class="text-xl font-bold text-gray-900"></span>
+                <div class="flex flex-col md:flex-row items-start md:items-center space-y-1 md:space-y-0 md:space-x-4 text-xs md:text-sm">
+                    <span id="save-info" class="text-gray-500">Dernière sauvegarde : <span id="last-save-time" class="font-semibold text-gray-700">jamais</span></span>
+                    <span id="current-time" class="font-bold text-gray-900"></span>
                 </div>
             </div>
-            <div id="master-indicator" class="flex-shrink-0 px-4 py-2 bg-green-50 text-green-700 font-bold rounded-lg border-2 border-green-300">
+            <div id="master-indicator" class="flex-shrink-0 px-2 py-1 md:px-4 md:py-2 bg-green-50 text-green-700 font-bold rounded-lg border-2 border-green-300 text-xs md:text-sm mt-4 md:mt-0">
                 🎯 Source Maître: <span id="master-source">Supabase</span>
             </div>
         </div>
         
-        <div class="conflict-banner hidden bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500 p-4 rounded-lg shadow mb-6" role="alert" id="conflict-banner">
-            <div class="flex items-center justify-between">
+        <div class="conflict-banner hidden bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500 p-4 md:p-6 rounded-lg shadow mb-4 md:mb-6" role="alert" id="conflict-banner">
+            <div class="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0">
                 <div>
-                    <p class="font-bold">⚠️ Conflit de données détecté !</p>
-                    <p class="text-sm">Une version plus récente du tableau est disponible sur le serveur.</p>
+                    <p class="font-bold text-sm md:text-base">⚠️ Conflit de données détecté !</p>
+                    <p class="text-xs md:text-sm">Une version plus récente du tableau est disponible sur le serveur.</p>
                 </div>
-                <button onclick="resolveMasterData()" class="bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-yellow-700 transition-colors">
+                <button onclick="resolveMasterData()" class="bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-yellow-700 transition-colors text-sm">
                     Résoudre & Synchroniser
                 </button>
             </div>
         </div>
 
-        <div id="error-display" class="my-4 text-red-600 font-bold hidden p-4 bg-red-50 rounded-lg border-l-4 border-red-400"></div>
+        <div id="error-display" class="my-4 text-red-600 font-bold hidden p-4 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
 
         <!-- Button Bar (for other actions, Add Row button is now in the table footer) -->
-        <div id="button-bar" class="flex flex-wrap items-center gap-4 mb-6">
-            <button class='bg-blue-500 text-white font-bold p-3 rounded-lg shadow-md hover:bg-blue-600 transition-colors flex items-center space-x-2' onclick='pullFromMaster()'>
+        <div id="button-bar" class="flex flex-wrap items-center gap-2 md:gap-4 mb-4 md:mb-6">
+            <button class='bg-blue-500 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-blue-600 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm' onclick='pullFromMaster()'>
                 <span>⬇️</span> <span>Tirer la dernière version</span>
             </button>
-            <button onclick='saveManually()' class='bg-yellow-400 text-gray-800 font-bold p-3 rounded-lg shadow-md hover:bg-yellow-500 transition-colors flex items-center space-x-2'>
+            <button onclick='saveManually()' class='bg-yellow-400 text-gray-800 font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-yellow-500 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm'>
                 <span>💾</span> <span>Sauvegarder</span>
             </button>
-            <button id="undo-button" onclick="undo()" disabled class="bg-gray-300 text-gray-700 font-bold p-3 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2">
+            <button id="undo-button" onclick="undo()" disabled class="bg-gray-300 text-gray-700 font-bold p-2 md:p-3 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm">
                 <span>↩️</span> <span>Annuler</span>
             </button>
-            <button onclick="downloadExcel()" class="bg-green-600 text-white font-bold p-3 rounded-lg shadow-md hover:bg-green-700 transition-colors flex items-center space-x-2">
+            <button onclick="downloadExcel()" class="bg-green-600 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-green-700 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm">
                 <span>Excel</span> <span>⬇️</span>
             </button>
-            <button onclick="downloadPDF()" class="bg-red-600 text-white font-bold p-3 rounded-lg shadow-md hover:bg-red-700 transition-colors flex items-center space-x-2">
+            <button onclick="downloadPDF()" class="bg-red-600 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-red-700 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm">
                 <span>PDF</span> <span>⬇️</span>
             </button>
-            <button onclick="downloadImage()" class="bg-purple-600 text-white font-bold p-3 rounded-lg shadow-md hover:bg-purple-700 transition-colors flex items-center space-x-2">
+            <button onclick="downloadImage()" class="bg-purple-600 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-purple-700 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm">
                 <span>Image</span> <span>⬇️</span>
             </button>
         </div>
 
         <!-- Table -->
-        <div class="overflow-x-auto relative">
-            <table id='data-table' class="w-full text-sm text-left text-gray-500">
+        <div class="overflow-x-scroll w-full relative">
+            <table id='data-table' class="w-full text-left text-gray-500 text-xs md:text-sm lg:text-base">
                 <thead class="text-xs text-white uppercase bg-green-700">
                     <tr>
-                        <!-- Removed fixed widths to allow the table to expand and scroll horizontally -->
-                        <th scope="col" class="py-3 px-6 rounded-tl-lg">No</th>
-                        <th scope="col" class="py-3 px-2 text-center">Effacer</th>
-                        <th scope="col" class="py-3 px-6 whitespace-nowrap">Date de saisie</th>
-                        <th scope="col" class="py-3 px-6 whitespace-nowrap">PEC finale</th>
-                        <th scope="col" class="py-3 px-6 whitespace-nowrap">PEC initiale</th>
-                        <th scope="col" class="py-3 px-6 whitespace-nowrap">Nom_Prénom</th>
-                        <th scope="col" class="py-3 px-6 whitespace-nowrap">Diagnostic_initial</th>
-                        <th scope="col" class="py-3 px-6 whitespace-nowrap">information complementaire</th>
-                        <th scope="col" class="py-3 px-6 rounded-tr-lg whitespace-nowrap">numero_tel</th>
+                        <th scope="col" class="py-2 px-2 md:px-4 rounded-tl-lg">No</th>
+                        <th scope="col" class="py-2 px-1 text-center">Effacer</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">Date de saisie</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">PEC finale</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">PEC initiale</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">Nom_Prénom</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">Diagnostic_initial</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">information complementaire</th>
+                        <th scope="col" class="py-2 px-2 md:px-4 rounded-tr-lg">numero_tel</th>
                     </tr>
                 </thead>
                 <tbody id="table-body">
@@ -210,7 +210,7 @@
                 <tfoot class="bg-white border-t-2 border-gray-300">
                     <tr>
                         <td colspan="2" class="py-1 px-1">
-                            <button class="bg-green-500 text-white font-bold p-4 rounded-full shadow-lg hover:bg-green-600 transition-colors text-2xl w-12 h-12 flex items-center justify-center mx-auto" onclick="addRow()">
+                            <button class="bg-green-500 text-white font-bold p-3 md:p-4 rounded-full shadow-lg hover:bg-green-600 transition-colors text-xl md:text-2xl w-10 h-10 md:w-12 md:h-12 flex items-center justify-center mx-auto" onclick="addRow()">
                                 +
                             </button>
                         </td>
@@ -223,9 +223,9 @@
         
         <!-- Confirmation Modal -->
         <div id="confirmation-modal" class="fixed inset-0 modal-overlay h-full w-full hidden">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="relative top-1/4 mx-auto p-5 border w-11/12 max-w-sm shadow-lg rounded-md bg-white">
                 <div class="mt-3 text-center">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-message"></h3>
+                    <h3 class="text-lg md:text-xl leading-6 font-medium text-gray-900" id="modal-message"></h3>
                     <div class="mt-4 flex justify-around">
                         <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">Oui</button>
                         <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-300 text-black text-base font-medium rounded-md w-24 shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">Non</button>
@@ -247,11 +247,11 @@
         // === CONFIGURATION ===
         const APP_CONFIG = {
             password: 'p123',
-            version: '2.1.9-supabase-fix'
+            version: '2.3.0-responsive'
         };
 
         // --- SUPABASE CONFIGURATION ---
-        // CLÉ D'API CORRIGÉE: Utilise maintenant vos propres identifiants.
+        // CORRECTED API KEY: Now using your own identifiers.
         const supabaseConfig = {
             supabaseUrl: 'https://fiecugxopjxzqfdnaqsu.supabase.co',
             supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw',
@@ -262,7 +262,7 @@
         const supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
         let realtimeSubscription = null;
 
-        // === ÉTAT DE L'APPLICATION ===
+        // === APPLICATION STATE ===
         const appState = {
             isLoggedIn: false,
             masterSource: 'supabase',
@@ -277,7 +277,7 @@
         const MAX_HISTORY_SIZE = 10;
         let historyDebounceTimeout = null;
 
-        // === FONCTIONS UTILITAIRES ===
+        // === UTILITY FUNCTIONS ===
         function log(message, type = 'info') {
             console.log(`[${new Date().toLocaleTimeString()}] ${type.toUpperCase()}: ${message}`);
         }
@@ -285,7 +285,7 @@
         function updateStatus(message, type = 'pending') {
             const statusEl = document.getElementById('sync-status');
             statusEl.textContent = message;
-            statusEl.className = `px-4 py-1.5 rounded-full text-sm font-bold border-2 ${getSyncStatusClasses(type)}`;
+            statusEl.className = `sync-pending-animation px-2 py-1 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm font-bold border-2 ${getSyncStatusClasses(type)}`;
         }
 
         function getSyncStatusClasses(type) {
@@ -371,7 +371,7 @@
             }, 500);
         }
 
-        // Fonction de debounce pour la sauvegarde automatique
+        // Debounce function for auto-saving
         function debouncedSave() {
             isDirty = true;
             if (saveTimeout) {
@@ -379,10 +379,10 @@
             }
             saveTimeout = setTimeout(() => {
                 syncToMaster();
-            }, 2000); // Sauvegarde 2 secondes après l'arrêt de la saisie
+            }, 2000); // Save 2 seconds after typing stops
         }
 
-        // === FONCTIONS DE GESTION DU TABLEAU ===
+        // === TABLE MANAGEMENT FUNCTIONS ===
         function loadTableData(data) {
             if (!data) {
                 log('Invalid data structure', 'error');
@@ -403,7 +403,7 @@
 
                 const numCell = document.createElement('td');
                 numCell.textContent = index + 1;
-                numCell.className = 'py-2 px-6 font-bold text-gray-800 whitespace-nowrap';
+                numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap';
                 row.appendChild(numCell);
 
                 const deleteCell = document.createElement('td');
@@ -417,7 +417,7 @@
                         saveStateToHistory();
                         row.remove();
                         updateRowNumbers();
-                        debouncedSave(); // Déclenche la sauvegarde après une suppression
+                        debouncedSave(); // Trigger save after deletion
                     });
                 };
                 deleteCell.appendChild(deleteBtn);
@@ -425,7 +425,7 @@
 
                 headers.forEach((header) => {
                     const cell = document.createElement('td');
-                    cell.className = 'py-2 px-6 font-bold text-gray-800';
+                    cell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800';
                     cell.contentEditable = 'true';
                     cell.textContent = rowData[header] || '';
                     cell.addEventListener('input', () => {
@@ -450,7 +450,7 @@
 
             const numCell = document.createElement('td');
             numCell.textContent = rowCount + 1;
-            numCell.className = 'py-2 px-6 font-bold text-gray-800 whitespace-nowrap';
+            numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap';
             row.appendChild(numCell);
 
             const deleteCell = document.createElement('td');
@@ -464,7 +464,7 @@
                     saveStateToHistory();
                     row.remove();
                     updateRowNumbers();
-                    debouncedSave(); // Déclenche la sauvegarde après une suppression
+                    debouncedSave(); // Trigger save after deletion
                 });
             };
             deleteCell.appendChild(deleteBtn);
@@ -473,7 +473,7 @@
             const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2);
             headers.forEach((header) => {
                 const cell = document.createElement('td');
-                cell.className = 'py-2 px-6 font-bold text-gray-800';
+                cell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800';
                 cell.contentEditable = 'true';
                 if (header.textContent === 'Date de saisie') {
                     cell.textContent = getFormattedDate();
@@ -490,7 +490,7 @@
             
             tbody.appendChild(row);
             updateRowNumbers();
-            debouncedSave(); // Déclenche la sauvegarde après un ajout
+            debouncedSave(); // Trigger save after addition
         }
 
         function updateRowNumbers() {
@@ -505,7 +505,7 @@
                 const previousState = history[history.length - 1];
                 loadTableData(previousState.rows);
                 log('Annulation réussie.', 'info');
-                debouncedSave(); // Déclenche la sauvegarde après une annulation
+                debouncedSave(); // Trigger save after undo
             }
         }
 
@@ -552,7 +552,7 @@
             document.addEventListener('keydown', handleKeyDown);
         }
 
-        // === FONCTIONS DE SYNCHRONISATION ===
+        // === SYNCHRONIZATION FUNCTIONS ===
         async function loadFromSupabase() {
             log('Chargement depuis Supabase...');
             try {
@@ -634,7 +634,7 @@
         }
 
         async function syncToMaster(force = false) {
-            // Pas de sauvegarde si les données n'ont pas changé
+            // No save if data hasn't changed
             if (!isDirty && !force) {
                 log('Synchronisation non nécessaire.');
                 return;
@@ -722,7 +722,7 @@
             }
         }
 
-        // === FONCTIONS D'EXPORTATION ===
+        // === EXPORT FUNCTIONS ===
         function downloadExcel() {
             const table = document.getElementById('data-table');
             const ws = XLSX.utils.table_to_sheet(table, { raw: false });
@@ -767,7 +767,7 @@
         }
 
 
-        // === GESTION DE L'AUTHENTIFICATION ===
+        // === AUTHENTICATION MANAGEMENT ===
         function checkPassword() {
             const passwordInput = document.getElementById('password').value;
             if (passwordInput === APP_CONFIG.password) {
@@ -780,7 +780,7 @@
             }
         }
 
-        // === ÉVÉNEMENTS ===
+        // === EVENTS ===
         document.getElementById('toggle-password').addEventListener('change', function () {
             document.getElementById('password').type = this.checked ? 'text' : 'password';
         });
@@ -827,16 +827,16 @@
             }
         });
         
-        // --- Nouvelle fonctionnalité pour la sélection de texte au double-clic ---
+        // --- New feature for double-click text selection ---
         document.getElementById('table-body').addEventListener('dblclick', function(e) {
-            // Vérifie si l'élément double-cliqué est une cellule de tableau
+            // Check if the double-clicked element is a table cell
             const clickedCell = e.target.closest('td');
-            // Empêche la sélection si l'utilisateur double-clique sur le bouton de suppression
+            // Prevent selection if the user double-clicks the delete button
             if (clickedCell && clickedCell.contentEditable === 'true') { 
                 const range = document.createRange();
                 const sel = window.getSelection();
 
-                // Le 'firstChild' permet de sélectionner le texte à l'intérieur de la cellule
+                // The 'firstChild' allows to select the text inside the cell
                 range.selectNodeContents(clickedCell); 
 
                 sel.removeAllRanges();
@@ -866,7 +866,7 @@
             }
         });
 
-        // --- Nouvelle fonctionnalité pour la touche Entrée ---
+        // --- New feature for the Enter key ---
         document.addEventListener('keydown', function (e) {
             // Check if the key is 'Enter' and the active element is a table cell
             if (e.key === 'Enter' && document.activeElement && document.activeElement.tagName === 'TD') {
