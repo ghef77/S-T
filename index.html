@@ -11,7 +11,7 @@
         body {
             font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
         }
-
+        
         /* Table styles for sticky header and border-collapse */
         #data-table {
             border-collapse: separate;
@@ -22,27 +22,27 @@
             min-width: 800px;
         }
 
-            /* Sticky header ensures it stays visible during scroll */
-            #data-table thead {
-                position: sticky;
-                top: 0;
-                z-index: 10;
-                background-color: #22c55e; /* Ensure a consistent background color */
-            }
-
-            /* Sticky footer for the add button */
-            #data-table tfoot {
-                position: sticky;
-                bottom: 0;
-                z-index: 10;
-                background-color: white; /* Match table background */
-                border-top: 2px solid #ddd;
-            }
-
+        /* Sticky header ensures it stays visible during scroll */
+        #data-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #22c55e; /* Ensure a consistent background color */
+        }
+        
+        /* Sticky footer for the add button */
+        #data-table tfoot {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+            background-color: white; /* Match table background */
+            border-top: 2px solid #ddd;
+        }
+        
         .modal-overlay {
             background-color: rgba(0, 0, 0, 0.5);
             /* z-index is now high to ensure the modal is on top of everything else */
-            z-index: 50;
+            z-index: 50; 
         }
 
         .sync-pending-animation {
@@ -53,11 +53,9 @@
             0% {
                 opacity: 1;
             }
-
             50% {
                 opacity: 0.5;
             }
-
             100% {
                 opacity: 1;
             }
@@ -99,7 +97,7 @@
                 🎯 Source Maître: <span id="master-source">Supabase</span>
             </div>
         </div>
-
+        
         <div class="conflict-banner hidden bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500 p-4 rounded-lg shadow mb-6" role="alert" id="conflict-banner">
             <div class="flex items-center justify-between">
                 <div>
@@ -144,9 +142,9 @@
                         <!-- Removed fixed widths to allow the table to expand and scroll horizontally -->
                         <th scope="col" class="py-3 px-6 rounded-tl-lg">No</th>
                         <th scope="col" class="py-3 px-2 text-center">Effacer</th>
-                        <th scope="col" class="py-3 px-6 whitespace-nowrap">Date of Entry</th>
+                        <th scope="col" class="py-3 px-6 whitespace-nowrap">Date de saisie</th>
                         <th scope="col" class="py-3 px-6 whitespace-nowrap">PEC finale</th>
-                        <th scope="col" class="py-3 px-6 whitespace-nowrap">prise en charge initiale</th>
+                        <th scope="col" class="py-3 px-6 whitespace-nowrap">PEC initiale</th>
                         <th scope="col" class="py-3 px-6 whitespace-nowrap">Nom_Prénom</th>
                         <th scope="col" class="py-3 px-6 whitespace-nowrap">Diagnostic_initial</th>
                         <th scope="col" class="py-3 px-6 whitespace-nowrap">information complementaire</th>
@@ -170,7 +168,7 @@
                 </tfoot>
             </table>
         </div>
-
+        
         <!-- Confirmation Modal -->
         <div id="confirmation-modal" class="fixed inset-0 modal-overlay h-full w-full hidden">
             <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -191,7 +189,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <!-- Supabase Client Library -->
-    <script type="module">import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
         // === CONFIGURATION ===
         const APP_CONFIG = {
@@ -238,7 +237,7 @@
         }
 
         function getSyncStatusClasses(type) {
-            switch (type) {
+            switch(type) {
                 case 'success':
                     return 'bg-green-100 text-green-700 border-green-500';
                 case 'error':
@@ -273,9 +272,9 @@
             document.querySelectorAll('#data-table tbody tr').forEach(rowEl => {
                 const rowData = {};
                 const cells = Array.from(rowEl.querySelectorAll('td')).slice(2);
-
+                
                 if (rowEl.dataset.key) {
-                    rowData[supabaseConfig.primaryKeyColumn] = rowEl.dataset.key;
+                    rowData[supabaseConfig.primaryKeyColumn] = rowEl.dataset.key; 
                 }
 
                 cells.forEach((td, index) => {
@@ -329,15 +328,15 @@
 
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
-
+            
             const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
-
+            
             data.forEach((rowData, index) => {
                 const row = document.createElement('tr');
-                row.className = 'bg-white border-b hover:bg-yellow-50 transition-colors cursor-pointer';
+                row.className = 'bg-white border-b hover:bg-yellow-50 transition-colors cursor-pointer'; 
                 row.onclick = highlightRow; // Ajoutez l'écouteur de clic pour toute la ligne
                 if (rowData[supabaseConfig.primaryKeyColumn]) {
-                    row.dataset.key = rowData[supabaseConfig.primaryKeyColumn];
+                    row.dataset.key = rowData[supabaseConfig.primaryKeyColumn]; 
                 }
 
                 const numCell = document.createElement('td');
@@ -373,7 +372,7 @@
                     });
                     row.appendChild(cell);
                 });
-
+                
                 tbody.appendChild(row);
             });
             updateUndoButtonState();
@@ -390,7 +389,7 @@
             const tbody = document.getElementById('table-body');
             const rowCount = tbody.children.length;
             const row = document.createElement('tr');
-            row.className = 'bg-white border-b hover:bg-yellow-50 transition-colors cursor-pointer';
+            row.className = 'bg-white border-b hover:bg-yellow-50 transition-colors cursor-pointer'; 
             row.onclick = highlightRow; // Ajoutez l'écouteur de clic pour toute la ligne
 
             const numCell = document.createElement('td');
@@ -420,7 +419,7 @@
                 const cell = document.createElement('td');
                 cell.className = 'py-2 px-6 font-bold text-gray-800';
                 cell.contentEditable = 'true';
-                if (header.textContent === 'Date of Entry') {
+                if (header.textContent === 'Date de saisie') {
                     cell.textContent = getFormattedDate();
                 } else {
                     cell.textContent = '';
@@ -432,7 +431,7 @@
                 });
                 row.appendChild(cell);
             });
-
+            
             tbody.appendChild(row);
             updateRowNumbers();
             isDirty = true;
@@ -644,7 +643,7 @@
                 const initialTableState = collectTableData();
                 history = [initialTableState];
                 updateUndoButtonState();
-
+                
                 updateClock();
                 setInterval(updateClock, 1000);
 
@@ -723,7 +722,7 @@
                 undo();
             }
         });
-
+        
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Backspace') {
                 const selectedRows = document.querySelectorAll('#table-body tr.bg-yellow-100');
@@ -769,7 +768,7 @@
                 }
             }
         });
-
+        
         function saveManually() {
             syncToMaster(true);
         }
@@ -787,6 +786,7 @@
 
         window.addEventListener('load', function () {
             document.getElementById('login-container').classList.remove('hidden');
-        });</script>
+        });
+    </script>
 </body>
 </html>
