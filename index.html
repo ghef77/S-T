@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang='fr'>
 <head>
     <meta charset='UTF-8'>
@@ -11,7 +11,7 @@
         body {
             font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
         }
-
+        
         /* Table styles for sticky header and border-collapse */
         #data-table {
             border-collapse: separate;
@@ -20,32 +20,32 @@
             min-width: 800px;
         }
 
-            /* Ajoutez des bordures noires à chaque cellule pour un effet de grille */
-            #data-table th,
-            #data-table td {
-                border: 1px solid #000;
-            }
+        /* Ajoutez des bordures noires à chaque cellule pour un effet de grille */
+        #data-table th,
+        #data-table td {
+            border: 1px solid #000;
+        }
 
-            /* Sticky header ensures it stays visible during scroll */
-            #data-table thead {
-                position: sticky;
-                top: 0;
-                z-index: 10;
-                background-color: #15803d; /* Darker green for a more professional look */
-            }
-
-            /* Sticky footer for the add button */
-            #data-table tfoot {
-                position: sticky;
-                bottom: 0;
-                z-index: 10;
-                background-color: white; /* Match table background */
-                border-top: 2px solid #ddd;
-            }
-
+        /* Sticky header ensures it stays visible during scroll */
+        #data-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #15803d; /* Darker green for a more professional look */
+        }
+        
+        /* Sticky footer for the add button */
+        #data-table tfoot {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+            background-color: white; /* Match table background */
+            border-top: 2px solid #ddd;
+        }
+        
         .modal-overlay {
             background-color: rgba(0, 0, 0, 0.5);
-            z-index: 50;
+            z-index: 50; 
         }
 
         .sync-pending-animation {
@@ -56,16 +56,14 @@
             0% {
                 opacity: 1;
             }
-
             50% {
                 opacity: 0.5;
             }
-
             100% {
                 opacity: 1;
             }
         }
-
+        
         /* Styles pour une épaisseur 3D statique */
         #table-container {
             position: relative;
@@ -76,32 +74,32 @@
             box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3), 0 8px 16px -4px rgba(0, 0, 0, 0.15);
         }
 
-            /* Pseudo-élément pour simuler la "face" latérale du tableau */
-            #table-container::after {
-                content: '';
-                position: absolute;
-                bottom: -15px; /* Ajoute une épaisseur de 15px en bas */
-                left: 0;
-                right: 0;
-                height: 15px;
-                background-color: #f3f4f6; /* Couleur de la face latérale */
-                transform: rotateX(90deg) translateZ(-15px); /* Positionne et fait pivoter l'épaisseur */
-                transform-origin: bottom;
-                box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-                z-index: -1;
-                border-bottom-left-radius: 1rem;
-                border-bottom-right-radius: 1rem;
-            }
+        /* Pseudo-élément pour simuler la "face" latérale du tableau */
+        #table-container::after {
+            content: '';
+            position: absolute;
+            bottom: -15px; /* Ajoute une épaisseur de 15px en bas */
+            left: 0;
+            right: 0;
+            height: 15px;
+            background-color: #f3f4f6; /* Couleur de la face latérale */
+            transform: rotateX(90deg) translateZ(-15px); /* Positionne et fait pivoter l'épaisseur */
+            transform-origin: bottom;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+            z-index: -1;
+            border-bottom-left-radius: 1rem;
+            border-bottom-right-radius: 1rem;
+        }
 
         #button-bar button {
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-            #button-bar button:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            }
+        #button-bar button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
 
         /* Style des cellules pour correspondre à la capture d'écran */
         #data-table td {
@@ -113,6 +111,7 @@
         #data-table tbody tr:hover td {
             background-color: #f3f4f6; /* Gris clair */
         }
+
     </style>
 </head>
 <!-- h-screen, flex-col, and overflow-hidden on body to manage overall layout -->
@@ -150,7 +149,7 @@
                 🎯 Source Maître: <span id="master-source">Supabase</span>
             </div>
         </div>
-
+        
         <div class="conflict-banner hidden bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500 p-4 rounded-lg shadow mb-6" role="alert" id="conflict-banner">
             <div class="flex items-center justify-between">
                 <div>
@@ -163,7 +162,7 @@
             </div>
         </div>
 
-        <div id="error-display" class="my-4 text-red-600 font-bold hidden"></div>
+        <div id="error-display" class="my-4 text-red-600 font-bold hidden p-4 bg-red-50 rounded-lg border-l-4 border-red-400"></div>
 
         <!-- Button Bar (for other actions, Add Row button is now in the table footer) -->
         <div id="button-bar" class="flex flex-wrap items-center gap-4 mb-6">
@@ -221,7 +220,7 @@
                 </tfoot>
             </table>
         </div>
-
+        
         <!-- Confirmation Modal -->
         <div id="confirmation-modal" class="fixed inset-0 modal-overlay h-full w-full hidden">
             <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -232,16 +231,6 @@
                         <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-300 text-black text-base font-medium rounded-md w-24 shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">Non</button>
                     </div>
                 </div>
-                <!--
-                <div class="absolute top-0 right-0 p-2">
-                    <button id="modal-close-btn" class="text-gray-400 hover:text-gray-500">
-                        <span class="sr-only">Fermer</span>
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-                -->
             </div>
         </div>
     </div>
@@ -252,16 +241,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <!-- Supabase Client Library -->
-    <script type="module">import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
         // === CONFIGURATION ===
         const APP_CONFIG = {
             password: 'p123',
-            version: '2.1.6-final'
+            version: '2.1.9-supabase-fix'
         };
 
         // --- SUPABASE CONFIGURATION ---
-        // Your actual Supabase project details
+        // CLÉ D'API CORRIGÉE: Utilise maintenant vos propres identifiants.
         const supabaseConfig = {
             supabaseUrl: 'https://fiecugxopjxzqfdnaqsu.supabase.co',
             supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw',
@@ -299,7 +289,7 @@
         }
 
         function getSyncStatusClasses(type) {
-            switch (type) {
+            switch(type) {
                 case 'success':
                     return 'bg-green-100 text-green-700 border-green-500';
                 case 'error':
@@ -334,9 +324,9 @@
             document.querySelectorAll('#data-table tbody tr').forEach(rowEl => {
                 const rowData = {};
                 const cells = Array.from(rowEl.querySelectorAll('td')).slice(2);
-
+                
                 if (rowEl.dataset.key) {
-                    rowData[supabaseConfig.primaryKeyColumn] = rowEl.dataset.key;
+                    rowData[supabaseConfig.primaryKeyColumn] = rowEl.dataset.key; 
                 }
 
                 cells.forEach((td, index) => {
@@ -401,14 +391,14 @@
 
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
-
+            
             const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
-
+            
             data.forEach((rowData, index) => {
                 const row = document.createElement('tr');
-                row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+                row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer'; 
                 if (rowData[supabaseConfig.primaryKeyColumn]) {
-                    row.dataset.key = rowData[supabaseConfig.primaryKeyColumn];
+                    row.dataset.key = rowData[supabaseConfig.primaryKeyColumn]; 
                 }
 
                 const numCell = document.createElement('td');
@@ -444,7 +434,7 @@
                     });
                     row.appendChild(cell);
                 });
-
+                
                 tbody.appendChild(row);
             });
             updateUndoButtonState();
@@ -456,7 +446,7 @@
             const tbody = document.getElementById('table-body');
             const rowCount = tbody.children.length;
             const row = document.createElement('tr');
-            row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+            row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer'; 
 
             const numCell = document.createElement('td');
             numCell.textContent = rowCount + 1;
@@ -497,7 +487,7 @@
                 });
                 row.appendChild(cell);
             });
-
+            
             tbody.appendChild(row);
             updateRowNumbers();
             debouncedSave(); // Déclenche la sauvegarde après un ajout
@@ -570,8 +560,13 @@
                     .from(supabaseConfig.tableName)
                     .select('*')
                     .order(supabaseConfig.primaryKeyColumn, { ascending: true });
-                if (error) throw error;
+                if (error) {
+                     document.getElementById('error-display').classList.remove('hidden');
+                     document.getElementById('error-display').textContent = `❌ Erreur de chargement: ${error.message}`;
+                     throw error;
+                }
                 log(`Chargement réussi depuis Supabase. Nombre de lignes: ${data.length}`);
+                document.getElementById('error-display').classList.add('hidden');
                 return data;
             } catch (error) {
                 log(`Échec du chargement depuis Supabase: ${error.message}`, 'error');
@@ -627,10 +622,13 @@
                 });
 
                 log('Synchronisation avec Supabase réussie.', 'success');
+                document.getElementById('error-display').classList.add('hidden');
                 updateLastSaveTime();
                 return true;
             } catch (error) {
                 log(`Échec de la synchronisation avec Supabase: ${error.message}`, 'error');
+                document.getElementById('error-display').classList.remove('hidden');
+                document.getElementById('error-display').textContent = `❌ Erreur de synchronisation: ${error.message}`;
                 throw error;
             }
         }
@@ -710,7 +708,7 @@
                 const initialTableState = collectTableData();
                 history = [initialTableState];
                 updateUndoButtonState();
-
+                
                 updateClock();
                 setInterval(updateClock, 1000);
 
@@ -718,7 +716,8 @@
 
             } catch (error) {
                 log(`Échec de l'initialisation: ${error.message}`, 'error');
-                document.getElementById('error-display').textContent = `❌ Erreur critique : Échec de l'initialisation. ${error.message}`;
+                document.getElementById('error-display').classList.remove('hidden');
+                document.getElementById('error-display').textContent = `❌ Échec de l'initialisation: ${error.message}`;
                 updateStatus('❌ Initialisation échouée', 'error');
             }
         }
@@ -793,7 +792,7 @@
         });
 
         // Add a single, efficient click listener to the table body
-        document.getElementById('table-body').addEventListener('click', function (e) {
+        document.getElementById('table-body').addEventListener('click', function(e) {
             // Find the closest table row (tr) from the clicked element
             const clickedRow = e.target.closest('tr');
             if (!clickedRow) return;
@@ -806,7 +805,7 @@
                 clickedRow.classList.remove('bg-yellow-100');
             } else {
                 // If no modifier key is pressed, it's a simple click
-
+                
                 // Clear any existing timeouts to prevent race conditions
                 clearTimeout(clickedRow.dataset.highlightTimeout);
 
@@ -817,7 +816,7 @@
 
                 // Add the light highlight class immediately
                 clickedRow.classList.add('bg-yellow-100');
-
+                
                 // Set a timeout to remove the highlight after 500ms
                 const timeoutId = setTimeout(() => {
                     clickedRow.classList.remove('bg-yellow-100');
@@ -827,6 +826,23 @@
                 clickedRow.dataset.highlightTimeout = timeoutId;
             }
         });
+        
+        // --- Nouvelle fonctionnalité pour la sélection de texte au double-clic ---
+        document.getElementById('table-body').addEventListener('dblclick', function(e) {
+            // Vérifie si l'élément double-cliqué est une cellule de tableau
+            const clickedCell = e.target.closest('td');
+            // Empêche la sélection si l'utilisateur double-clique sur le bouton de suppression
+            if (clickedCell && clickedCell.contentEditable === 'true') { 
+                const range = document.createRange();
+                const sel = window.getSelection();
+
+                // Le 'firstChild' permet de sélectionner le texte à l'intérieur de la cellule
+                range.selectNodeContents(clickedCell); 
+
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        });
 
         document.addEventListener('keydown', function (e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
@@ -834,7 +850,7 @@
                 undo();
             }
         });
-
+        
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Backspace') {
                 const selectedRows = document.querySelectorAll('#table-body tr.bg-yellow-400');
@@ -880,7 +896,7 @@
                 }
             }
         });
-
+        
         function saveManually() {
             syncToMaster(true);
         }
@@ -898,6 +914,7 @@
 
         window.addEventListener('load', function () {
             document.getElementById('login-container').classList.remove('hidden');
-        });</script>
+        });
+    </script>
 </body>
 </html>
