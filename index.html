@@ -16,10 +16,14 @@
         #data-table {
             border-collapse: separate;
             border-spacing: 0;
-            /* Added margin to prevent the sticky footer from being clipped by the bottom of the table-container */
             margin-bottom: 50px;
-            /* Ensure the table itself has a minimum width on mobile to force scrolling */
             min-width: 800px;
+        }
+
+        /* Ajoutez des bordures noires à chaque cellule pour un effet de grille */
+        #data-table th,
+        #data-table td {
+            border: 1px solid #000;
         }
 
         /* Sticky header ensures it stays visible during scroll */
@@ -27,7 +31,7 @@
             position: sticky;
             top: 0;
             z-index: 10;
-            background-color: #22c55e; /* Ensure a consistent background color */
+            background-color: #15803d; /* Darker green for a more professional look */
         }
         
         /* Sticky footer for the add button */
@@ -41,7 +45,6 @@
         
         .modal-overlay {
             background-color: rgba(0, 0, 0, 0.5);
-            /* z-index is now high to ensure the modal is on top of everything else */
             z-index: 50; 
         }
 
@@ -60,6 +63,55 @@
                 opacity: 1;
             }
         }
+        
+        /* Styles pour une épaisseur 3D statique */
+        #table-container {
+            position: relative;
+            transform-style: preserve-3d;
+            perspective: 1000px; /* Ajoute un effet de perspective 3D */
+            transform: rotateX(2deg) translateY(0px) scale(1); /* Une légère rotation pour montrer l'épaisseur */
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3), 0 8px 16px -4px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Pseudo-élément pour simuler la "face" latérale du tableau */
+        #table-container::after {
+            content: '';
+            position: absolute;
+            bottom: -15px; /* Ajoute une épaisseur de 15px en bas */
+            left: 0;
+            right: 0;
+            height: 15px;
+            background-color: #f3f4f6; /* Couleur de la face latérale */
+            transform: rotateX(90deg) translateZ(-15px); /* Positionne et fait pivoter l'épaisseur */
+            transform-origin: bottom;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+            z-index: -1;
+            border-bottom-left-radius: 1rem;
+            border-bottom-right-radius: 1rem;
+        }
+
+        #button-bar button {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #button-bar button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Style des cellules pour correspondre à la capture d'écran */
+        #data-table td {
+            background-color: #fff;
+            color: #4b5563; /* Couleur de texte gris foncé */
+        }
+
+        /* Style de survol pour correspondre à la capture d'écran (gris très clair) */
+        #data-table tbody tr:hover td {
+            background-color: #f3f4f6; /* Gris clair */
+        }
+
     </style>
 </head>
 <!-- h-screen, flex-col, and overflow-hidden on body to manage overall layout -->
@@ -81,7 +133,7 @@
 
     <!-- Main Table Container -->
     <!-- flex-grow and overflow-y-auto allow the content to scroll vertically while the rest of the page remains fixed -->
-    <div id='table-container' class="bg-white p-6 rounded-xl shadow-lg w-full flex-grow overflow-y-auto hidden transition-all duration-300 ease-in-out flex flex-col">
+    <div id='table-container' class="bg-white p-6 rounded-xl w-full flex-grow overflow-y-auto hidden transition-all duration-300 ease-in-out flex flex-col">
         <div class="flex flex-col md:flex-row items-center justify-between mb-6">
             <div class="flex-grow">
                 <div class="flex items-center space-x-4 mb-2 md:mb-0">
@@ -135,9 +187,9 @@
         </div>
 
         <!-- Table -->
-        <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
+        <div class="overflow-x-auto relative">
             <table id='data-table' class="w-full text-sm text-left text-gray-500">
-                <thead class="text-xs text-white uppercase bg-green-500">
+                <thead class="text-xs text-white uppercase bg-green-700">
                     <tr>
                         <!-- Removed fixed widths to allow the table to expand and scroll horizontally -->
                         <th scope="col" class="py-3 px-6 rounded-tl-lg">No</th>
@@ -179,6 +231,16 @@
                         <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-300 text-black text-base font-medium rounded-md w-24 shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">Non</button>
                     </div>
                 </div>
+                <!-- 
+                <div class="absolute top-0 right-0 p-2">
+                    <button id="modal-close-btn" class="text-gray-400 hover:text-gray-500">
+                        <span class="sr-only">Fermer</span>
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                -->
             </div>
         </div>
     </div>
@@ -220,7 +282,7 @@
         };
 
         let isDirty = false;
-        let autosaveInterval = null;
+        let saveTimeout = null;
         let history = [];
         const MAX_HISTORY_SIZE = 10;
         let historyDebounceTimeout = null;
@@ -319,6 +381,17 @@
             }, 500);
         }
 
+        // Fonction de debounce pour la sauvegarde automatique
+        function debouncedSave() {
+            isDirty = true;
+            if (saveTimeout) {
+                clearTimeout(saveTimeout);
+            }
+            saveTimeout = setTimeout(() => {
+                syncToMaster();
+            }, 2000); // Sauvegarde 2 secondes après l'arrêt de la saisie
+        }
+
         // === FONCTIONS DE GESTION DU TABLEAU ===
         function loadTableData(data) {
             if (!data) {
@@ -333,8 +406,7 @@
             
             data.forEach((rowData, index) => {
                 const row = document.createElement('tr');
-                row.className = 'bg-white border-b hover:bg-yellow-50 transition-colors cursor-pointer'; 
-                row.onclick = highlightRow; // Ajoutez l'écouteur de clic pour toute la ligne
+                row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer'; 
                 if (rowData[supabaseConfig.primaryKeyColumn]) {
                     row.dataset.key = rowData[supabaseConfig.primaryKeyColumn]; 
                 }
@@ -345,7 +417,7 @@
                 row.appendChild(numCell);
 
                 const deleteCell = document.createElement('td');
-                deleteCell.className = 'py-1 px-1 flex items-center justify-center';
+                deleteCell.className = 'p-0 text-center';
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'w-full h-full text-lg text-red-600 hover:text-red-800 hover:bg-red-100 transition-colors flex items-center justify-center rounded-md';
                 deleteBtn.innerHTML = '❌';
@@ -355,7 +427,7 @@
                         saveStateToHistory();
                         row.remove();
                         updateRowNumbers();
-                        isDirty = true;
+                        debouncedSave(); // Déclenche la sauvegarde après une suppression
                     });
                 };
                 deleteCell.appendChild(deleteBtn);
@@ -367,8 +439,8 @@
                     cell.contentEditable = 'true';
                     cell.textContent = rowData[header] || '';
                     cell.addEventListener('input', () => {
-                        isDirty = true;
                         saveStateToHistory();
+                        debouncedSave();
                     });
                     row.appendChild(cell);
                 });
@@ -379,18 +451,12 @@
             return true;
         }
 
-        function highlightRow(event) {
-            const row = event.currentTarget;
-            row.classList.toggle('bg-yellow-100');
-        }
-
         function addRow() {
             saveStateToHistory();
             const tbody = document.getElementById('table-body');
             const rowCount = tbody.children.length;
             const row = document.createElement('tr');
-            row.className = 'bg-white border-b hover:bg-yellow-50 transition-colors cursor-pointer'; 
-            row.onclick = highlightRow; // Ajoutez l'écouteur de clic pour toute la ligne
+            row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer'; 
 
             const numCell = document.createElement('td');
             numCell.textContent = rowCount + 1;
@@ -398,7 +464,7 @@
             row.appendChild(numCell);
 
             const deleteCell = document.createElement('td');
-            deleteCell.className = 'py-1 px-1 flex items-center justify-center';
+            deleteCell.className = 'p-0 text-center';
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'w-full h-full text-lg text-red-600 hover:text-red-800 hover:bg-red-100 transition-colors flex items-center justify-center rounded-md';
             deleteBtn.innerHTML = '❌';
@@ -408,7 +474,7 @@
                     saveStateToHistory();
                     row.remove();
                     updateRowNumbers();
-                    isDirty = true;
+                    debouncedSave(); // Déclenche la sauvegarde après une suppression
                 });
             };
             deleteCell.appendChild(deleteBtn);
@@ -426,15 +492,15 @@
                 }
 
                 cell.addEventListener('input', () => {
-                    isDirty = true;
                     saveStateToHistory();
+                    debouncedSave();
                 });
                 row.appendChild(cell);
             });
             
             tbody.appendChild(row);
             updateRowNumbers();
-            isDirty = true;
+            debouncedSave(); // Déclenche la sauvegarde après un ajout
         }
 
         function updateRowNumbers() {
@@ -449,7 +515,7 @@
                 const previousState = history[history.length - 1];
                 loadTableData(previousState.rows);
                 log('Annulation réussie.', 'info');
-                isDirty = true;
+                debouncedSave(); // Déclenche la sauvegarde après une annulation
             }
         }
 
@@ -570,6 +636,7 @@
         }
 
         async function syncToMaster(force = false) {
+            // Pas de sauvegarde si les données n'ont pas changé
             if (!isDirty && !force) {
                 log('Synchronisation non nécessaire.');
                 return;
@@ -649,12 +716,6 @@
 
                 setupRealtimeSubscription();
 
-                autosaveInterval = setInterval(() => {
-                    if (isDirty) {
-                        log('Sauvegarde automatique périodique...', 'info');
-                        syncToMaster();
-                    }
-                }, 30000);
             } catch (error) {
                 log(`Échec de l'initialisation: ${error.message}`, 'error');
                 document.getElementById('error-display').textContent = `❌ Erreur critique : Échec de l'initialisation. ${error.message}`;
@@ -665,9 +726,24 @@
         // === FONCTIONS D'EXPORTATION ===
         function downloadExcel() {
             const table = document.getElementById('data-table');
-            const wb = XLSX.utils.table_to_book(table, { sheet: "Tableau de Staff" });
+            const ws = XLSX.utils.table_to_sheet(table, { raw: false });
+
+            // Apply a basic style to the header row to match the green theme
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cellRef = XLSX.utils.encode_cell({ r: range.s.r, c: C });
+                if (ws[cellRef]) {
+                    if (!ws[cellRef].s) ws[cellRef].s = {};
+                    ws[cellRef].s.fill = { fgColor: { rgb: "15803d" } }; // Green-700
+                    ws[cellRef].s.font = { color: { rgb: "FFFFFF" } }; // White text
+                }
+            }
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Tableau de Staff");
             XLSX.writeFile(wb, "staff_data.xlsx");
         }
+
 
         function downloadPDF() {
             const { jsPDF } = window.jspdf;
@@ -716,6 +792,42 @@
             }
         });
 
+        // Add a single, efficient click listener to the table body
+        document.getElementById('table-body').addEventListener('click', function(e) {
+            // Find the closest table row (tr) from the clicked element
+            const clickedRow = e.target.closest('tr');
+            if (!clickedRow) return;
+
+            // Check if the Ctrl (Windows) or Cmd (Mac) key is pressed
+            if (e.ctrlKey || e.metaKey) {
+                // If a modifier key is pressed, toggle the darker highlight class
+                clickedRow.classList.toggle('bg-yellow-400');
+                // Ensure the lighter highlight is removed
+                clickedRow.classList.remove('bg-yellow-100');
+            } else {
+                // If no modifier key is pressed, it's a simple click
+                
+                // Clear any existing timeouts to prevent race conditions
+                clearTimeout(clickedRow.dataset.highlightTimeout);
+
+                // Deselect all other rows and remove all highlights
+                document.querySelectorAll('#table-body tr').forEach(row => {
+                    row.classList.remove('bg-yellow-100', 'bg-yellow-400');
+                });
+
+                // Add the light highlight class immediately
+                clickedRow.classList.add('bg-yellow-100');
+                
+                // Set a timeout to remove the highlight after 500ms
+                const timeoutId = setTimeout(() => {
+                    clickedRow.classList.remove('bg-yellow-100');
+                }, 500);
+
+                // Store the timeout ID on the row element for future clearing
+                clickedRow.dataset.highlightTimeout = timeoutId;
+            }
+        });
+
         document.addEventListener('keydown', function (e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 e.preventDefault();
@@ -725,14 +837,14 @@
         
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Backspace') {
-                const selectedRows = document.querySelectorAll('#table-body tr.bg-yellow-100');
+                const selectedRows = document.querySelectorAll('#table-body tr.bg-yellow-400');
                 if (selectedRows.length > 0) {
                     e.preventDefault();
                     showConfirmationModal(`Effacer les ${selectedRows.length} lignes sélectionnées ?`, () => {
                         saveStateToHistory();
                         selectedRows.forEach(row => row.remove());
                         updateRowNumbers();
-                        isDirty = true;
+                        debouncedSave();
                     });
                 }
             }
