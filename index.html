@@ -2,7 +2,8 @@
 <html lang='fr'>
 <head>
     <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <!-- Modification pour désactiver le zoom du navigateur par défaut -->
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, user-scalable=no'>
     <title>Tableau de Staff synchronisé - Supabase</title>
     <!-- Tailwind CSS CDN for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -301,7 +302,7 @@
         // === CONFIGURATION ===
         const APP_CONFIG = {
             password: 'p123',
-            version: '2.3.0-responsive'
+            version: '2.4.0-pinch-zoom'
         };
 
         // --- SUPABASE CONFIGURATION ---
@@ -961,6 +962,45 @@
             syncToMaster(true);
         }
 
+        // === PINCH-TO-ZOOM LOGIC ===
+        let initialPinchDistance = 0;
+        let currentScale = 1;
+        const table = document.getElementById('data-table');
+
+        table.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                // Calculate the initial distance between the two fingers
+                initialPinchDistance = getPinchDistance(e);
+            }
+        });
+
+        table.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && initialPinchDistance > 0) {
+                e.preventDefault();
+                const newPinchDistance = getPinchDistance(e);
+                const scaleFactor = newPinchDistance / initialPinchDistance;
+
+                // Apply the new scale, clamping between 0.5x and 2.5x
+                currentScale = Math.min(Math.max(scaleFactor, 0.5), 2.5);
+                table.style.transform = `scale(${currentScale})`;
+            }
+        });
+
+        table.addEventListener('touchend', (e) => {
+            // Reset the pinch state when fingers are lifted
+            initialPinchDistance = 0;
+        });
+        
+        function getPinchDistance(e) {
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            return Math.sqrt(
+                Math.pow(touch2.clientX - touch1.clientX, 2) +
+                Math.pow(touch2.clientY - touch1.clientY, 2)
+            );
+        }
+        
         window.checkPassword = checkPassword;
         window.pullFromMaster = pullFromMaster;
         window.syncToMaster = syncToMaster;
