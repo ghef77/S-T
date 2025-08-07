@@ -20,30 +20,30 @@
             table-layout: fixed;
         }
 
-            #data-table th,
-            #data-table td {
-                border: 1px solid #000;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                word-wrap: break-word;
-            }
+        #data-table th,
+        #data-table td {
+            border: 1px solid #000;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-wrap: break-word;
+        }
 
-            /* Sticky header ensures it stays visible during scroll */
-            #data-table thead {
-                position: sticky;
-                top: 0;
-                z-index: 10;
-                background-color: #15803d; /* Darker green for a more professional look */
-            }
+        /* Sticky header ensures it stays visible during scroll */
+        #data-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #15803d; /* Darker green for a more professional look */
+        }
 
-            /* Sticky footer for the add button */
-            #data-table tfoot {
-                position: sticky;
-                bottom: 0;
-                z-index: 10;
-                background-color: white; /* Match table background */
-                border-top: 2px solid #ddd;
-            }
+        /* Sticky footer for the add button */
+        #data-table tfoot {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+            background-color: white; /* Match table background */
+            border-top: 2px solid #ddd;
+        }
 
         .modal-overlay {
             background-color: rgba(0, 0, 0, 0.5);
@@ -78,32 +78,32 @@
             box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3), 0 8px 16px -4px rgba(0, 0, 0, 0.15);
         }
 
-            /* Pseudo-élément pour simuler la "face" latérale du tableau */
-            #table-container::after {
-                content: '';
-                position: absolute;
-                bottom: -15px; /* Ajoute une épaisseur de 15px en bas */
-                left: 0;
-                right: 0;
-                height: 15px;
-                background-color: #f3f4f6; /* Couleur de la face latérale */
-                transform: rotateX(90deg) translateZ(-15px); /* Positionne et fait pivoter l'épaisseur */
-                transform-origin: bottom;
-                box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-                z-index: -1;
-                border-bottom-left-radius: 1rem;
-                border-bottom-right-radius: 1rem;
-            }
+        /* Pseudo-élément pour simuler la "face" latérale du tableau */
+        #table-container::after {
+            content: '';
+            position: absolute;
+            bottom: -15px; /* Ajoute une épaisseur de 15px en bas */
+            left: 0;
+            right: 0;
+            height: 15px;
+            background-color: #f3f4f6; /* Couleur de la face latérale */
+            transform: rotateX(90deg) translateZ(-15px); /* Positionne et fait pivoter l'épaisseur */
+            transform-origin: bottom;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+            z-index: -1;
+            border-bottom-left-radius: 1rem;
+            border-bottom-right-radius: 1rem;
+        }
 
         #button-bar button {
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-            #button-bar button:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            }
+        #button-bar button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
 
         /* Style des cellules pour correspondre à la capture d'écran */
         #data-table td {
@@ -226,9 +226,9 @@
             </div>
         </div>
     </div>
-
+    
     <div id="mobile-cards-container" class="md:hidden p-4 space-y-4">
-    </div>
+        </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -440,7 +440,7 @@
             data.forEach((rowData, index) => {
                 const card = document.createElement('div');
                 card.className = 'bg-white shadow-lg rounded-xl p-4 border border-gray-200 relative';
-
+                
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'absolute top-2 right-2 text-lg text-red-600 hover:text-red-800 hover:bg-red-100 p-1 rounded-full transition-colors';
                 deleteBtn.innerHTML = '❌';
@@ -862,6 +862,7 @@
         window.showConfirmationModal = showConfirmationModal;
         window.downloadExcel = downloadExcel;
         window.downloadPDF = downloadPDF;
-        window.downloadImage = downloadImage;</script>
+        window.downloadImage = downloadImage;
+    </script>
 </body>
 </html>
