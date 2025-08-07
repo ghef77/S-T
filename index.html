@@ -14,7 +14,7 @@
         
         /* Table styles for sticky header and border-collapse */
         #data-table {
-            border-collapse: separate;
+            border-collapse: collapse;
             border-spacing: 0;
             margin-bottom: 50px;
             width: 100%; /* Make the table take up the full width */
@@ -24,7 +24,6 @@
         #data-table th,
         #data-table td {
             border: 1px solid #000;
-            /* Font size is now handled by responsive Tailwind classes on the body */
         }
 
         /* Sticky header ensures it stays visible during scroll */
@@ -113,6 +112,61 @@
             background-color: #f3f4f6; /* Light gray */
         }
 
+        /* --- Logique pour la disposition réactive --- */
+        @media (max-width: 768px) {
+            /* Cache l'en-tête du tableau sur mobile */
+            thead {
+                display: none;
+            }
+            
+            /* Chaque ligne devient un bloc */
+            #data-table tr {
+                display: block;
+                margin-bottom: 15px;
+                border: 1px solid #cbd5e0;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            
+            /* Chaque cellule devient un bloc */
+            #data-table td {
+                display: block;
+                text-align: right; /* Aligne la donnée à droite */
+                border-bottom: 1px solid #e2e8f0;
+                position: relative;
+                width: 100%;
+                border-left: none;
+                border-right: none;
+            }
+
+            /* Pour la première et la dernière cellule de chaque ligne, on enlève les bordures inutiles */
+            #data-table tr td:first-child,
+            #data-table tr td:last-child {
+                border-left: none;
+                border-right: none;
+            }
+            
+            /* Les boutons d'action deviennent plus grands */
+            #data-table td:nth-child(2) {
+                text-align: center;
+            }
+            
+            #data-table td:not(:first-child, :nth-child(2), :last-child) {
+                border-top: none;
+                border-bottom: none;
+            }
+            
+            /* Crée un "label" pour chaque cellule en utilisant un pseudo-élément */
+            #data-table td::before {
+                content: attr(data-label); /* Utilise l'attribut data-label de la cellule */
+                position: absolute;
+                left: 15px;
+                font-weight: bold;
+                text-align: left;
+                width: calc(50% - 30px);
+                color: #4a5568;
+            }
+        }
     </style>
 </head>
 <!-- h-screen, flex-col, and overflow-hidden on body to manage overall layout -->
@@ -133,11 +187,11 @@
     </div>
 
     <!-- Main Table Container -->
-    <!-- flex-grow and overflow-y-auto allow the content to scroll vertically while the rest of the page remains fixed -->
-    <div id='table-container' class="bg-white p-4 md:p-6 lg:p-8 rounded-xl w-full flex-grow overflow-y-auto hidden transition-all duration-300 ease-in-out flex flex-col">
-        <div class="flex flex-col md:flex-row items-center justify-between mb-4 md:mb-6">
+    <!-- Reduced vertical padding and margin for mobile -->
+    <div id='table-container' class="bg-white p-2 md:p-6 lg:p-8 rounded-xl w-full flex-grow overflow-y-auto hidden transition-all duration-300 ease-in-out flex flex-col">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-2 md:mb-6">
             <div class="flex-grow">
-                <div class="flex items-center space-x-2 md:space-x-4 mb-2 md:mb-0">
+                <div class="flex flex-wrap items-center space-x-2 md:space-x-4 mb-1 md:mb-2">
                     <h2 class="text-xl md:text-2xl lg:text-3xl font-extrabold text-gray-800">Tableau de Staff</h2>
                     <span id="sync-status" class="sync-pending-animation px-2 py-1 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm font-bold border-2">Initialisation...</span>
                 </div>
@@ -146,12 +200,12 @@
                     <span id="current-time" class="font-bold text-gray-900"></span>
                 </div>
             </div>
-            <div id="master-indicator" class="flex-shrink-0 px-2 py-1 md:px-4 md:py-2 bg-green-50 text-green-700 font-bold rounded-lg border-2 border-green-300 text-xs md:text-sm mt-4 md:mt-0">
+            <div id="master-indicator" class="flex-shrink-0 px-2 py-1 md:px-4 md:py-2 bg-green-50 text-green-700 font-bold rounded-lg border-2 border-green-300 text-xs md:text-sm mt-2 md:mt-0">
                 🎯 Source Maître: <span id="master-source">Supabase</span>
             </div>
         </div>
         
-        <div class="conflict-banner hidden bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500 p-4 md:p-6 rounded-lg shadow mb-4 md:mb-6" role="alert" id="conflict-banner">
+        <div class="conflict-banner hidden bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500 p-2 md:p-6 rounded-lg shadow mb-2 md:mb-6" role="alert" id="conflict-banner">
             <div class="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0">
                 <div>
                     <p class="font-bold text-sm md:text-base">⚠️ Conflit de données détecté !</p>
@@ -163,10 +217,10 @@
             </div>
         </div>
 
-        <div id="error-display" class="my-4 text-red-600 font-bold hidden p-4 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
+        <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
 
         <!-- Button Bar (for other actions, Add Row button is now in the table footer) -->
-        <div id="button-bar" class="flex flex-wrap items-center gap-2 md:gap-4 mb-4 md:mb-6">
+        <div id="button-bar" class="flex flex-wrap items-center gap-2 mb-2 md:mb-6">
             <button class='bg-blue-500 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-blue-600 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm' onclick='pullFromMaster()'>
                 <span>⬇️</span> <span>Tirer la dernière version</span>
             </button>
@@ -404,10 +458,12 @@
                 const numCell = document.createElement('td');
                 numCell.textContent = index + 1;
                 numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap';
+                numCell.setAttribute('data-label', 'No');
                 row.appendChild(numCell);
 
                 const deleteCell = document.createElement('td');
                 deleteCell.className = 'p-0 text-center';
+                deleteCell.setAttribute('data-label', 'Effacer');
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'w-full h-full text-lg text-red-600 hover:text-red-800 hover:bg-red-100 transition-colors flex items-center justify-center rounded-md';
                 deleteBtn.innerHTML = '❌';
@@ -428,6 +484,7 @@
                     cell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800';
                     cell.contentEditable = 'true';
                     cell.textContent = rowData[header] || '';
+                    cell.setAttribute('data-label', header);
                     cell.addEventListener('input', () => {
                         saveStateToHistory();
                         debouncedSave();
@@ -451,10 +508,12 @@
             const numCell = document.createElement('td');
             numCell.textContent = rowCount + 1;
             numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap';
+            numCell.setAttribute('data-label', 'No');
             row.appendChild(numCell);
 
             const deleteCell = document.createElement('td');
             deleteCell.className = 'p-0 text-center';
+            deleteCell.setAttribute('data-label', 'Effacer');
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'w-full h-full text-lg text-red-600 hover:text-red-800 hover:bg-red-100 transition-colors flex items-center justify-center rounded-md';
             deleteBtn.innerHTML = '❌';
@@ -475,6 +534,7 @@
                 const cell = document.createElement('td');
                 cell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800';
                 cell.contentEditable = 'true';
+                cell.setAttribute('data-label', header.textContent);
                 if (header.textContent === 'Date de saisie') {
                     cell.textContent = getFormattedDate();
                 } else {
