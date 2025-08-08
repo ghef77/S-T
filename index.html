@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang='fr'>
 <head>
     <meta charset='UTF-8'>
@@ -114,65 +114,110 @@
             background-color: #f3f4f6; /* Light gray */
         }
 
-        /* --- Logique pour la disposition réactive --- */
+        /* --- Logique pour la disposition réactive améliorée --- */
         @media (max-width: 768px) {
             /* Cache l'en-tête du tableau sur mobile */
             thead {
                 display: none;
             }
 
-            /* Chaque ligne devient un bloc */
+            /* Chaque ligne devient un bloc stylisé */
             #data-table tr {
                 display: block;
-                margin-bottom: 15px;
-                border: 1px solid #cbd5e0;
-                border-radius: 8px;
+                margin-bottom: 1.5rem; /* Espace plus grand entre les fiches */
+                padding: 1rem;
+                background-color: #fff;
+                border: 1px solid #e2e8f0;
+                border-radius: 0.75rem; /* Coins plus arrondis */
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
                 overflow: hidden;
+                transition: transform 0.2s ease-in-out;
+            }
+            
+            #data-table tr:hover {
+              transform: translateY(-2px); /* Effet de survol subtil */
+              box-shadow: 0 6px 10px -1px rgba(0, 0, 0, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             }
 
             /* Chaque cellule devient un bloc */
             #data-table td {
-                display: block;
+                display: flex; /* Utilise flexbox pour l'alignement */
+                justify-content: space-between; /* Aligne le label à gauche et la valeur à droite */
                 text-align: right; /* Aligne la donnée à droite */
+                padding: 0.75rem 0; /* Padding vertical et aucun padding horizontal */
                 border-bottom: 1px solid #e2e8f0;
-                position: relative;
                 width: 100%;
                 border-left: none;
                 border-right: none;
+                background-color: transparent !important; /* Retire le fond de couleur de la cellule */
             }
 
             /* Pour la première et la dernière cellule de chaque ligne, on enlève les bordures inutiles */
             #data-table tr td:first-child,
             #data-table tr td:last-child {
+                border-top: none;
                 border-left: none;
                 border-right: none;
             }
-
+            
+            #data-table td:last-child {
+                border-bottom: none; /* Pas de bordure pour la dernière cellule */
+            }
+            
             /* Les boutons d'action deviennent plus grands */
             #data-table td:nth-child(2) {
                 text-align: center;
-            }
-
-            #data-table td:not(:first-child, :nth-child(2), :last-child) {
-                border-top: none;
-                border-bottom: none;
+                padding-top: 1rem;
             }
 
             /* Crée un "label" pour chaque cellule en utilisant un pseudo-élément */
             #data-table td::before {
                 content: attr(data-label); /* Utilise l'attribut data-label de la cellule */
-                position: absolute;
-                left: 15px;
                 font-weight: bold;
                 text-align: left;
-                width: calc(50% - 30px);
-                color: #4a5568;
+                color: #1f2937; /* Couleur de texte plus sombre */
+                flex-basis: 50%; /* Donne de la place au label */
+            }
+
+            /* Masque le label pour la cellule du bouton "Effacer" */
+            #data-table td:nth-child(2)::before {
+                content: none;
             }
         }
+        
+        /* Styles pour la boîte de message personnalisée */
+        .message-box {
+            position: fixed;
+            top: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
+        
+        .message-box.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .message-box.success {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
     </style>
 </head>
 <!-- h-screen, flex-col, and overflow-hidden on body to manage overall layout -->
 <body class="bg-gray-100 flex flex-col h-screen overflow-hidden text-sm md:text-base lg:text-lg">
+    
+    <!-- Custom Message Box -->
+    <div id="message-box" class="message-box hidden">
+        <p id="message-text" class="font-bold"></p>
+    </div>
 
     <!-- Login Container -->
     <div id='login-container' class="bg-white p-8 md:p-10 lg:p-12 rounded-xl shadow-lg w-full max-w-md mx-auto my-auto flex flex-col items-center space-y-4 md:space-y-6 transition-all duration-300 ease-in-out hidden">
@@ -207,17 +252,7 @@
             </div>
         </div>
 
-        <div class="conflict-banner hidden bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500 p-2 md:p-6 rounded-lg shadow mb-2 md:mb-6" role="alert" id="conflict-banner">
-            <div class="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0">
-                <div>
-                    <p class="font-bold text-sm md:text-base">⚠️ Conflit de données détecté !</p>
-                    <p class="text-xs md:text-sm">Une version plus récente du tableau est disponible sur le serveur.</p>
-                </div>
-                <button onclick="resolveMasterData()" class="bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-yellow-700 transition-colors text-sm">
-                    Résoudre & Synchroniser
-                </button>
-            </div>
-        </div>
+        <!-- The conflict banner and resolve button are removed as per the user's request. -->
 
         <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
 
@@ -297,12 +332,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <!-- Supabase Client Library -->
-    <script type="module">import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
         // === CONFIGURATION ===
         const APP_CONFIG = {
             password: 'p123',
-            version: '2.3.0-responsive'
+            version: '2.4.3-download-messages'
         };
 
         // --- SUPABASE CONFIGURATION ---
@@ -323,7 +359,6 @@
             masterSource: 'supabase',
             dataHash: null,
             localData: null,
-            conflictDetected: false
         };
 
         let isDirty = false;
@@ -383,7 +418,6 @@
                 if (rowEl.dataset.key) {
                     rowData[supabaseConfig.primaryKeyColumn] = rowEl.dataset.key;
                 }
-
                 cells.forEach((td, index) => {
                     const key = headers[index];
                     rowData[key] = td.textContent === '' ? null : td.textContent;
@@ -402,10 +436,7 @@
         }
 
         function generateDataHash(data) {
-            return JSON.stringify(data.rows.map(row => ({ ...row, [supabaseConfig.primaryKeyColumn]: undefined }))).split('').reduce((a, b) => {
-                a = ((a << 5) - a) + b.charCodeAt(0);
-                return a & a;
-            }, 0).toString(16);
+            return JSON.stringify(data.rows.map(row => ({ ...row, [supabaseConfig.primaryKeyColumn]: undefined }))).split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0).toString(16);
         }
 
         function saveStateToHistory() {
@@ -427,26 +458,27 @@
         }
 
         // Debounce function for auto-saving
+        // The autosave is now triggered after 10 seconds of no changes.
         function debouncedSave() {
             isDirty = true;
             if (saveTimeout) {
                 clearTimeout(saveTimeout);
             }
+            // Autosave after 10 seconds (10000 ms) of inactivity
             saveTimeout = setTimeout(() => {
+                log('Autosave déclenché.', 'info');
                 syncToMaster();
-            }, 2000); // Save 2 seconds after typing stops
+            }, 10000);
         }
 
         // === TABLE MANAGEMENT FUNCTIONS ===
         function loadTableData(data) {
             if (!data) {
-                log('Invalid data structure', 'error');
+                log('Structure de données invalide', 'error');
                 return false;
             }
-
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
-
             const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
 
             data.forEach((rowData, index) => {
@@ -465,496 +497,401 @@
                 const deleteCell = document.createElement('td');
                 deleteCell.className = 'p-0 text-center';
                 deleteCell.setAttribute('data-label', 'Effacer');
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'w-full h-full text-lg text-red-600 hover:text-red-800 hover:bg-red-100 transition-colors flex items-center justify-center rounded-md';
-                deleteBtn.innerHTML = '❌';
-                deleteBtn.onclick = (e) => {
-                    e.stopPropagation(); // Stop propagation to prevent row highlight
-                    showConfirmationModal('Effacer cette ligne ?', () => {
-                        saveStateToHistory();
-                        row.remove();
-                        updateRowNumbers();
-                        debouncedSave(); // Trigger save after deletion
-                    });
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'text-red-500 hover:text-red-700 font-bold p-2 transition-colors';
+                deleteButton.innerHTML = '🗑️';
+                deleteButton.onclick = (e) => {
+                    e.stopPropagation();
+                    showConfirmationModal('Êtes-vous sûr de vouloir supprimer cette ligne ?', () => deleteRow(row));
                 };
-                deleteCell.appendChild(deleteBtn);
+                deleteCell.appendChild(deleteButton);
                 row.appendChild(deleteCell);
 
-                headers.forEach((header) => {
+                headers.forEach(header => {
                     const cell = document.createElement('td');
-                    cell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800';
-                    cell.contentEditable = 'true';
                     cell.textContent = rowData[header] || '';
+                    cell.contentEditable = true;
+                    cell.className = 'py-2 px-2 md:px-4 editable-cell';
                     cell.setAttribute('data-label', header);
-                    cell.addEventListener('input', () => {
+                    cell.onfocus = (e) => {
+                        // Select all text in the cell when it's focused
+                        const range = document.createRange();
+                        range.selectNodeContents(e.target);
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                    };
+                    cell.oninput = () => {
                         saveStateToHistory();
-                        debouncedSave();
-                    });
+                        debouncedSave(); // Trigger autosave debounce
+                    };
                     row.appendChild(cell);
                 });
-
                 tbody.appendChild(row);
             });
-            updateUndoButtonState();
+            log('Données du tableau chargées.', 'success');
+            // After loading the table, let's also update the hash and local data
+            appState.localData = collectTableData();
+            appState.dataHash = generateDataHash(appState.localData);
             return true;
         }
 
-        function addRow() {
-            saveStateToHistory();
+        async function addRow() {
             const tbody = document.getElementById('table-body');
-            const rowCount = tbody.children.length;
-            const row = document.createElement('tr');
-            row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+            const newRow = document.createElement('tr');
+            newRow.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
 
             const numCell = document.createElement('td');
-            numCell.textContent = rowCount + 1;
+            numCell.textContent = tbody.children.length + 1;
             numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap';
             numCell.setAttribute('data-label', 'No');
-            row.appendChild(numCell);
+            newRow.appendChild(numCell);
 
             const deleteCell = document.createElement('td');
             deleteCell.className = 'p-0 text-center';
             deleteCell.setAttribute('data-label', 'Effacer');
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'w-full h-full text-lg text-red-600 hover:text-red-800 hover:bg-red-100 transition-colors flex items-center justify-center rounded-md';
-            deleteBtn.innerHTML = '❌';
-            deleteBtn.onclick = (e) => {
-                e.stopPropagation(); // Stop propagation to prevent row highlight
-                showConfirmationModal('Effacer cette ligne ?', () => {
-                    saveStateToHistory();
-                    row.remove();
-                    updateRowNumbers();
-                    debouncedSave(); // Trigger save after deletion
-                });
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'text-red-500 hover:text-red-700 font-bold p-2 transition-colors';
+            deleteButton.innerHTML = '🗑️';
+            deleteButton.onclick = (e) => {
+                e.stopPropagation();
+                showConfirmationModal('Êtes-vous sûr de vouloir supprimer cette ligne ?', () => deleteRow(newRow));
             };
-            deleteCell.appendChild(deleteBtn);
-            row.appendChild(deleteCell);
+            deleteCell.appendChild(deleteButton);
+            newRow.appendChild(deleteCell);
 
-            const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2);
-            headers.forEach((header) => {
+            // Add the Date de saisie with the current date
+            const dateCell = document.createElement('td');
+            dateCell.textContent = getFormattedDate();
+            dateCell.contentEditable = true;
+            dateCell.className = 'py-2 px-2 md:px-4 editable-cell';
+            dateCell.setAttribute('data-label', 'Date de saisie');
+            dateCell.onfocus = (e) => {
+                const range = document.createRange();
+                range.selectNodeContents(e.target);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+            };
+            dateCell.oninput = () => {
+                saveStateToHistory();
+                debouncedSave(); // Trigger autosave debounce
+            };
+            newRow.appendChild(dateCell);
+
+            // Add the rest of the cells
+            const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(3).map(th => th.textContent);
+            headers.forEach(header => {
                 const cell = document.createElement('td');
-                cell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800';
-                cell.contentEditable = 'true';
-                cell.setAttribute('data-label', header.textContent);
-                if (header.textContent === 'Date de saisie') {
-                    cell.textContent = getFormattedDate();
-                } else {
-                    cell.textContent = '';
-                }
-
-                cell.addEventListener('input', () => {
+                cell.textContent = '';
+                cell.contentEditable = true;
+                cell.className = 'py-2 px-2 md:px-4 editable-cell';
+                cell.setAttribute('data-label', header);
+                cell.onfocus = (e) => {
+                    const range = document.createRange();
+                    range.selectNodeContents(e.target);
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                };
+                cell.oninput = () => {
                     saveStateToHistory();
-                    debouncedSave();
-                });
-                row.appendChild(cell);
+                    debouncedSave(); // Trigger autosave debounce
+                };
+                newRow.appendChild(cell);
             });
+            tbody.appendChild(newRow);
 
-            tbody.appendChild(row);
-            updateRowNumbers();
-            debouncedSave(); // Trigger save after addition
+            // Immediately save the new row to the database.
+            // This is a manual save, not debounced.
+            await syncToMaster(false);
+            log('Nouvelle ligne ajoutée et sauvegardée.', 'success');
         }
 
-        function updateRowNumbers() {
-            document.querySelectorAll('#table-body tr').forEach((row, index) => {
-                row.querySelector('td:first-child').textContent = index + 1;
-            });
-        }
-
-        function undo() {
-            if (history.length > 1) {
-                history.pop();
-                const previousState = history[history.length - 1];
-                loadTableData(previousState.rows);
-                log('Annulation réussie.', 'info');
-                debouncedSave(); // Trigger save after undo
-            }
-        }
-
-        function resolveMasterData() {
-            log('Résolution des conflits... écrasement des données locales.', 'info');
-            appState.conflictDetected = false;
-            document.getElementById('conflict-banner').classList.add('hidden');
-            syncToMaster(true);
-        }
-
-        function showConfirmationModal(message, onConfirm) {
-            const modalOverlay = document.getElementById('confirmation-modal');
-            const modalMessage = document.getElementById('modal-message');
-            const confirmBtn = document.getElementById('modal-confirm-btn');
-            const cancelBtn = document.getElementById('modal-cancel-btn');
-
-            modalMessage.textContent = message;
-            modalOverlay.classList.remove('hidden');
-
-            const handleConfirm = () => {
-                onConfirm();
-                modalOverlay.classList.add('hidden');
-                confirmBtn.removeEventListener('click', handleConfirm);
-                cancelBtn.removeEventListener('click', handleCancel);
-                document.removeEventListener('keydown', handleKeyDown);
-            };
-
-            const handleCancel = () => {
-                modalOverlay.classList.add('hidden');
-                confirmBtn.removeEventListener('click', handleConfirm);
-                cancelBtn.removeEventListener('click', handleCancel);
-                document.removeEventListener('keydown', handleKeyDown);
-            };
-
-            const handleKeyDown = (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleConfirm();
+        async function deleteRow(rowEl) {
+            const primaryKeyValue = rowEl.dataset.key;
+            if (primaryKeyValue) {
+                try {
+                    const { error } = await supabase
+                        .from(supabaseConfig.tableName)
+                        .delete()
+                        .eq(supabaseConfig.primaryKeyColumn, primaryKeyValue);
+                    if (error) throw error;
+                    log(`Ligne avec ${supabaseConfig.primaryKeyColumn}=${primaryKeyValue} supprimée de Supabase.`, 'success');
+                } catch (error) {
+                    log('Erreur lors de la suppression de la ligne: ' + error.message, 'error');
                 }
-            };
-
-            confirmBtn.addEventListener('click', handleConfirm);
-            cancelBtn.addEventListener('click', handleCancel);
-            document.addEventListener('keydown', handleKeyDown);
+            }
+            rowEl.remove();
+            // Re-index the 'No' column
+            Array.from(document.querySelectorAll('#table-body tr')).forEach((tr, index) => {
+                tr.children[0].textContent = index + 1;
+            });
+            saveStateToHistory();
         }
 
-        // === SYNCHRONIZATION FUNCTIONS ===
-        async function loadFromSupabase() {
-            log('Chargement depuis Supabase...');
+        // === SUPABASE SYNCHRONIZATION ===
+        async function fetchInitialData() {
+            log('Récupération des données initiales...', 'info');
+            updateStatus('Connexion...');
             try {
                 const { data, error } = await supabase
                     .from(supabaseConfig.tableName)
                     .select('*')
                     .order(supabaseConfig.primaryKeyColumn, { ascending: true });
-                if (error) {
-                    document.getElementById('error-display').classList.remove('hidden');
-                    document.getElementById('error-display').textContent = `❌ Erreur de chargement: ${error.message}`;
-                    throw error;
+                if (error) throw error;
+
+                appState.dataHash = generateDataHash({ rows: data });
+                appState.localData = collectTableData();
+
+                if (loadTableData(data)) {
+                    updateStatus('Synchronisé', 'success');
+                    updateLastSaveTime();
+                    log('Données initiales chargées avec succès.', 'success');
+                    saveStateToHistory();
                 }
-                log(`Chargement réussi depuis Supabase. Nombre de lignes: ${data.length}`);
-                document.getElementById('error-display').classList.add('hidden');
-                return data;
+
+                // Setup realtime listener
+                if (!realtimeSubscription) {
+                    realtimeSubscription = supabase.channel('table-changes').on('postgres_changes', { event: '*', schema: 'public', table: supabaseConfig.tableName }, payload => {
+                        handleRealtimeUpdate(payload);
+                    }).subscribe();
+                }
+
             } catch (error) {
-                log(`Échec du chargement depuis Supabase: ${error.message}`, 'error');
-                throw error;
+                log('Erreur lors de la récupération des données initiales: ' + error.message, 'error');
+                updateStatus('Erreur de connexion', 'error');
             }
         }
 
-        async function syncToSupabase(localData) {
-            log('Synchronisation avec Supabase...');
-            try {
-                const { data: dbData, error: dbError } = await supabase.from(supabaseConfig.tableName).select(supabaseConfig.primaryKeyColumn);
-                if (dbError) throw dbError;
-
-                const dbKeys = new Set(dbData.map(row => row[supabaseConfig.primaryKeyColumn]));
-                const localKeys = new Set(localData.rows.filter(row => row[supabaseConfig.primaryKeyColumn]).map(row => row[supabaseConfig.primaryKeyColumn]));
-
-                const keysToDelete = [...dbKeys].filter(key => !localKeys.has(key));
-                if (keysToDelete.length > 0) {
-                    const { error: deleteError } = await supabase.from(supabaseConfig.tableName).delete().in(supabaseConfig.primaryKeyColumn, keysToDelete);
-                    if (deleteError) throw deleteError;
-                    log(`Deleted ${keysToDelete.length} rows from Supabase.`, 'success');
-                }
-
-                const rowsToInsert = localData.rows.filter(row => !row[supabaseConfig.primaryKeyColumn]);
-                const rowsToUpdate = localData.rows.filter(row => row[supabaseConfig.primaryKeyColumn]);
-
-                let upsertData = [];
-                if (rowsToInsert.length > 0) {
-                    const { data: newRows, error: insertError } = await supabase
-                        .from(supabaseConfig.tableName)
-                        .insert(rowsToInsert)
-                        .select();
-                    if (insertError) throw insertError;
-                    log(`Inserted ${newRows.length} new rows.`, 'success');
-                    upsertData = [...upsertData, ...newRows];
-                }
-
-                if (rowsToUpdate.length > 0) {
-                    const { data: updatedRows, error: upsertError } = await supabase
-                        .from(supabaseConfig.tableName)
-                        .upsert(rowsToUpdate, { onConflict: supabaseConfig.primaryKeyColumn })
-                        .select();
-                    if (upsertError) throw upsertError;
-                    log(`Updated ${updatedRows.length} existing rows.`, 'success');
-                    upsertData = [...upsertData, ...updatedRows];
-                }
-
-                upsertData.forEach(upsertedRow => {
-                    const localRow = document.querySelector(`tr:not([data-key])`);
-                    if (localRow) {
-                        localRow.dataset.key = upsertedRow[supabaseConfig.primaryKeyColumn];
-                    }
-                });
-
-                log('Synchronisation avec Supabase réussie.', 'success');
-                document.getElementById('error-display').classList.add('hidden');
-                updateLastSaveTime();
-                return true;
-            } catch (error) {
-                log(`Échec de la synchronisation avec Supabase: ${error.message}`, 'error');
-                document.getElementById('error-display').classList.remove('hidden');
-                document.getElementById('error-display').textContent = `❌ Erreur de synchronisation: ${error.message}`;
-                throw error;
-            }
-        }
-
-        async function syncToMaster(force = false) {
-            // No save if data hasn't changed
-            if (!isDirty && !force) {
-                log('Synchronisation non nécessaire.');
+        async function syncToMaster(isManualSave = false) {
+            // Check if there are local changes before proceeding.
+            const currentTableData = collectTableData();
+            const currentDataHash = generateDataHash(currentTableData);
+            
+            // If the data hash hasn't changed, there's nothing to save.
+            if (!isManualSave && currentDataHash === appState.dataHash) {
+                log('Pas de changement de données détecté, annulation de la sauvegarde.', 'info');
+                isDirty = false;
+                updateStatus('Synchronisé', 'success');
                 return;
             }
-            log('Démarrage de la synchronisation avec le master...');
+
+            log('Synchronisation des données locales vers Supabase...', 'saving');
             updateStatus('Sauvegarde en cours...', 'saving');
+            isDirty = false; // Reset the dirty flag since we are attempting to save.
 
             try {
-                const localData = collectTableData();
-                await syncToSupabase(localData);
-                appState.dataHash = generateDataHash(localData);
-                updateStatus('✅ Données sauvegardées', 'success');
-                isDirty = false;
+                const { error: upsertError } = await supabase
+                    .from(supabaseConfig.tableName)
+                    .upsert(currentTableData.rows, { onConflict: supabaseConfig.primaryKeyColumn });
+
+                if (upsertError) {
+                    throw upsertError;
+                }
+
+                log('Données sauvegardées avec succès sur Supabase.', 'success');
+                updateStatus('Sauvegardé', 'success');
+                updateLastSaveTime();
+
+                // Re-fetch data to handle any server-side changes and update local hash
+                await fetchInitialData();
+
             } catch (error) {
-                updateStatus('❌ Échec de la synchronisation', 'error');
-                log('Échec de la synchronisation', 'error');
+                log('Erreur lors de la synchronisation: ' + error.message, 'error');
+                updateStatus('Erreur de sauvegarde', 'error');
             }
         }
 
         async function pullFromMaster() {
-            if (appState.masterSource !== 'supabase') return;
-            log('Tirage des dernières données depuis le master...');
-            updateStatus('Mise à jour...', 'pending');
-            try {
-                const masterData = await loadFromSupabase();
-                if (masterData) {
-                    loadTableData(masterData);
-                    const localData = collectTableData();
-                    appState.dataHash = generateDataHash(localData);
-                    updateStatus('✅ Données mises à jour', 'success');
-                    updateLastSaveTime();
-                    history = [localData];
-                    updateUndoButtonState();
-                    isDirty = false;
-                }
-            } catch (error) {
-                updateStatus('❌ Échec de la mise à jour', 'error');
-                log('Échec du tirage des données', 'error');
+            log('Pulling latest data from master...', 'info');
+            await fetchInitialData();
+        }
+        
+        function handleRealtimeUpdate(payload) {
+            log('Mise à jour en temps réel reçue.', 'info');
+            // Check if there are any pending local changes.
+            // If the user is actively typing, the `isDirty` flag will be true.
+            if (isDirty) {
+                log('Modifications locales en attente. Ignorer la mise à jour en temps réel pour donner la priorité aux changements locaux.', 'info');
+                // The autosave will eventually push the local changes, overwriting the server.
+            } else {
+                // No local changes are pending, so it's safe to pull from the server.
+                log('Pas de changements locaux, récupération de la dernière version du serveur.', 'info');
+                fetchInitialData();
             }
         }
 
-        function setupRealtimeSubscription() {
-            if (realtimeSubscription) {
-                supabase.removeChannel(realtimeSubscription);
-            }
-            realtimeSubscription = supabase
-                .channel('public:staffTable')
-                .on('postgres_changes', { event: '*', schema: 'public', table: supabaseConfig.tableName }, payload => {
-                    log('Real-time update detected!', 'info');
-                    pullFromMaster();
-                })
-                .subscribe();
-            log('Real-time subscription active.', 'info');
-        }
-
-        async function initializeApp() {
-            log('Liaison avec Supabase en cours...');
-            updateStatus('Initialisation...', 'pending');
-            try {
-                const masterData = await loadFromSupabase();
-                if (masterData) {
-                    loadTableData(masterData);
-                    const localData = collectTableData();
-                    appState.dataHash = generateDataHash(localData);
-                    updateLastSaveTime();
-                } else {
-                    const initialData = [];
-                    loadTableData(initialData);
-                }
-                updateStatus('✅ Chargement terminé', 'success');
-                const initialTableState = collectTableData();
-                history = [initialTableState];
+        function undo() {
+            if (history.length > 1) {
+                history.pop();
+                const prevState = history[history.length - 1];
+                loadTableData(prevState.rows);
                 updateUndoButtonState();
-
-                updateClock();
-                setInterval(updateClock, 1000);
-
-                setupRealtimeSubscription();
-
-            } catch (error) {
-                log(`Échec de l'initialisation: ${error.message}`, 'error');
-                document.getElementById('error-display').classList.remove('hidden');
-                document.getElementById('error-display').textContent = `❌ Échec de l'initialisation: ${error.message}`;
-                updateStatus('❌ Initialisation échouée', 'error');
+                log('Annulation de la dernière action.', 'info');
             }
         }
 
-        // === EXPORT FUNCTIONS ===
-        function downloadExcel() {
-            const table = document.getElementById('data-table');
-            const ws = XLSX.utils.table_to_sheet(table, { raw: false });
-
-            // Apply a basic style to the header row to match the green theme
-            const range = XLSX.utils.decode_range(ws['!ref']);
-            for (let C = range.s.c; C <= range.e.c; ++C) {
-                const cellRef = XLSX.utils.encode_cell({ r: range.s.r, c: C });
-                if (ws[cellRef]) {
-                    if (!ws[cellRef].s) ws[cellRef].s = {};
-                    ws[cellRef].s.fill = { fgColor: { rgb: "15803d" } }; // Green-700
-                    ws[cellRef].s.font = { color: { rgb: "FFFFFF" } }; // White text
-                }
-            }
-
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Tableau de Staff");
-            XLSX.writeFile(wb, "staff_data.xlsx");
-        }
-
-
-        function downloadPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            doc.autoTable({
-                html: '#data-table',
-                startY: 15,
-                didDrawPage: (data) => {
-                    doc.text("Tableau de Staff", data.settings.margin.left, 10);
-                }
-            });
-            doc.save('staff_data.pdf');
-        }
-
-        function downloadImage() {
-            html2canvas(document.getElementById('data-table')).then(canvas => {
-                const link = document.createElement('a');
-                link.download = 'staff_data.png';
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-            });
-        }
-
-
-        // === AUTHENTICATION MANAGEMENT ===
+        // === PASSWORD LOGIC ===
         function checkPassword() {
             const passwordInput = document.getElementById('password').value;
+            const errorMessage = document.getElementById('error-message');
             if (passwordInput === APP_CONFIG.password) {
+                log('Authentification réussie.', 'success');
                 appState.isLoggedIn = true;
                 document.getElementById('login-container').classList.add('hidden');
                 document.getElementById('table-container').classList.remove('hidden');
-                initializeApp();
+                fetchInitialData();
             } else {
-                document.getElementById('error-message').textContent = 'Mot de passe incorrect.';
+                errorMessage.textContent = 'Mot de passe incorrect.';
+                log('Échec de l’authentification.', 'error');
             }
         }
 
-        // === EVENTS ===
         document.getElementById('toggle-password').addEventListener('change', function () {
-            document.getElementById('password').type = this.checked ? 'text' : 'password';
+            const passwordInput = document.getElementById('password');
+            passwordInput.type = this.checked ? 'text' : 'password';
         });
 
-        document.getElementById('password').addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-                checkPassword();
+        // === MODAL LOGIC ===
+        let confirmAction = null;
+
+        function showConfirmationModal(message, action) {
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('confirmation-modal').classList.remove('hidden');
+            confirmAction = action;
+        }
+
+        document.getElementById('modal-confirm-btn').addEventListener('click', () => {
+            if (confirmAction) {
+                confirmAction();
             }
+            document.getElementById('confirmation-modal').classList.add('hidden');
         });
 
-        // Add a single, efficient click listener to the table body
-        document.getElementById('table-body').addEventListener('click', function (e) {
-            // Find the closest table row (tr) from the clicked element
-            const clickedRow = e.target.closest('tr');
-            if (!clickedRow) return;
-
-            // Check if the Ctrl (Windows) or Cmd (Mac) key is pressed
-            if (e.ctrlKey || e.metaKey) {
-                // If a modifier key is pressed, toggle the darker highlight class
-                clickedRow.classList.toggle('bg-yellow-400');
-                // Ensure the lighter highlight is removed
-                clickedRow.classList.remove('bg-yellow-100');
-            } else {
-                // If no modifier key is pressed, it's a simple click
-
-                // Clear any existing timeouts to prevent race conditions
-                clearTimeout(clickedRow.dataset.highlightTimeout);
-
-                // Deselect all other rows and remove all highlights
-                document.querySelectorAll('#table-body tr').forEach(row => {
-                    row.classList.remove('bg-yellow-100', 'bg-yellow-400');
-                });
-
-                // Add the light highlight class immediately
-                clickedRow.classList.add('bg-yellow-100');
-
-                // Set a timeout to remove the highlight after 500ms
-                const timeoutId = setTimeout(() => {
-                    clickedRow.classList.remove('bg-yellow-100');
+        document.getElementById('modal-cancel-btn').addEventListener('click', () => {
+            document.getElementById('confirmation-modal').classList.add('hidden');
+        });
+        
+        // New custom message box logic
+        let messageTimeout = null;
+        function showMessage(message, type = 'success') {
+            const msgBox = document.getElementById('message-box');
+            const msgText = document.getElementById('message-text');
+            
+            // Clear any existing timeout and remove 'show' class
+            if (messageTimeout) {
+                clearTimeout(messageTimeout);
+            }
+            msgBox.classList.remove('show');
+            
+            // Set new message and show the box
+            msgText.textContent = message;
+            msgBox.className = `message-box ${type}`;
+            void msgBox.offsetWidth; // Trigger reflow
+            msgBox.classList.add('show');
+            msgBox.classList.remove('hidden');
+            
+            // Hide the box after 3 seconds
+            messageTimeout = setTimeout(() => {
+                msgBox.classList.remove('show');
+                // Hide completely after the transition
+                setTimeout(() => {
+                    msgBox.classList.add('hidden');
                 }, 500);
+            }, 3000);
+        }
 
-                // Store the timeout ID on the row element for future clearing
-                clickedRow.dataset.highlightTimeout = timeoutId;
-            }
-        });
+        // === EXPORT LOGIC ===
+        function downloadExcel() {
+            const table = document.getElementById('data-table');
+            const ws = XLSX.utils.table_to_sheet(table);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Staff Data");
+            XLSX.writeFile(wb, "Tableau_Staff.xlsx");
+            showMessage('Le fichier Excel a été téléchargé avec succès.');
+        }
 
-        // --- New feature for double-click text selection ---
-        document.getElementById('table-body').addEventListener('dblclick', function (e) {
-            // Check if the double-clicked element is a table cell
-            const clickedCell = e.target.closest('td');
-            // Prevent selection if the user double-clicks the delete button
-            if (clickedCell && clickedCell.contentEditable === 'true') {
-                const range = document.createRange();
-                const sel = window.getSelection();
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'pt', 'a4');
+            doc.autoTable({ html: '#data-table' });
+            doc.save('Tableau_Staff.pdf');
+            showMessage('Le fichier PDF a été téléchargé avec succès.');
+        }
 
-                // The 'firstChild' allows to select the text inside the cell
-                range.selectNodeContents(clickedCell);
+        function downloadImage() {
+            const table = document.getElementById('data-table');
+            html2canvas(table).then(canvas => {
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = 'Tableau_Staff.png';
+                link.click();
+                showMessage('Le fichier image a été téléchargé avec succès.');
+            });
+        }
 
-                sel.removeAllRanges();
-                sel.addRange(range);
-            }
-        });
-
+        // === EVENT LISTENERS & INITIALIZATION ===
+        // Event listener for arrow keys to navigate table cells
         document.addEventListener('keydown', function (e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-                e.preventDefault();
-                undo();
-            }
-        });
+            const activeEl = document.activeElement;
+            if (activeEl && activeEl.tagName === 'TD' && activeEl.contentEditable === 'true') {
+                const row = activeEl.parentElement;
+                const currentIndex = Array.from(row.cells).indexOf(activeEl);
 
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Backspace') {
-                const selectedRows = document.querySelectorAll('#table-body tr.bg-yellow-400');
-                if (selectedRows.length > 0) {
-                    e.preventDefault();
-                    showConfirmationModal(`Effacer les ${selectedRows.length} lignes sélectionnées ?`, () => {
-                        saveStateToHistory();
-                        selectedRows.forEach(row => row.remove());
-                        updateRowNumbers();
-                        debouncedSave();
-                    });
-                }
-            }
-        });
+                let nextCell = null;
 
-        // --- New feature for the Enter key ---
-        document.addEventListener('keydown', function (e) {
-            // Check if the key is 'Enter' and the active element is a table cell
-            if (e.key === 'Enter' && document.activeElement && document.activeElement.tagName === 'TD') {
-                e.preventDefault(); // Prevent default behavior (e.g., adding a new line)
-
-                const currentCell = document.activeElement;
-                const currentRow = currentCell.closest('tr');
-                const currentIndex = currentCell.cellIndex;
-
-                const nextRow = currentRow.nextElementSibling;
-                if (nextRow) {
-                    // If a next row exists, find the cell at the same index and focus it
-                    const nextCell = nextRow.cells[currentIndex];
-                    if (nextCell) {
-                        nextCell.focus();
-                    }
-                } else {
-                    // If no next row, add a new one and focus the first editable cell
-                    addRow();
-                    // Wait for the DOM to update, then focus the new cell
-                    setTimeout(() => {
-                        const newRow = document.querySelector('#table-body tr:last-child');
-                        if (newRow && newRow.cells.length > currentIndex) {
-                            newRow.cells[currentIndex].focus();
+                if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
+                    nextCell = row.cells[currentIndex + 1];
+                    if (!nextCell) {
+                        const nextRow = row.nextElementSibling;
+                        if (nextRow) {
+                            nextCell = nextRow.cells[2];
                         }
-                    }, 0);
+                    }
+                } else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
+                    nextCell = row.cells[currentIndex - 1];
+                    if (!nextCell || currentIndex === 2) {
+                        const prevRow = row.previousElementSibling;
+                        if (prevRow) {
+                            nextCell = prevRow.cells[prevRow.cells.length - 1];
+                        }
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    const nextRow = row.nextElementSibling;
+                    if (nextRow) {
+                        nextCell = nextRow.cells[currentIndex];
+                    } else {
+                        addRow();
+                        setTimeout(() => {
+                            const newRow = document.querySelector('#table-body tr:last-child');
+                            if (newRow && newRow.cells.length > currentIndex) {
+                                newRow.cells[currentIndex].focus();
+                            }
+                        }, 0);
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    const prevRow = row.previousElementSibling;
+                    if (prevRow) {
+                        nextCell = prevRow.cells[currentIndex];
+                    }
                 }
+
+                if (nextCell) {
+                    e.preventDefault();
+                    nextCell.focus();
+                }
+            }
+        });
+
+        // Event listener to select all text in a cell on focus
+        document.addEventListener('focusin', function (e) {
+            if (e.target && e.target.tagName === 'TD' && e.target.contentEditable === 'true') {
+                const range = document.createRange();
+                range.selectNodeContents(e.target);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
             }
         });
 
@@ -965,7 +902,6 @@
         window.checkPassword = checkPassword;
         window.pullFromMaster = pullFromMaster;
         window.syncToMaster = syncToMaster;
-        window.resolveMasterData = resolveMasterData;
         window.addRow = addRow;
         window.saveManually = saveManually;
         window.undo = undo;
@@ -975,6 +911,8 @@
 
         window.addEventListener('load', function () {
             document.getElementById('login-container').classList.remove('hidden');
-        });</script>
+            setInterval(updateClock, 1000);
+        });
+    </script>
 </body>
 </html>
