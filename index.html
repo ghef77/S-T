@@ -106,14 +106,14 @@
                 background-color: #fff;
                 border: 1px solid #e2e8f0;
                 border-radius: 0.75rem; /* Coins plus arrondis */
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1-px rgba(0, 0, 0, 0.06);
                 overflow: hidden;
                 transition: transform 0.2s ease-in-out;
             }
             
             #data-table tr:hover {
               transform: translateY(-2px); /* Effet de survol subtil */
-              box-shadow: 0 6px 10px -1px rgba(0, 0, 0, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+              box-shadow: 0 6px 10px -1-px rgba(0, 0, 0, 0.15), 0 4px 6px -1-px rgba(0, 0, 0, 0.1);
             }
 
             /* Chaque cellule devient un bloc */
@@ -286,11 +286,10 @@
         // === CONFIGURATION ===
         const APP_CONFIG = {
             password: 'p123',
-            version: '2.5.0-final'
+            version: '2.5.1-final' // Version mise à jour
         };
 
         // --- CONFIGURATION SUPABASE ---
-        // Les informations de connexion Supabase originales de votre fichier
         const supabaseConfig = {
             supabaseUrl: 'https://fiecugxopjxzqfdnaqsu.supabase.co',
             supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw',
@@ -364,11 +363,11 @@
             const rows = [];
             document.querySelectorAll('#data-table tbody tr').forEach(rowEl => {
                 const rowData = {};
-                const cells = Array.from(rowEl.querySelectorAll('td')).slice(2);
-
+                // Utilise data-key pour l'id s'il existe
                 if (rowEl.dataset.key) {
                     rowData[supabaseConfig.primaryKeyColumn] = rowEl.dataset.key;
                 }
+                const cells = Array.from(rowEl.querySelectorAll('td')).slice(2);
                 cells.forEach((td, index) => {
                     const key = headers[index];
                     rowData[key] = td.textContent === '' ? null : td.textContent;
@@ -438,12 +437,15 @@
             data.forEach((rowData, index) => {
                 const row = document.createElement('tr');
                 row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+                
+                // Correction: Stocke la clé primaire (No) dans data-key pour le suivi
                 if (rowData[supabaseConfig.primaryKeyColumn]) {
                     row.dataset.key = rowData[supabaseConfig.primaryKeyColumn];
                 }
-
+                
+                // Correction: Affiche un index visuel séquentiel
                 const numCell = document.createElement('td');
-                numCell.textContent = index + 1;
+                numCell.textContent = index + 1; // Affiche 1, 2, 3, etc.
                 numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap';
                 numCell.setAttribute('data-label', 'No');
                 row.appendChild(numCell);
@@ -487,6 +489,7 @@
             const newRow = document.createElement('tr');
             newRow.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
 
+            // Affiche un index visuel pour la nouvelle ligne
             const numCell = document.createElement('td');
             numCell.textContent = tbody.children.length + 1;
             numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap';
@@ -534,7 +537,7 @@
             });
             tbody.appendChild(newRow);
 
-            // Sauvegarde immédiatement la nouvelle ligne dans la base de données
+            // Sauvegarde la nouvelle ligne dans la base de données.
             await syncToMaster(false);
             log('Nouvelle ligne ajoutée et sauvegardée.', 'success');
         }
@@ -549,15 +552,15 @@
                         .eq(supabaseConfig.primaryKeyColumn, primaryKeyValue);
                     if (error) throw error;
                     log(`Ligne avec ${supabaseConfig.primaryKeyColumn}=${primaryKeyValue} supprimée de Supabase.`, 'success');
+                    // Re-fetch les données pour mettre à jour les numéros visuels après suppression
+                    await pullFromMaster();
                 } catch (error) {
                     log('Erreur lors de la suppression de la ligne : ' + error.message, 'error');
                 }
+            } else {
+                 rowEl.remove();
+                 log('Ligne locale (non sauvegardée) supprimée.', 'info');
             }
-            rowEl.remove();
-            // Ré-indexe la colonne 'No'
-            Array.from(document.querySelectorAll('#table-body tr')).forEach((tr, index) => {
-                tr.children[0].textContent = index + 1;
-            });
             saveStateToHistory();
         }
 
@@ -617,12 +620,31 @@
             isDirty = false;
 
             try {
-                const { error: upsertError } = await supabase
-                    .from(supabaseConfig.tableName)
-                    .upsert(currentTableData.rows, { onConflict: supabaseConfig.primaryKeyColumn });
+                const updates = currentTableData.rows.filter(row => row[supabaseConfig.primaryKeyColumn]);
+                const inserts = currentTableData.rows.filter(row => !row[supabaseConfig.primaryKeyColumn]);
 
-                if (upsertError) {
-                    throw upsertError;
+                let error = null;
+                if (inserts.length > 0) {
+                    // Les nouvelles lignes sont insérées sans la clé primaire, Supabase la générera
+                    const { error: insertError } = await supabase
+                        .from(supabaseConfig.tableName)
+                        .insert(inserts);
+                    if (insertError) {
+                        error = insertError;
+                    }
+                }
+                
+                if (updates.length > 0 && !error) {
+                    const { error: updateError } = await supabase
+                        .from(supabaseConfig.tableName)
+                        .upsert(updates, { onConflict: supabaseConfig.primaryKeyColumn });
+                    if (updateError) {
+                        error = updateError;
+                    }
+                }
+
+                if (error) {
+                    throw error;
                 }
 
                 log('Données sauvegardées avec succès sur Supabase.', 'success');
@@ -808,6 +830,14 @@
                     e.preventDefault();
                     nextCell.focus();
                 }
+            }
+        });
+
+        // Écouteur d'événements pour la touche 'Entrée' sur le champ de mot de passe
+        document.getElementById('password').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Empêche l'action par défaut (soumission de formulaire)
+                checkPassword();
             }
         });
 
