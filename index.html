@@ -7,47 +7,43 @@
     <!-- Tailwind CSS CDN for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom styles not easily done with Tailwind */
+        /* Styles personnalisés qui ne sont pas facilement réalisés avec Tailwind */
         body {
             font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
         }
 
-        /* Table styles for sticky header and border-collapse */
+        /* Styles de la table pour l'en-tête collante et la bordure */
         #data-table {
             border-collapse: collapse;
             border-spacing: 0;
             margin-bottom: 50px;
-            width: 100%; /* Make the table take up the full width */
+            width: 100%; /* La table prend toute la largeur */
         }
 
-            /* Add black borders to each cell for a grid effect */
-            #data-table th,
-            #data-table td {
-                border: 1px solid #000;
-            }
-
-            /* Sticky header ensures it stays visible during scroll */
-            #data-table thead {
-                position: sticky;
-                top: 0;
-                z-index: 10;
-                background-color: #15803d; /* Darker green for a more professional look */
-            }
-
-            /* Sticky footer for the add button */
-            #data-table tfoot {
-                position: sticky;
-                bottom: 0;
-                z-index: 10;
-                background-color: white; /* Match table background */
-                border-top: 2px solid #ddd;
-            }
-
-        .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 50;
+        /* Ajoute des bordures noires à chaque cellule pour un effet de grille */
+        #data-table th,
+        #data-table td {
+            border: 1px solid #000;
         }
 
+        /* L'en-tête collante reste visible lors du défilement */
+        #data-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #15803d; /* Vert foncé pour un look plus professionnel */
+        }
+
+        /* Pied de page collant pour le bouton d'ajout */
+        #data-table tfoot {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+            background-color: white; /* Correspond à l'arrière-plan de la table */
+            border-top: 2px solid #ddd;
+        }
+
+        /* Animation pour l'indicateur de synchronisation en attente */
         .sync-pending-animation {
             animation: pulse 1.5s infinite;
         }
@@ -65,56 +61,37 @@
                 opacity: 1;
             }
         }
-
-        /* Styles for a static 3D thickness */
-        #table-container {
-            position: relative;
-            transform-style: preserve-3d;
-            perspective: 1000px; /* Add a 3D perspective effect */
-            transform: rotateX(2deg) translateY(0px) scale(1); /* A slight rotation to show thickness */
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3), 0 8px 16px -4px rgba(0, 0, 0, 0.15);
+        
+        /* Styles pour la boîte de message personnalisée */
+        .message-box {
+            position: fixed;
+            top: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
         }
-
-            /* Pseudo-element to simulate the table's side "face" */
-            #table-container::after {
-                content: '';
-                position: absolute;
-                bottom: -15px; /* Add a 15px thickness at the bottom */
-                left: 0;
-                right: 0;
-                height: 15px;
-                background-color: #f3f4f6; /* Side face color */
-                transform: rotateX(90deg) translateZ(-15px); /* Position and rotate the thickness */
-                transform-origin: bottom;
-                box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-                z-index: -1;
-                border-bottom-left-radius: 1rem;
-                border-bottom-right-radius: 1rem;
-            }
-
-        #button-bar button {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        
+        .message-box.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
         }
-
-            #button-bar button:hover {
-                transform: translateY(-1px);
-                box-shadow: 6px 8px -1px rgba(0, 0, 0, 0.15), 4px 6px -1px rgba(0, 0, 0, 0.1);
-            }
-
-        /* Cell styles to match the screenshot */
-        #data-table td {
-            background-color: #fff;
-            color: #4b5563; /* Dark gray text color */
+        
+        .message-box.success {
+            background-color: #d1fae5;
+            color: #065f46;
         }
-
-        /* Hover style to match the screenshot (very light gray) */
-        #data-table tbody tr:hover td {
-            background-color: #f3f4f6; /* Light gray */
+        
+        .message-box.info {
+            background-color: #dbeafe;
+            color: #1e40af;
         }
-
-        /* --- Logique pour la disposition réactive améliorée --- */
+        
+        /* Logique pour la disposition réactive améliorée */
         @media (max-width: 768px) {
             /* Cache l'en-tête du tableau sur mobile */
             thead {
@@ -184,42 +161,16 @@
                 content: none;
             }
         }
-        
-        /* Styles pour la boîte de message personnalisée */
-        .message-box {
-            position: fixed;
-            top: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 1rem 1.5rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            z-index: 100;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
-        }
-        
-        .message-box.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-        
-        .message-box.success {
-            background-color: #d1fae5;
-            color: #065f46;
-        }
-
     </style>
 </head>
-<!-- h-screen, flex-col, and overflow-hidden on body to manage overall layout -->
 <body class="bg-gray-100 flex flex-col h-screen overflow-hidden text-sm md:text-base lg:text-lg">
     
-    <!-- Custom Message Box -->
+    <!-- Boîte de message personnalisée pour les confirmations et les erreurs -->
     <div id="message-box" class="message-box hidden">
         <p id="message-text" class="font-bold"></p>
     </div>
 
-    <!-- Login Container -->
+    <!-- Conteneur de connexion -->
     <div id='login-container' class="bg-white p-8 md:p-10 lg:p-12 rounded-xl shadow-lg w-full max-w-md mx-auto my-auto flex flex-col items-center space-y-4 md:space-y-6 transition-all duration-300 ease-in-out hidden">
         <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800">Accéder au tableau</h2>
         <input type='password' id='password' placeholder='Mot de passe' class="w-full p-3 md:p-4 lg:p-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
@@ -233,8 +184,7 @@
         <p id='error-message' class="text-red-500 font-medium text-sm md:text-base"></p>
     </div>
 
-    <!-- Main Table Container -->
-    <!-- Reduced vertical padding and margin for mobile -->
+    <!-- Conteneur principal du tableau -->
     <div id='table-container' class="bg-white p-2 md:p-6 lg:p-8 rounded-xl w-full flex-grow overflow-y-auto hidden transition-all duration-300 ease-in-out flex flex-col">
         <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-2 md:mb-6">
             <div class="flex-grow">
@@ -252,11 +202,9 @@
             </div>
         </div>
 
-        <!-- The conflict banner and resolve button are removed as per the user's request. -->
-
         <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
 
-        <!-- Button Bar (for other actions, Add Row button is now in the table footer) -->
+        <!-- Barre de boutons (pour les autres actions) -->
         <div id="button-bar" class="flex flex-wrap items-center gap-2 mb-2 md:mb-6">
             <button class='bg-blue-500 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-blue-600 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm' onclick='pullFromMaster()'>
                 <span>⬇️</span> <span>Tirer la dernière version</span>
@@ -278,7 +226,7 @@
             </button>
         </div>
 
-        <!-- Table -->
+        <!-- Tableau -->
         <div class="overflow-x-scroll w-full relative">
             <table id='data-table' class="w-full text-left text-gray-500 text-xs md:text-sm lg:text-base">
                 <thead class="text-xs text-white uppercase bg-green-700">
@@ -295,9 +243,9 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <!-- Table data will be injected here -->
+                    <!-- Les données du tableau seront insérées ici -->
                 </tbody>
-                <!-- Add row button placed in the table footer, spanning columns to align with "No" -->
+                <!-- Bouton d'ajout de ligne placé dans le pied de page du tableau -->
                 <tfoot class="bg-white border-t-2 border-gray-300">
                     <tr>
                         <td colspan="2" class="py-1 px-1">
@@ -305,15 +253,15 @@
                                 +
                             </button>
                         </td>
-                        <!-- This colspan ensures the button is correctly aligned under the first two columns -->
+                        <!-- Ce colspan assure que le bouton est correctement aligné sous les deux premières colonnes -->
                         <td colspan="7" class="bg-white"></td>
                     </tr>
                 </tfoot>
             </table>
         </div>
 
-        <!-- Confirmation Modal -->
-        <div id="confirmation-modal" class="fixed inset-0 modal-overlay h-full w-full hidden">
+        <!-- Modal de confirmation pour la suppression de ligne -->
+        <div id="confirmation-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full hidden z-50">
             <div class="relative top-1/4 mx-auto p-5 border w-11/12 max-w-sm shadow-lg rounded-md bg-white">
                 <div class="mt-3 text-center">
                     <h3 class="text-lg md:text-xl leading-6 font-medium text-gray-900" id="modal-message"></h3>
@@ -326,23 +274,23 @@
         </div>
     </div>
 
-    <!-- JavaScript libraries -->
+    <!-- Bibliothèques JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-    <!-- Supabase Client Library -->
+    <!-- Bibliothèque client Supabase -->
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
         // === CONFIGURATION ===
         const APP_CONFIG = {
             password: 'p123',
-            version: '2.4.3-download-messages'
+            version: '2.5.0-final'
         };
 
-        // --- SUPABASE CONFIGURATION ---
-        // CORRECTED API KEY: Now using your own identifiers.
+        // --- CONFIGURATION SUPABASE ---
+        // Les informations de connexion Supabase originales de votre fichier
         const supabaseConfig = {
             supabaseUrl: 'https://fiecugxopjxzqfdnaqsu.supabase.co',
             supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw',
@@ -353,7 +301,7 @@
         const supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
         let realtimeSubscription = null;
 
-        // === APPLICATION STATE ===
+        // === ÉTAT DE L'APPLICATION ===
         const appState = {
             isLoggedIn: false,
             masterSource: 'supabase',
@@ -366,8 +314,11 @@
         let history = [];
         const MAX_HISTORY_SIZE = 10;
         let historyDebounceTimeout = null;
+        
+        // Délai de 20 secondes pour la sauvegarde automatique
+        const AUTOSAVE_DELAY = 20000;
 
-        // === UTILITY FUNCTIONS ===
+        // === FONCTIONS UTILITAIRES ===
         function log(message, type = 'info') {
             console.log(`[${new Date().toLocaleTimeString()}] ${type.toUpperCase()}: ${message}`);
         }
@@ -457,21 +408,24 @@
             }, 500);
         }
 
-        // Debounce function for auto-saving
-        // The autosave is now triggered after 10 seconds of no changes.
+        /*
+         * Fonction de débouncage pour la sauvegarde automatique.
+         * Appelle `syncToMaster` après 20 secondes d'inactivité.
+         */
         function debouncedSave() {
             isDirty = true;
             if (saveTimeout) {
                 clearTimeout(saveTimeout);
             }
-            // Autosave after 10 seconds (10000 ms) of inactivity
+            // Sauvegarde automatique après 20 secondes (20000 ms) d'inactivité
+            updateStatus('Sauvegarde automatique dans 20s...', 'pending');
             saveTimeout = setTimeout(() => {
-                log('Autosave déclenché.', 'info');
-                syncToMaster();
-            }, 10000);
+                log('Sauvegarde automatique déclenchée.', 'info');
+                syncToMaster(false);
+            }, AUTOSAVE_DELAY);
         }
 
-        // === TABLE MANAGEMENT FUNCTIONS ===
+        // === FONCTIONS DE GESTION DU TABLEAU ===
         function loadTableData(data) {
             if (!data) {
                 log('Structure de données invalide', 'error');
@@ -513,24 +467,16 @@
                     cell.contentEditable = true;
                     cell.className = 'py-2 px-2 md:px-4 editable-cell';
                     cell.setAttribute('data-label', header);
-                    cell.onfocus = (e) => {
-                        // Select all text in the cell when it's focused
-                        const range = document.createRange();
-                        range.selectNodeContents(e.target);
-                        const selection = window.getSelection();
-                        selection.removeAllRanges();
-                        selection.addRange(range);
-                    };
                     cell.oninput = () => {
                         saveStateToHistory();
-                        debouncedSave(); // Trigger autosave debounce
+                        debouncedSave(); // Déclenche le débouncage de la sauvegarde automatique
                     };
                     row.appendChild(cell);
                 });
                 tbody.appendChild(row);
             });
             log('Données du tableau chargées.', 'success');
-            // After loading the table, let's also update the hash and local data
+            // Après le chargement de la table, met à jour le hachage et les données locales
             appState.localData = collectTableData();
             appState.dataHash = generateDataHash(appState.localData);
             return true;
@@ -560,26 +506,19 @@
             deleteCell.appendChild(deleteButton);
             newRow.appendChild(deleteCell);
 
-            // Add the Date de saisie with the current date
+            // Ajoute la Date de saisie avec la date actuelle
             const dateCell = document.createElement('td');
             dateCell.textContent = getFormattedDate();
             dateCell.contentEditable = true;
             dateCell.className = 'py-2 px-2 md:px-4 editable-cell';
             dateCell.setAttribute('data-label', 'Date de saisie');
-            dateCell.onfocus = (e) => {
-                const range = document.createRange();
-                range.selectNodeContents(e.target);
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(range);
-            };
             dateCell.oninput = () => {
                 saveStateToHistory();
-                debouncedSave(); // Trigger autosave debounce
+                debouncedSave();
             };
             newRow.appendChild(dateCell);
 
-            // Add the rest of the cells
+            // Ajoute le reste des cellules
             const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(3).map(th => th.textContent);
             headers.forEach(header => {
                 const cell = document.createElement('td');
@@ -587,23 +526,15 @@
                 cell.contentEditable = true;
                 cell.className = 'py-2 px-2 md:px-4 editable-cell';
                 cell.setAttribute('data-label', header);
-                cell.onfocus = (e) => {
-                    const range = document.createRange();
-                    range.selectNodeContents(e.target);
-                    const selection = window.getSelection();
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                };
                 cell.oninput = () => {
                     saveStateToHistory();
-                    debouncedSave(); // Trigger autosave debounce
+                    debouncedSave();
                 };
                 newRow.appendChild(cell);
             });
             tbody.appendChild(newRow);
 
-            // Immediately save the new row to the database.
-            // This is a manual save, not debounced.
+            // Sauvegarde immédiatement la nouvelle ligne dans la base de données
             await syncToMaster(false);
             log('Nouvelle ligne ajoutée et sauvegardée.', 'success');
         }
@@ -619,18 +550,18 @@
                     if (error) throw error;
                     log(`Ligne avec ${supabaseConfig.primaryKeyColumn}=${primaryKeyValue} supprimée de Supabase.`, 'success');
                 } catch (error) {
-                    log('Erreur lors de la suppression de la ligne: ' + error.message, 'error');
+                    log('Erreur lors de la suppression de la ligne : ' + error.message, 'error');
                 }
             }
             rowEl.remove();
-            // Re-index the 'No' column
+            // Ré-indexe la colonne 'No'
             Array.from(document.querySelectorAll('#table-body tr')).forEach((tr, index) => {
                 tr.children[0].textContent = index + 1;
             });
             saveStateToHistory();
         }
 
-        // === SUPABASE SYNCHRONIZATION ===
+        // === SYNCHRONISATION SUPABASE ===
         async function fetchInitialData() {
             log('Récupération des données initiales...', 'info');
             updateStatus('Connexion...');
@@ -651,7 +582,7 @@
                     saveStateToHistory();
                 }
 
-                // Setup realtime listener
+                // Configuration de l'écouteur en temps réel
                 if (!realtimeSubscription) {
                     realtimeSubscription = supabase.channel('table-changes').on('postgres_changes', { event: '*', schema: 'public', table: supabaseConfig.tableName }, payload => {
                         handleRealtimeUpdate(payload);
@@ -659,17 +590,21 @@
                 }
 
             } catch (error) {
-                log('Erreur lors de la récupération des données initiales: ' + error.message, 'error');
+                log('Erreur lors de la récupération des données initiales : ' + error.message, 'error');
                 updateStatus('Erreur de connexion', 'error');
             }
         }
 
         async function syncToMaster(isManualSave = false) {
-            // Check if there are local changes before proceeding.
+            // Annule la sauvegarde automatique si une sauvegarde manuelle est en cours
+            if (isManualSave && saveTimeout) {
+                clearTimeout(saveTimeout);
+                log('Sauvegarde manuelle, annulation de la sauvegarde automatique.', 'info');
+            }
+            
             const currentTableData = collectTableData();
             const currentDataHash = generateDataHash(currentTableData);
             
-            // If the data hash hasn't changed, there's nothing to save.
             if (!isManualSave && currentDataHash === appState.dataHash) {
                 log('Pas de changement de données détecté, annulation de la sauvegarde.', 'info');
                 isDirty = false;
@@ -679,7 +614,7 @@
 
             log('Synchronisation des données locales vers Supabase...', 'saving');
             updateStatus('Sauvegarde en cours...', 'saving');
-            isDirty = false; // Reset the dirty flag since we are attempting to save.
+            isDirty = false;
 
             try {
                 const { error: upsertError } = await supabase
@@ -694,29 +629,25 @@
                 updateStatus('Sauvegardé', 'success');
                 updateLastSaveTime();
 
-                // Re-fetch data to handle any server-side changes and update local hash
+                // Re-fetch des données pour gérer les changements côté serveur et mettre à jour le hachage local
                 await fetchInitialData();
 
             } catch (error) {
-                log('Erreur lors de la synchronisation: ' + error.message, 'error');
+                log('Erreur lors de la synchronisation : ' + error.message, 'error');
                 updateStatus('Erreur de sauvegarde', 'error');
             }
         }
 
         async function pullFromMaster() {
-            log('Pulling latest data from master...', 'info');
+            log('Récupération des dernières données du serveur...', 'info');
             await fetchInitialData();
         }
         
         function handleRealtimeUpdate(payload) {
             log('Mise à jour en temps réel reçue.', 'info');
-            // Check if there are any pending local changes.
-            // If the user is actively typing, the `isDirty` flag will be true.
             if (isDirty) {
-                log('Modifications locales en attente. Ignorer la mise à jour en temps réel pour donner la priorité aux changements locaux.', 'info');
-                // The autosave will eventually push the local changes, overwriting the server.
+                log('Modifications locales en attente. Ignorer la mise à jour en temps réel.', 'info');
             } else {
-                // No local changes are pending, so it's safe to pull from the server.
                 log('Pas de changements locaux, récupération de la dernière version du serveur.', 'info');
                 fetchInitialData();
             }
@@ -732,7 +663,7 @@
             }
         }
 
-        // === PASSWORD LOGIC ===
+        // === LOGIQUE DE MOT DE PASSE ===
         function checkPassword() {
             const passwordInput = document.getElementById('password').value;
             const errorMessage = document.getElementById('error-message');
@@ -753,7 +684,7 @@
             passwordInput.type = this.checked ? 'text' : 'password';
         });
 
-        // === MODAL LOGIC ===
+        // === LOGIQUE DE LA MODALE ===
         let confirmAction = null;
 
         function showConfirmationModal(message, action) {
@@ -773,36 +704,32 @@
             document.getElementById('confirmation-modal').classList.add('hidden');
         });
         
-        // New custom message box logic
+        // Logique de la boîte de message personnalisée
         let messageTimeout = null;
         function showMessage(message, type = 'success') {
             const msgBox = document.getElementById('message-box');
             const msgText = document.getElementById('message-text');
             
-            // Clear any existing timeout and remove 'show' class
             if (messageTimeout) {
                 clearTimeout(messageTimeout);
             }
             msgBox.classList.remove('show');
             
-            // Set new message and show the box
             msgText.textContent = message;
             msgBox.className = `message-box ${type}`;
-            void msgBox.offsetWidth; // Trigger reflow
+            void msgBox.offsetWidth; // Déclenche un reflow pour la transition
             msgBox.classList.add('show');
             msgBox.classList.remove('hidden');
             
-            // Hide the box after 3 seconds
             messageTimeout = setTimeout(() => {
                 msgBox.classList.remove('show');
-                // Hide completely after the transition
                 setTimeout(() => {
                     msgBox.classList.add('hidden');
                 }, 500);
             }, 3000);
         }
 
-        // === EXPORT LOGIC ===
+        // === LOGIQUE D'EXPORTATION ===
         function downloadExcel() {
             const table = document.getElementById('data-table');
             const ws = XLSX.utils.table_to_sheet(table);
@@ -831,8 +758,8 @@
             });
         }
 
-        // === EVENT LISTENERS & INITIALIZATION ===
-        // Event listener for arrow keys to navigate table cells
+        // === ÉCOUTEURS D'ÉVÉNEMENTS ET INITIALISATION ===
+        // Écouteur d'événements pour les touches fléchées pour naviguer dans les cellules du tableau
         document.addEventListener('keydown', function (e) {
             const activeEl = document.activeElement;
             if (activeEl && activeEl.tagName === 'TD' && activeEl.contentEditable === 'true') {
@@ -884,7 +811,7 @@
             }
         });
 
-        // Event listener to select all text in a cell on focus
+        // Écouteur d'événements pour sélectionner tout le texte dans une cellule au focus
         document.addEventListener('focusin', function (e) {
             if (e.target && e.target.tagName === 'TD' && e.target.contentEditable === 'true') {
                 const range = document.createRange();
