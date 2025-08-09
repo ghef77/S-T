@@ -156,9 +156,11 @@
             e.stopPropagation();
             const selected = Array.from(document.querySelectorAll('#table-body tr.selected-row'));
             if (selected.length > 0) {
-              promptKeyConfirm(`Appuyez sur Entrée pour supprimer ${selected.length} ligne(s), Échap pour annuler.`, () => deleteRows(selected));
+              // Multiple rows selected: confirm before deleting
+              promptKeyConfirm(`Supprimer ${selected.length} ligne(s) ?`, () => deleteRows(selected));
             } else {
-              promptKeyConfirm('Appuyez sur Entrée pour supprimer cette ligne, Échap pour annuler.', () => deleteRows([row]));
+              // Single row via trash icon: delete immediately without confirmation
+              deleteRows([row]);
             }
           };
           const wrap=document.createElement('div');
