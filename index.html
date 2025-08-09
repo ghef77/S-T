@@ -392,7 +392,56 @@
             const rect=cell.getBoundingClientRect(); dateInputOverlay.style.left=`${rect.left+window.scrollX}px`; dateInputOverlay.style.top=`${rect.top+window.scrollY}px`; dateInputOverlay.style.display='block'; dateInputOverlay.focus(); }
         });
 
-        function promptKeyConfirm(message,onConfirm){ showMessage(message,'info'); function handleKey(e){ if(e.key==='Enter'){ e.preventDefault(); cleanup(); onConfirm(); } else if(e.key==='Escape'){ e.preventDefault(); cleanup(); showMessage('Suppression annulée.','info'); } } function cleanup(){ document.removeEventListener('keydown', handleKey, true); } document.addEventListener('keydown', handleKey, true); }
+        function promptKeyConfirm(message, onConfirm) {
+          // Show ephemeral banner
+          showMessage(message, 'info');
+
+          // Create (or reuse) a hidden input to trigger the mobile keyboard
+          let keyCapture = document.getElementById('key-capture');
+          if (!keyCapture) {
+            keyCapture = document.createElement('input');
+            keyCapture.type = 'text';
+            keyCapture.id = 'key-capture';
+            keyCapture.autocapitalize = 'off';
+            keyCapture.autocomplete = 'off';
+            keyCapture.spellcheck = false;
+            keyCapture.style.position = 'fixed';
+            keyCapture.style.opacity = '0';
+            keyCapture.style.width = '1px';
+            keyCapture.style.height = '1px';
+            keyCapture.style.left = '-10000px';
+            keyCapture.style.top = '0';
+            keyCapture.style.pointerEvents = 'none';
+            document.body.appendChild(keyCapture);
+          }
+          // Focus to bring up the soft keyboard on mobile
+          keyCapture.value = '';
+          keyCapture.focus({ preventScroll: true });
+          try { keyCapture.setSelectionRange(0, 0); } catch(_) {}
+          // Some mobile browsers need a second tick to reliably open the keyboard
+          setTimeout(() => { if (document.activeElement !== keyCapture) keyCapture.focus({ preventScroll: true }); }, 0);
+
+          function handleKey(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              cleanup();
+              onConfirm();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              cleanup();
+              showMessage('Suppression annulée.', 'info');
+            }
+          }
+
+          function cleanup() {
+            document.removeEventListener('keydown', handleKey, true);
+            // Blur and hide the hidden input after finishing
+            const cap = document.getElementById('key-capture');
+            if (cap) { try { cap.blur(); } catch(_) {} }
+          }
+
+          document.addEventListener('keydown', handleKey, true);
+        }
 
         document.addEventListener('focusin', function(e){ if(e.target && e.target.tagName==='TD' && e.target.contentEditable==='true'){ const range=document.createRange(); range.selectNodeContents(e.target); const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range); } });
         document.addEventListener('change', function(e){ if(e.target && e.target.id==='select-all'){ const checked=e.target.checked; document.querySelectorAll('#table-body tr').forEach(tr=>{ const cb=tr.querySelector('td:nth-child(2) input[type="checkbox"]'); if(cb){ cb.checked=checked; tr.classList.toggle('selected-row', checked); } }); } });
