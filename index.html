@@ -1,0 +1,1271 @@
+﻿<!DOCTYPE html>
+<html lang='fr'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Tableau de Staff synchronisé - Supabase</title>
+    <!-- Tailwind CSS CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Styles personnalisés qui ne sont pas facilement réalisés avec Tailwind */
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+        }
+
+        /* Styles de la table pour l'en-tête collante et la bordure */
+        #data-table {
+            border-collapse: collapse;
+            border-spacing: 0;
+            margin-bottom: 50px;
+            width: 100%; /* La table prend toute la largeur */
+        }
+
+            /* Ajoute des bordures noires à chaque cellule pour un effet de grille */
+            #data-table th,
+            #data-table td {
+                border: 1px solid #000;
+            }
+
+            /* L'en-tête collante reste visible lors du défilement */
+            #data-table thead {
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                background-color: #15803d; /* Vert foncé pour un look plus professionnel */
+            }
+
+            /* Pied de page collant pour le bouton d'ajout */
+            #data-table tfoot {
+                position: sticky;
+                bottom: 0;
+                z-index: 10;
+                background-color: white; /* Correspond à l'arrière-plan de la table */
+                border-top: 2px solid #ddd;
+            }
+
+        /* Animation pour l'indicateur de synchronisation en attente */
+        .sync-pending-animation {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* Styles pour la boîte de message personnalisée */
+        .message-box {
+            position: fixed;
+            top: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
+
+            .message-box.show {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            .message-box.success {
+                background-color: #d1fae5;
+                color: #065f46;
+            }
+
+            .message-box.info {
+                background-color: #dbeafe;
+                color: #1e40af;
+            }
+
+        /* === Block 1: Sticky first column ("No") === */
+        #data-table th:first-child,
+        #data-table td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 2;         /* keep above row cells */
+            background: #ffffff;/* readable when scrolled horizontally */
+        }
+        #data-table thead th:first-child {
+            z-index: 3; /* header above body cells */
+        }
+
+        /* === Block 5: Inline placeholders for empty editable cells === */
+        td.editable-cell:empty::after {
+            content: attr(data-label);
+            color: #9ca3af; /* Tailwind gray-400 */
+            font-weight: normal;
+        }
+        /* === Multi-select helpers (Block A) === */
+        tr.selected-row { background-color: #FEF3C7; /* Tailwind amber-100 */ }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col h-screen overflow-hidden text-sm md:text-base lg:text-lg">
+
+    <!-- Boîte de message personnalisée pour les confirmations et les erreurs -->
+    <div id="message-box" class="message-box hidden">
+        <p id="message-text" class="font-bold"></p>
+    </div>
+
+    <!-- Conteneur de connexion -->
+    <div id='login-container' class="bg-white p-8 md:p-10 lg:p-12 rounded-xl shadow-lg w-full max-w-md mx-auto my-auto flex flex-col items-center space-y-4 md:space-y-6 transition-all duration-300 ease-in-out hidden">
+        <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800">Accéder au tableau</h2>
+        <input type='password' id='password' placeholder='Mot de passe' class="w-full p-3 md:p-4 lg:p-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+        <div class="flex items-center space-x-2 w-full">
+            <input type='checkbox' id='toggle-password' class="w-4 h-4 md:w-5 md:h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
+            <label for="toggle-password" class="text-sm md:text-base font-medium text-gray-700">Afficher le mot de passe</label>
+        </div>
+        <button onclick='checkPassword()' class="w-full bg-green-500 text-white font-bold p-3 md:p-4 lg:p-5 rounded-lg shadow-md hover:bg-green-600 transition-colors">
+            Valider
+        </button>
+        <p id='error-message' class="text-red-500 font-medium text-sm md:text-base"></p>
+    </div>
+
+    <!-- Conteneur principal du tableau -->
+    <div id='table-container' class="bg-white p-2 md:p-6 lg:p-8 rounded-xl w-full flex-grow overflow-y-auto hidden transition-all duration-300 ease-in-out flex flex-col">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-2 md:mb-6">
+            <div class="flex-grow">
+                <div class="flex flex-wrap items-center space-x-2 md:space-x-4 mb-1 md:mb-2">
+                    <h2 class="text-xl md:text-2xl lg:text-3xl font-extrabold text-gray-800">Tableau de Staff</h2>
+                    <span id="sync-status" class="sync-pending-animation px-2 py-1 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm font-bold border-2">Initialisation...</span>
+                </div>
+                <div class="flex flex-col md:flex-row items-start md:items-center space-y-1 md:space-y-0 md:space-x-4 text-xs md:text-sm">
+                    <span id="save-info" class="text-gray-500">Dernière sauvegarde : <span id="last-save-time" class="font-semibold text-gray-700">jamais</span></span>
+                    <span id="current-time" class="font-bold text-gray-900"></span>
+                </div>
+            </div>
+            <div id="master-indicator" class="flex-shrink-0 px-2 py-1 md:px-4 md:py-2 bg-green-50 text-green-700 font-bold rounded-lg border-2 border-green-300 text-xs md:text-sm mt-2 md:mt-0">
+                🎯 Source Maître: <span id="master-source">Supabase</span>
+            </div>
+        </div>
+
+        <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
+
+        <!-- Barre de boutons (pour les autres actions) -->
+        <div id="button-bar" class="flex flex-wrap items-center gap-2 mb-2 md:mb-6">
+            <button class='bg-blue-500 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-blue-600 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm' onclick='pullFromMaster()'>
+                <span>⬇️</span> <span>Tirer la dernière version</span>
+            </button>
+            <button onclick='saveManually()' class='bg-yellow-400 text-gray-800 font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-yellow-500 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm'>
+                <span>💾</span> <span>Sauvegarder</span>
+            </button>
+            <button id="undo-button" onclick="undo()" disabled class="bg-gray-300 text-gray-700 font-bold p-2 md:p-3 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm">
+                <span>↩️</span> <span>Annuler</span>
+            </button>
+            <button onclick="downloadExcel()" class="bg-green-600 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-green-700 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm">
+                <span>Excel</span> <span>⬇️</span>
+            </button>
+            <button onclick="downloadPDF()" class="bg-red-600 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-red-700 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm">
+                <span>PDF</span> <span>⬇️</span>
+            </button>
+            <button onclick="downloadImage()" class="bg-purple-600 text-white font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-purple-700 transition-colors flex items-center space-x-1 md:space-x-2 text-xs md:text-sm">
+                <span>Image</span> <span>⬇️</span>
+            </button>
+            <button id="bulk-delete" class="bg-red-50 text-red-700 font-bold p-2 md:p-3 rounded-lg border border-red-300 shadow-sm hover:bg-red-100 transition-colors text-xs md:text-sm">
+                🗑️ Supprimer la sélection
+            </button>
+        </div>
+
+
+        <!-- Tableau -->
+        <div class="overflow-x-auto w-full" style="max-width: 100vw;">
+            <table id='data-table' class="w-full text-left text-gray-500 text-xs md:text-sm lg:text-base">
+                <thead class="text-xs text-white uppercase bg-green-700">
+                    <tr>
+                        <th scope="col" class="py-2 px-2 md:px-4 rounded-tl-lg">No</th>
+                        <th scope="col" class="py-2 px-1 text-center">Effacer<br><input id="select-all" type="checkbox" class="align-middle"></th>
+                        <th scope="col" class="py-2 px-2 md:px-4">Date de saisie</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">PEC finale</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">PEC initiale</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">Nom_Prénom</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">Diagnostic_initial</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">information complementaire</th>
+                        <th scope="col" class="py-2 px-2 md:px-4 rounded-tr-lg">numero_tel</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Les données du tableau seront insérées ici -->
+                </tbody>
+                <!-- Bouton d'ajout de ligne placé dans le pied de page du tableau -->
+                <tfoot class="bg-white border-t-2 border-gray-300">
+                    <tr>
+                        <td colspan="2" class="py-1 px-1">
+                            <button class="bg-green-500 text-white font-bold p-3 md:p-4 rounded-full shadow-lg hover:bg-green-600 transition-colors text-xl md:text-2xl w-10 h-10 md:w-12 md:h-12 flex items-center justify-center mx-auto" onclick="addRow()">
+                                +
+                            </button>
+                        </td>
+                        <!-- Ce colspan assure que le bouton est correctement aligné sous les deux premières colonnes -->
+                        <td colspan="7" class="bg-white"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Modal de confirmation pour la suppression de ligne -->
+        <div id="confirmation-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full hidden z-50">
+            <div class="relative top-1/4 mx-auto p-5 border w-11/12 max-w-sm shadow-lg rounded-md bg-white">
+                <div class="mt-3 text-center">
+                    <h3 class="text-lg md:text-xl leading-6 font-medium text-gray-900" id="modal-message"></h3>
+                    <div class="mt-4 flex justify-around">
+                        <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">Oui</button>
+                        <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-300 text-black text-base font-medium rounded-md w-24 shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">Non</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bibliothèques JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <!-- Bibliothèque client Supabase -->
+    <script type="module">import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        // === CONFIGURATION ===
+        const APP_CONFIG = {
+            password: 'p123',
+            version: '2.5.1-final' // Version mise à jour
+        };
+
+        // --- CONFIGURATION SUPABASE ---
+        const supabaseConfig = {
+            supabaseUrl: 'https://fiecugxopjxzqfdnaqsu.supabase.co',
+            supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw',
+            tableName: 'staffTable',
+            primaryKeyColumn: 'No'
+        };
+
+        const supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
+        let realtimeSubscription = null;
+
+        // === ÉTAT DE L'APPLICATION ===
+        const appState = {
+            isLoggedIn: false,
+            masterSource: 'supabase',
+            dataHash: null,
+            localData: null,
+        };
+
+
+
+let isDirty = false;
+let saveTimeout = null;
+let history = [];
+const MAX_HISTORY_SIZE = 10;
+let historyDebounceTimeout = null;
+
+// Idle-aware typing + sync guards
+let isTyping = false;
+let lastEditAt = 0;
+let typingTimer = null;
+let isSyncing = false;
+
+// Empêche le rechargement/fermeture si des modifications ne sont pas encore synchronisées
+window.addEventListener('beforeunload', function (e) {
+  if (isDirty) {
+    // Certains navigateurs ignorent le texte personnalisé mais exigent returnValue
+    e.preventDefault();
+    e.returnValue = 'Des modifications non sauvegardées seront perdues si vous quittez.';
+  }
+});
+
+        // === Block 4: Batching state ===
+        const dirtyRowKeys = new Set();           // tracks PKs or temp ids of modified rows
+        const INSERT_TEMP_PREFIX = 'tmp_';
+        let nextTempId = 1;
+
+
+        // Délai de 20 secondes pour la sauvegarde automatique
+        const AUTOSAVE_DELAY = 20000;
+
+        
+
+        // === FONCTIONS UTILITAIRES ===
+        function log(message, type = 'info') {
+            console.log(`[${new Date().toLocaleTimeString()}] ${type.toUpperCase()}: ${message}`);
+        }
+
+        function updateStatus(message, type = 'pending') {
+            const statusEl = document.getElementById('sync-status');
+            statusEl.textContent = message;
+            statusEl.className = `sync-pending-animation px-2 py-1 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm font-bold border-2 ${getSyncStatusClasses(type)}`;
+        }
+
+        function getSyncStatusClasses(type) {
+            switch (type) {
+                case 'success':
+                    return 'bg-green-100 text-green-700 border-green-500';
+                case 'error':
+                    return 'bg-red-100 text-red-700 border-red-500';
+                case 'saving':
+                    return 'bg-blue-100 text-blue-700 border-blue-500 sync-pending-animation';
+                case 'pending':
+                default:
+                    return 'bg-yellow-100 text-yellow-700 border-yellow-500 sync-pending-animation';
+            }
+        }
+
+        function updateLastSaveTime() {
+            const now = new Date();
+            document.getElementById('last-save-time').textContent = now.toLocaleTimeString();
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            document.getElementById('current-time').textContent = timeString;
+        }
+
+        function updateUndoButtonState() {
+            const undoButton = document.getElementById('undo-button');
+            undoButton.disabled = history.length <= 1;
+        }
+
+        // === Helpers for multi-delete (Block F) ===
+        function getSelectedRows() {
+            return Array.from(document.querySelectorAll('#table-body tr.selected-row'));
+        }
+
+        function promptKeyConfirm(message, onConfirm) {
+            showMessage(message, 'info');
+            function handleKey(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    cleanup();
+                    onConfirm();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cleanup();
+                    showMessage('Suppression annulée.', 'info');
+                }
+            }
+            function cleanup() {
+                document.removeEventListener('keydown', handleKey, true);
+            }
+            document.addEventListener('keydown', handleKey, true);
+        }
+
+        async function deleteRows(rows) {
+            const keys = rows.map(r => r.dataset.key).filter(Boolean);
+
+            try {
+                if (keys.length > 0) {
+                    const { error } = await supabase
+                        .from(supabaseConfig.tableName)
+                        .delete()
+                        .in(supabaseConfig.primaryKeyColumn, keys);
+                    if (error) throw error;
+                    log(`Supprimé ${keys.length} ligne(s) côté serveur.`, 'success');
+                }
+                // Remove from DOM (both saved + unsaved)
+                rows.forEach(r => r.remove());
+
+                // Re-number visible index
+                document.querySelectorAll('#table-body tr').forEach((tr, idx) => {
+                    const noCell = tr.querySelector('td:first-child');
+                    if (noCell) noCell.textContent = idx + 1;
+                    tr.classList.remove('selected-row');
+                });
+
+                saveStateToHistory();
+                saveLocalDraft();
+                markEdited();
+                updateStatus('Ligne(s) supprimée(s)', 'success');
+
+                // Refresh from server (keeps things consistent)
+                await pullFromMaster();
+            } catch (err) {
+                log('Erreur lors de la suppression: ' + err.message, 'error');
+                updateStatus('Erreur de suppression', 'error');
+            }
+        }
+
+
+        function collectTableData() {
+            const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
+            const rows = [];
+            document.querySelectorAll('#data-table tbody tr').forEach(rowEl => {
+                const rowData = {};
+                // Utilise data-key pour l'id s'il existe
+                if (rowEl.dataset.key) {
+                    rowData[supabaseConfig.primaryKeyColumn] = rowEl.dataset.key;
+                }
+                const cells = Array.from(rowEl.querySelectorAll('td')).slice(2);
+                cells.forEach((td, index) => {
+                    const key = headers[index];
+                    rowData[key] = td.textContent === '' ? null : td.textContent;
+                });
+                rows.push(rowData);
+            });
+            return { headers, rows };
+        }
+
+        function getFormattedDate() {
+            const date = new Date();
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = String(date.getFullYear()).slice(-2);
+            return `${day}/${month}/${year}`;
+        }
+
+        function generateDataHash(data) {
+            return JSON.stringify(data.rows.map(row => ({ ...row, [supabaseConfig.primaryKeyColumn]: undefined }))).split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0).toString(16);
+        }
+
+        function saveStateToHistory() {
+            if (historyDebounceTimeout) {
+                clearTimeout(historyDebounceTimeout);
+            }
+            historyDebounceTimeout = setTimeout(() => {
+                const currentState = collectTableData();
+                const lastState = history[history.length - 1];
+                if (!lastState || generateDataHash(currentState) !== generateDataHash(lastState)) {
+                    history.push(currentState);
+                    if (history.length > MAX_HISTORY_SIZE) {
+                        history.shift();
+                    }
+                    updateUndoButtonState();
+                    log('État de l’historique enregistré.', 'info');
+                }
+            }, 500);
+        }
+
+        // === Local Draft Save/Restore/Clear ===
+        function saveLocalDraft() {
+          try {
+            const tableHTML = document.getElementById('data-table').outerHTML;
+            localStorage.setItem('staffTableDraft', tableHTML);
+            // Optional: small log to help debug
+            log('Brouillon local enregistré.', 'info');
+          } catch (e) {
+            console.warn('Local draft save failed', e);
+          }
+        }
+
+        function restoreLocalDraft() {
+          try {
+            const draft = localStorage.getItem('staffTableDraft');
+            if (draft) {
+              const tableEl = document.getElementById('data-table');
+              if (tableEl) {
+                tableEl.outerHTML = draft;
+                log('Brouillon local restauré depuis le navigateur.', 'info');
+              }
+            }
+          } catch (e) {
+            console.warn('Local draft restore failed', e);
+          }
+        }
+
+        function clearLocalDraft() {
+          try {
+            localStorage.removeItem('staffTableDraft');
+            log('Brouillon local supprimé.', 'info');
+          } catch (e) {
+            console.warn('Local draft clear failed', e);
+          }
+        }
+
+        function markEdited() {
+          isDirty = true;
+          isTyping = true;
+          lastEditAt = Date.now();
+          if (typingTimer) clearTimeout(typingTimer);
+          // Consider user idle if no input for 1200 ms
+          typingTimer = setTimeout(() => { isTyping = false; }, 1200);
+        }
+
+        function startPeriodicSync() {
+          if (window._syncTimer) clearInterval(window._syncTimer);
+          window._syncTimer = setInterval(async () => {
+            // Do not sync while user is typing or within 3s after last keystroke
+            if (isTyping) return;
+            if (Date.now() - lastEditAt < 3000) return;
+            // Do not sync if a confirmation modal is open
+            const modal = document.getElementById('confirmation-modal');
+            if (modal && !modal.classList.contains('hidden')) return;
+            // Skip if already syncing or nothing to sync
+            if (isSyncing) return;
+            if (!isDirty) return;
+
+            try {
+              isSyncing = true;
+              log('Auto-sync (5s, idle) vers Supabase…', 'info');
+              await syncToMaster(false);
+            } finally {
+              isSyncing = false;
+            }
+          }, 5000);
+        }
+
+        /*
+         * Fonction de débouncage pour la sauvegarde automatique.
+         * Marque comme modifié et met à jour l'UI, mais ne déclenche pas la sync tant que l'utilisateur tape.
+         */
+        function debouncedSave() {
+            // Do not sync here; just mark and update UI
+            if (saveTimeout) clearTimeout(saveTimeout);
+            isDirty = true;
+            updateStatus('Modifications enregistrées localement. Synchronisation lorsque vous êtes au repos…', 'pending');
+            // Light debounce to clear typing state soon; the periodic sync will handle the push
+            saveTimeout = setTimeout(() => { /* no-op */ }, 1500);
+        }
+
+        // === FONCTIONS DE GESTION DU TABLEAU ===
+        function loadTableData(data) {
+            if (!data) {
+                log('Structure de données invalide', 'error');
+                return false;
+            }
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
+
+            data.forEach((rowData, index) => {
+                const row = document.createElement('tr');
+                row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+
+                // Correction: Stocke la clé primaire (No) dans data-key pour le suivi
+                if (rowData[supabaseConfig.primaryKeyColumn]) {
+                    row.dataset.key = rowData[supabaseConfig.primaryKeyColumn];
+                }
+
+                // Correction: Affiche un index visuel séquentiel
+                const numCell = document.createElement('td');
+                numCell.textContent = index + 1; // Affiche 1, 2, 3, etc.
+                numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap';
+                numCell.setAttribute('data-label', 'No');
+                row.appendChild(numCell);
+
+                // Block C: Add selection checkbox and Enter/Esc confirmation for delete
+                const deleteCell = document.createElement('td');
+                deleteCell.className = 'p-0 text-center';
+                deleteCell.setAttribute('data-label', 'Effacer');
+
+                // Selection checkbox to enable multi-select UI later
+                const sel = document.createElement('input');
+                sel.type = 'checkbox';
+                sel.className = 'm-1 align-middle';
+                sel.addEventListener('change', () => {
+                    row.classList.toggle('selected-row', sel.checked);
+                });
+
+            // Trash button with immediate delete (no confirmation)
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'text-red-500 hover:text-red-700 font-bold p-2 transition-colors';
+            deleteButton.innerHTML = '🗑️';
+            deleteButton.onclick = (e) => {
+                e.stopPropagation();
+                // Suppression immédiate (aucune confirmation) pour une seule ligne via l'icône poubelle
+                deleteRows([row]);
+            };
+
+                // Layout both controls horizontally
+                const wrap = document.createElement('div');
+                wrap.className = 'flex items-center justify-center gap-1';
+                wrap.appendChild(sel);
+                wrap.appendChild(deleteButton);
+                deleteCell.appendChild(wrap);
+                row.appendChild(deleteCell);
+
+                headers.forEach(header => {
+                    const cell = document.createElement('td');
+                    cell.textContent = rowData[header] || '';
+                    cell.contentEditable = true;
+                    cell.className = 'py-2 px-2 md:px-4 editable-cell';
+                    cell.setAttribute('data-label', header);
+                    cell.oninput = () => {
+                        saveStateToHistory();
+                        saveLocalDraft();
+                        markEdited();
+                        debouncedSave();
+                    };
+                    row.appendChild(cell);
+                });
+                tbody.appendChild(row);
+            });
+            log('Données du tableau chargées.', 'success');
+            // Après le chargement de la table, met à jour le hachage et les données locales
+            appState.localData = collectTableData();
+            appState.dataHash = generateDataHash(appState.localData);
+            return true;
+        }
+
+        async function addRow() {
+            const tbody = document.getElementById('table-body');
+            const newRow = document.createElement('tr');
+            newRow.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+
+            // Affiche un index visuel pour la nouvelle ligne
+            const numCell = document.createElement('td');
+            numCell.textContent = tbody.children.length + 1;
+            numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap';
+            numCell.setAttribute('data-label', 'No');
+            newRow.appendChild(numCell);
+
+            const deleteCell = document.createElement('td');
+            deleteCell.className = 'p-0 text-center';
+            deleteCell.setAttribute('data-label', 'Effacer');
+
+            // Sélecteur pour la multi‑sélection
+            const sel = document.createElement('input');
+            sel.type = 'checkbox';
+            sel.className = 'm-1 align-middle';
+            sel.addEventListener('change', () => {
+                newRow.classList.toggle('selected-row', sel.checked);
+            });
+
+            // Bouton poubelle avec suppression immédiate (aucune confirmation)
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'text-red-500 hover:text-red-700 font-bold p-2 transition-colors';
+            deleteButton.innerHTML = '🗑️';
+            deleteButton.onclick = (e) => {
+                e.stopPropagation();
+                // Suppression immédiate (aucune confirmation) pour une seule ligne via l'icône poubelle
+                deleteRows([newRow]);
+            };
+
+            // Mise en page horizontale
+            const wrap = document.createElement('div');
+            wrap.className = 'flex items-center justify-center gap-1';
+            wrap.appendChild(sel);
+            wrap.appendChild(deleteButton);
+            deleteCell.appendChild(wrap);
+            newRow.appendChild(deleteCell);
+
+            // Ajoute la Date de saisie avec la date actuelle
+            const dateCell = document.createElement('td');
+            dateCell.textContent = getFormattedDate();
+            dateCell.contentEditable = true;
+            dateCell.className = 'py-2 px-2 md:px-4 editable-cell';
+            dateCell.setAttribute('data-label', 'Date de saisie');
+            dateCell.oninput = () => {
+                saveStateToHistory();
+                saveLocalDraft();
+                markEdited();
+                debouncedSave();
+            };
+            newRow.appendChild(dateCell);
+
+            // Ajoute le reste des cellules
+            const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(3).map(th => th.textContent);
+            headers.forEach(header => {
+                const cell = document.createElement('td');
+                cell.textContent = '';
+                cell.contentEditable = true;
+                cell.className = 'py-2 px-2 md:px-4 editable-cell';
+                cell.setAttribute('data-label', header);
+                cell.oninput = () => {
+                    saveStateToHistory();
+                    saveLocalDraft();
+                    markEdited();
+                    debouncedSave();
+                };
+                newRow.appendChild(cell);
+            });
+            tbody.appendChild(newRow);
+
+            markEdited();
+            debouncedSave();
+            log('Nouvelle ligne ajoutée (brouillon local). La synchronisation se fera au repos.', 'info');
+        }
+
+        async function deleteRow(rowEl) {
+            const primaryKeyValue = rowEl.dataset.key;
+            if (primaryKeyValue) {
+                try {
+                    const { error } = await supabase
+                        .from(supabaseConfig.tableName)
+                        .delete()
+                        .eq(supabaseConfig.primaryKeyColumn, primaryKeyValue);
+                    if (error) throw error;
+                    log(`Ligne avec ${supabaseConfig.primaryKeyColumn}=${primaryKeyValue} supprimée de Supabase.`, 'success');
+                    // Re-fetch les données pour mettre à jour les numéros visuels après suppression
+                    await pullFromMaster();
+                } catch (error) {
+                    log('Erreur lors de la suppression de la ligne : ' + error.message, 'error');
+                }
+            } else {
+                rowEl.remove();
+                log('Ligne locale (non sauvegardée) supprimée.', 'info');
+            }
+            saveStateToHistory();
+            saveLocalDraft();
+            markEdited();
+        }
+
+        // === SYNCHRONISATION SUPABASE ===
+        async function fetchInitialData() {
+            log('Chargement des données (full fetch)...', 'info');
+            updateStatus('Connexion...');
+            try {
+                const { data, error } = await supabase
+                    .from(supabaseConfig.tableName)
+                    .select('*')
+                    .order(supabaseConfig.primaryKeyColumn, { ascending: true });
+                if (error) throw error;
+
+                if (loadTableData(data)) {
+                    updateStatus('Synchronisé', 'success');
+                    updateLastSaveTime();
+                    log('Données chargées.', 'success');
+                    saveStateToHistory();
+                }
+            } catch (error) {
+                log('Erreur lors du chargement des données : ' + error.message, 'error');
+                updateStatus('Erreur de connexion', 'error');
+            }
+        }
+
+
+        async function syncToMaster(isManualSave = false) {
+            // Ne pas synchroniser si une modale de confirmation est ouverte
+            const modalGuard = document.getElementById('confirmation-modal');
+            if (modalGuard && !modalGuard.classList.contains('hidden')) {
+                log('Sync ignorée: modale de confirmation ouverte.', 'info');
+                return;
+            }
+            // Annule la sauvegarde automatique si une sauvegarde manuelle est en cours
+            if (isManualSave && saveTimeout) {
+                clearTimeout(saveTimeout);
+                log('Sauvegarde manuelle, annulation de la sauvegarde automatique.', 'info');
+            }
+
+            const currentTableData = collectTableData();
+            const currentDataHash = generateDataHash(currentTableData);
+
+            if (!isManualSave && currentDataHash === appState.dataHash) {
+                log('Pas de changement de données détecté, annulation de la sauvegarde.', 'info');
+                isDirty = false;
+                updateStatus('Synchronisé', 'success');
+                return;
+            }
+
+            log('Synchronisation des données locales vers Supabase...', 'saving');
+            updateStatus('Sauvegarde en cours...', 'saving');
+            isDirty = false;
+
+            try {
+                const updates = currentTableData.rows.filter(row => row[supabaseConfig.primaryKeyColumn]);
+                const inserts = currentTableData.rows.filter(row => !row[supabaseConfig.primaryKeyColumn]);
+
+                let error = null;
+                if (inserts.length > 0) {
+                    // Les nouvelles lignes sont insérées sans la clé primaire, Supabase la générera
+                    const { error: insertError } = await supabase
+                        .from(supabaseConfig.tableName)
+                        .insert(inserts);
+                    if (insertError) {
+                        error = insertError;
+                    }
+                }
+
+                if (updates.length > 0 && !error) {
+                    const { error: updateError } = await supabase
+                        .from(supabaseConfig.tableName)
+                        .upsert(updates, { onConflict: supabaseConfig.primaryKeyColumn });
+                    if (updateError) {
+                        error = updateError;
+                    }
+                }
+
+                if (error) {
+                    throw error;
+                }
+
+                log('Données sauvegardées avec succès sur Supabase.', 'success');
+                updateStatus('Sauvegardé', 'success');
+                updateLastSaveTime();
+
+                // Re-fetch des données pour gérer les changements côté serveur et mettre à jour le hachage local
+                await fetchInitialData();
+
+            } catch (error) {
+                log('Erreur lors de la synchronisation : ' + error.message, 'error');
+                updateStatus('Erreur de sauvegarde', 'error');
+            }
+        }
+
+        async function pullFromMaster() {
+            log('Récupération des dernières données du serveur...', 'info');
+            await fetchInitialData();
+        }
+
+        function handleRealtimeUpdate(payload) {
+            log('Mise à jour en temps réel reçue.', 'info');
+            if (isDirty) {
+                log('Modifications locales en attente. Ignorer la mise à jour en temps réel.', 'info');
+            } else {
+                log('Pas de changements locaux, récupération de la dernière version du serveur.', 'info');
+                fetchInitialData();
+            }
+        }
+
+        // === Block 8: Selective realtime subscription (INSERT/UPDATE/DELETE) ===
+        function setupRealtimeSubscription() {
+            if (realtimeSubscription) {
+                try { supabase.removeChannel(realtimeSubscription); } catch (e) { /* no-op */ }
+            }
+            realtimeSubscription = supabase
+                .channel('table-changes')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: supabaseConfig.tableName }, handleRealtimeUpdate)
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: supabaseConfig.tableName }, handleRealtimeUpdate)
+                .on('postgres_changes', { event: 'DELETE', schema: 'public', table: supabaseConfig.tableName }, handleRealtimeUpdate)
+                .subscribe(status => {
+                    log('Realtime channel status: ' + status, 'info');
+                });
+            log('Realtime subscription (CRUD only) active.', 'info');
+        }
+
+        function undo() {
+            if (history.length > 1) {
+                history.pop();
+                const prevState = history[history.length - 1];
+                loadTableData(prevState.rows);
+                updateUndoButtonState();
+                log('Annulation de la dernière action.', 'info');
+            }
+        }
+
+        // === LOGIQUE DE MOT DE PASSE ===
+        function checkPassword() {
+            const passwordInput = document.getElementById('password').value;
+            const errorMessage = document.getElementById('error-message');
+            if (passwordInput === APP_CONFIG.password) {
+                log('Authentification réussie.', 'success');
+                appState.isLoggedIn = true;
+                sessionStorage.setItem('isLoggedIn', '1');
+                document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('table-container').classList.remove('hidden');
+                restoreLocalDraft();
+                fetchInitialData();
+                setupRealtimeSubscription();
+                startPeriodicSync();
+            } else {
+                errorMessage.textContent = 'Mot de passe incorrect.';
+                log('Échec de l’authentification.', 'error');
+            }
+        }
+
+        document.getElementById('toggle-password').addEventListener('change', function () {
+            const passwordInput = document.getElementById('password');
+            passwordInput.type = this.checked ? 'text' : 'password';
+        });
+
+        // === LOGIQUE DE LA MODALE ===
+        let confirmAction = null;
+
+        function showConfirmationModal(message, action) {
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('confirmation-modal').classList.remove('hidden');
+            confirmAction = action;
+        }
+
+        document.getElementById('modal-confirm-btn').addEventListener('click', () => {
+            if (confirmAction) {
+                confirmAction();
+            }
+            document.getElementById('confirmation-modal').classList.add('hidden');
+        });
+
+        document.getElementById('modal-cancel-btn').addEventListener('click', () => {
+            document.getElementById('confirmation-modal').classList.add('hidden');
+        });
+
+        // Logique de la boîte de message personnalisée
+        let messageTimeout = null;
+        function showMessage(message, type = 'success') {
+            const msgBox = document.getElementById('message-box');
+            const msgText = document.getElementById('message-text');
+
+            if (messageTimeout) {
+                clearTimeout(messageTimeout);
+            }
+            msgBox.classList.remove('show');
+
+            msgText.textContent = message;
+            msgBox.className = `message-box ${type}`;
+            void msgBox.offsetWidth; // Déclenche un reflow pour la transition
+            msgBox.classList.add('show');
+            msgBox.classList.remove('hidden');
+
+            messageTimeout = setTimeout(() => {
+                msgBox.classList.remove('show');
+                setTimeout(() => {
+                    msgBox.classList.add('hidden');
+                }, 500);
+            }, 3000);
+        }
+
+        // === LOGIQUE D'EXPORTATION ===
+        function downloadExcel() {
+            const table = document.getElementById('data-table');
+            const ws = XLSX.utils.table_to_sheet(table);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Staff Data");
+            XLSX.writeFile(wb, "Tableau_Staff.xlsx");
+            showMessage('Le fichier Excel a été téléchargé avec succès.');
+        }
+
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'pt', 'a4');
+            doc.autoTable({ html: '#data-table' });
+            doc.save('Tableau_Staff.pdf');
+            showMessage('Le fichier PDF a été téléchargé avec succès.');
+        }
+
+        function downloadImage() {
+            const table = document.getElementById('data-table');
+            html2canvas(table).then(canvas => {
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = 'Tableau_Staff.png';
+                link.click();
+                showMessage('Le fichier image a été téléchargé avec succès.');
+            });
+        }
+
+        // === ÉCOUTEURS D'ÉVÉNEMENTS ET INITIALISATION ===
+        // Navigation clavier type tableur (flèches, Tab, Entrée) + respect de la modale de confirmation
+        document.addEventListener('keydown', function (e) {
+            const activeEl = document.activeElement;
+            if (activeEl && activeEl.tagName === 'TD' && activeEl.contentEditable === 'true') {
+                // Si la modale de confirmation est ouverte, ne pas intercepter Entrée/Échap
+                const modal = document.getElementById('confirmation-modal');
+                if (modal && !modal.classList.contains('hidden')) {
+                    return; // laisser la modale gérer Entrée/Escape
+                }
+
+                const row = activeEl.parentElement;
+                const currentIndex = Array.from(row.cells).indexOf(activeEl);
+
+                let nextCell = null;
+
+                if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
+                    nextCell = row.cells[currentIndex + 1];
+                    if (!nextCell) {
+                        const nextRow = row.nextElementSibling;
+                        if (nextRow) {
+                            nextCell = nextRow.cells[2];
+                        }
+                    }
+                } else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
+                    nextCell = row.cells[currentIndex - 1];
+                    if (!nextCell || currentIndex === 2) {
+                        const prevRow = row.previousElementSibling;
+                        if (prevRow) {
+                            nextCell = prevRow.cells[prevRow.cells.length - 1];
+                        }
+                    }
+                } else if (e.key === 'Enter') {
+                    // Type tableur: Entrée va à la cellule en dessous (même colonne)
+                    e.preventDefault();
+                    const nextRow = row.nextElementSibling;
+                    if (nextRow) {
+                        nextCell = nextRow.cells[currentIndex];
+                        if (nextCell) nextCell.focus();
+                    } else {
+                        // Si pas de prochaine ligne, en crée une et focus même colonne
+                        addRow();
+                        setTimeout(() => {
+                            const newRow = document.querySelector('#table-body tr:last-child');
+                            if (newRow && newRow.cells.length > currentIndex) {
+                                newRow.cells[currentIndex].focus();
+                            }
+                        }, 0);
+                    }
+                    return; // focus déjà géré ou programmé
+                } else if (e.key === 'ArrowDown') {
+                    const nextRow = row.nextElementSibling;
+                    if (nextRow) {
+                        nextCell = nextRow.cells[currentIndex];
+                    } else {
+                        addRow();
+                        setTimeout(() => {
+                            const newRow = document.querySelector('#table-body tr:last-child');
+                            if (newRow && newRow.cells.length > currentIndex) {
+                                newRow.cells[currentIndex].focus();
+                            }
+                        }, 0);
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    const prevRow = row.previousElementSibling;
+                    if (prevRow) {
+                        nextCell = prevRow.cells[currentIndex];
+                    }
+                }
+
+                if (nextCell) {
+                    e.preventDefault();
+                    nextCell.focus();
+                }
+            }
+        });
+
+        // === Block 5: Power-user shortcuts (duplicate row, delete row) ===
+        document.addEventListener('keydown', function (e) {
+            const activeEl = document.activeElement;
+            const inCell = activeEl && activeEl.tagName === 'TD' && activeEl.contentEditable === 'true';
+
+            // Duplicate row: Ctrl/Cmd + D
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D') && inCell) {
+                e.preventDefault();
+                const row = activeEl.closest('tr');
+                if (row) {
+                    const clone = row.cloneNode(true);
+                    // ensure this is treated as a new row (no primary key copied)
+                    delete clone.dataset.key;
+                    // clear number cell (first cell) — will be recomputed visually on reload
+                    if (clone.cells[0]) clone.cells[0].textContent = document.querySelectorAll('#table-body tr').length + 1;
+                    // rebind input handlers on editable cells
+                    Array.from(clone.cells).forEach((c, idx) => {
+                        if (idx <= 1) return; // skip No + delete button
+                        c.addEventListener('input', () => {
+                            saveStateToHistory();
+                            saveLocalDraft();
+                            markEdited();
+                            debouncedSave();
+                        });
+                    });
+                    row.after(clone);
+                    saveStateToHistory();
+                    saveLocalDraft();
+                    markEdited();
+                    debouncedSave();
+                }
+            }
+
+            // Delete selected rows (or current) with Enter/Esc confirm — Block H
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'Backspace' || e.key === 'Delete') && inCell) {
+                e.preventDefault();
+                const selected = getSelectedRows();
+                if (selected.length > 0) {
+                    promptKeyConfirm(`Appuyez sur Entrée pour supprimer ${selected.length} ligne(s), Échap pour annuler.`, () => deleteRows(selected));
+                } else {
+                    const row = activeEl.closest('tr');
+                    if (row) {
+                        promptKeyConfirm('Appuyez sur Entrée pour supprimer cette ligne, Échap pour annuler.', () => deleteRows([row]));
+                    }
+                }
+            }
+        });
+
+        // === Block 5: Paste CSV/TSV blocks into the table ===
+        document.getElementById('table-body').addEventListener('paste', function (e) {
+            const activeEl = document.activeElement;
+            if (!(activeEl && activeEl.tagName === 'TD' && activeEl.contentEditable === 'true')) return;
+
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            if (!text || (text.indexOf('\t') === -1 && text.indexOf('\n') === -1)) return;
+
+            e.preventDefault();
+            const rows = text.split(/\r?\n/).filter(r => r.length > 0).map(r => r.split('\t'));
+            const startCell = activeEl;
+            const startRow = startCell.closest('tr');
+            const startIndex = Array.from(startRow.cells).indexOf(startCell);
+
+            let r = startRow;
+            rows.forEach((cols, ridx) => {
+                if (ridx > 0) {
+                    r = r.nextElementSibling;
+                    if (!r) {
+                        // create a new row similar to addRow(), but inline
+                        const tbody = document.getElementById('table-body');
+                        r = document.createElement('tr');
+                        r.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+
+                        const numCell = document.createElement('td');
+                        numCell.textContent = tbody.children.length + 1;
+                        numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap';
+                        numCell.setAttribute('data-label', 'No');
+                        r.appendChild(numCell);
+
+                        const deleteCell = document.createElement('td');
+                        deleteCell.className = 'p-0 text-center';
+                        deleteCell.setAttribute('data-label', 'Effacer');
+
+                        const sel = document.createElement('input');
+                        sel.type = 'checkbox';
+                        sel.className = 'm-1 align-middle';
+                        sel.addEventListener('change', () => {
+                            r.classList.toggle('selected-row', sel.checked);
+                        });
+
+                        const deleteButton = document.createElement('button');
+                        deleteButton.className = 'text-red-500 hover:text-red-700 font-bold p-2 transition-colors';
+                        deleteButton.innerHTML = '🗑️';
+                        deleteButton.onclick = (ev) => {
+                            ev.stopPropagation();
+                            // Suppression immédiate (aucune confirmation) pour une seule ligne via l'icône poubelle
+                            deleteRows([r]);
+                        };
+
+                        const wrap = document.createElement('div');
+                        wrap.className = 'flex items-center justify-center gap-1';
+                        wrap.appendChild(sel);
+                        wrap.appendChild(deleteButton);
+                        deleteCell.appendChild(wrap);
+                        r.appendChild(deleteCell);
+
+                        const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
+                        headers.forEach(header => {
+                            const c = document.createElement('td');
+                            c.textContent = '';
+                            c.contentEditable = true;
+                            c.className = 'py-2 px-2 md:px-4 editable-cell';
+                            c.setAttribute('data-label', header);
+                            c.addEventListener('input', () => { saveStateToHistory(); saveLocalDraft(); markEdited(); debouncedSave(); });
+                            r.appendChild(c);
+                        });
+
+                        tbody.appendChild(r);
+                    }
+                }
+
+                cols.forEach((val, cidx) => {
+                    const cell = r.cells[startIndex + cidx];
+                    if (cell && cell.contentEditable === 'true') {
+                        cell.textContent = val;
+                    }
+                });
+            });
+
+            saveStateToHistory();
+            saveLocalDraft();
+            markEdited();
+            debouncedSave();
+        });
+
+        // === Block 5: Date picker on double-click for "Date de saisie" ===
+        let dateInputOverlay = null;
+        document.getElementById('table-body').addEventListener('dblclick', function (e) {
+            const cell = e.target.closest('td');
+            if (!cell) return;
+            const label = cell.getAttribute('data-label') || '';
+            if (label.toLowerCase().includes('date de saisie')) {
+                if (!dateInputOverlay) {
+                    dateInputOverlay = document.createElement('input');
+                    dateInputOverlay.type = 'date';
+                    dateInputOverlay.className = 'border rounded px-2 py-1';
+                    dateInputOverlay.style.position = 'fixed';
+                    dateInputOverlay.style.zIndex = '1000';
+                    document.body.appendChild(dateInputOverlay);
+
+                    dateInputOverlay.addEventListener('change', () => {
+                        const val = dateInputOverlay.value;
+                        if (val) {
+                            const [y,m,d] = val.split('-');
+                            cell.textContent = `${d}/${m}/${y.slice(-2)}`;
+                            saveStateToHistory();
+                            saveLocalDraft();
+                            markEdited();
+                            debouncedSave();
+                        }
+                        dateInputOverlay.style.display = 'none';
+                    });
+                    dateInputOverlay.addEventListener('blur', () => {
+                        dateInputOverlay.style.display = 'none';
+                    });
+                }
+                const rect = cell.getBoundingClientRect();
+                dateInputOverlay.style.left = `${rect.left + window.scrollX}px`;
+                dateInputOverlay.style.top = `${rect.top + window.scrollY}px`;
+                dateInputOverlay.style.display = 'block';
+                dateInputOverlay.focus();
+            }
+        });
+
+        // Écouteur d'événements pour la touche 'Entrée' sur le champ de mot de passe
+        document.getElementById('password').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Empêche l'action par défaut (soumission de formulaire)
+                checkPassword();
+            }
+        });
+
+        // Écouteur d'événements pour sélectionner tout le texte dans une cellule au focus
+        document.addEventListener('focusin', function (e) {
+            if (e.target && e.target.tagName === 'TD' && e.target.contentEditable === 'true') {
+                const range = document.createRange();
+                range.selectNodeContents(e.target);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+        });
+
+        // === Block G: Select-All checkbox + Bulk Delete wiring ===
+        // Select-All checkbox logic
+        document.addEventListener('change', function (e) {
+            if (e.target && e.target.id === 'select-all') {
+                const checked = e.target.checked;
+                document.querySelectorAll('#table-body tr').forEach(tr => {
+                    const cb = tr.querySelector('td:nth-child(2) input[type="checkbox"]');
+                    if (cb) {
+                        cb.checked = checked;
+                        tr.classList.toggle('selected-row', checked);
+                    }
+                });
+            }
+        });
+
+        // Bulk delete button click
+        const bulkBtn = document.getElementById('bulk-delete');
+        if (bulkBtn) {
+            bulkBtn.addEventListener('click', () => {
+                const rows = getSelectedRows();
+                if (rows.length === 0) {
+                    showMessage('Aucune ligne sélectionnée.', 'info');
+                    return;
+                }
+                promptKeyConfirm(`Appuyez sur Entrée pour supprimer ${rows.length} ligne(s), Échap pour annuler.`, () => deleteRows(rows));
+            });
+        }
+
+        function saveManually() {
+            syncToMaster(true);
+        }
+
+        window.checkPassword = checkPassword;
+        window.pullFromMaster = pullFromMaster;
+        window.syncToMaster = syncToMaster;
+        window.addRow = addRow;
+        window.saveManually = saveManually;
+        window.undo = undo;
+        window.downloadExcel = downloadExcel;
+        window.downloadPDF = downloadPDF;
+        window.downloadImage = downloadImage;
+
+        window.addEventListener('load', function () {
+            const already = sessionStorage.getItem('isLoggedIn') === '1';
+            if (already) {
+                document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('table-container').classList.remove('hidden');
+                restoreLocalDraft();
+                fetchInitialData();
+                setupRealtimeSubscription();
+                startPeriodicSync();
+            } else {
+                document.getElementById('login-container').classList.remove('hidden');
+            }
+            setInterval(updateClock, 1000);
+        });
+</script>
+</body>
+</html>
