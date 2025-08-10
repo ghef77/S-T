@@ -126,7 +126,39 @@
         let realtimeSubscription = null;
 
         const appState = { isLoggedIn: false, masterSource: 'supabase', dataHash: null, localData: null, serverColumns: null };
-        let isDirty=false, saveTimeout=null, history=[], historyDebounceTimeout=null, isTyping=false, lastEditAt=0, typingTimer=null, isSyncing=false;
+let isDirty=false, saveTimeout=null, history=[], historyDebounceTimeout=null, isTyping=false, lastEditAt=0, typingTimer=null, isSyncing=false;
+let lastFocusInfo = null; // remembers the last edited cell and caret offset
+let lastCellPos = null; // simple row/cell index memory
+function captureSimplePos(){
+  const active = document.activeElement;
+  if (!(active && active.tagName === 'TD' && active.isContentEditable)) return;
+  const rowEl = active.closest('tr');
+  const tbody = document.getElementById('table-body');
+  const rowIndex = Array.from(tbody.querySelectorAll('tr')).indexOf(rowEl);
+  const cellIndex = Array.from(rowEl.cells).indexOf(active);
+  if (rowIndex >= 0 && cellIndex >= 0) lastCellPos = { rowIndex, cellIndex };
+  if (lastCellPos) { log(`captureSimplePos -> row=${lastCellPos.rowIndex}, cell=${lastCellPos.cellIndex}`); }
+}
+function focusCellByPos(pos){
+  try{
+    if (!pos) return false;
+    const tbody = document.getElementById('table-body');
+    const row = tbody.querySelectorAll('tr')[pos.rowIndex];
+    if (!row) return false;
+    const cell = row.cells[pos.cellIndex];
+    if (!cell) return false;
+    log(`focusCellByPos -> trying row=${pos.rowIndex}, cell=${pos.cellIndex}`);
+    setCaretAt(cell, null); // focus + place caret at end
+    try {
+      cell.dispatchEvent(new MouseEvent('pointerdown', { bubbles:true }));
+      cell.dispatchEvent(new MouseEvent('mousedown', { bubbles:true }));
+      cell.dispatchEvent(new MouseEvent('mouseup', { bubbles:true }));
+      cell.click();
+    } catch(_) {}
+    log(`focusCellByPos -> active=${document.activeElement===cell}`);
+    return document.activeElement === cell;
+  } catch(_) { return false; }
+}
         window.addEventListener('beforeunload', function (e) { if (isDirty) { e.preventDefault(); e.returnValue = 'Des modifications non sauvegardées seront perdues si vous quittez.'; } });
 
         function log(message, type = 'info') { console.log(`[${new Date().toLocaleTimeString()}] ${type.toUpperCase()}: ${message}`); }
@@ -135,6 +167,103 @@
         function updateLastSaveTime(){ document.getElementById('last-save-time').textContent = new Date().toLocaleTimeString(); }
         function updateClock(){ document.getElementById('current-time').textContent = new Date().toLocaleTimeString(); }
         function updateUndoButtonState(){ document.getElementById('undo-button').disabled = history.length <= 1; }
+
+        function getCaretOffsetWithin(el){
+          try {
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return null;
+            const range = sel.getRangeAt(0);
+            if (!el.contains(range.startContainer)) return null;
+            // Create a temporary range to compute character offset from start of el
+            const preRange = range.cloneRange();
+            preRange.selectNodeContents(el);
+            preRange.setEnd(range.startContainer, range.startOffset);
+            return preRange.toString().length;
+          } catch(_) { return null; }
+        }
+
+        function setCaretAt(el, offset){
+          try {
+            el.focus();
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            const range = document.createRange();
+            // Walk text nodes to place the caret at the desired char offset
+            let remaining = (typeof offset === 'number' && offset >= 0) ? offset : null;
+            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+            let node = walker.nextNode();
+            if (remaining === null) {
+              // fallback: place at end
+              let lastNode = null;
+              while (node) { lastNode = node; node = walker.nextNode(); }
+              if (lastNode) {
+                range.setStart(lastNode, lastNode.textContent.length);
+                range.collapse(true);
+                selection.addRange(range);
+              }
+              return;
+            }
+            while (node) {
+              const len = node.textContent.length;
+              if (remaining <= len) {
+                range.setStart(node, remaining);
+                range.collapse(true);
+                selection.addRange(range);
+                return;
+              }
+              remaining -= len;
+              node = walker.nextNode();
+            }
+            // if we ran out of nodes, place at end
+            const endNode = el.lastChild;
+            if (endNode && endNode.nodeType === Node.TEXT_NODE) {
+              range.setStart(endNode, endNode.textContent.length);
+            } else {
+              range.selectNodeContents(el);
+              range.collapse(false);
+            }
+            selection.addRange(range);
+          } catch(_) { /* no-op */ }
+        }
+
+        function captureFocusInfo(){
+          const active = document.activeElement;
+          if (!(active && active.tagName === 'TD' && active.isContentEditable)) return;
+          const row = active.closest('tr');
+          const tbody = document.getElementById('table-body');
+          const rowIndex = Array.from(tbody.querySelectorAll('tr')).indexOf(row);
+          const colLabel = active.getAttribute('data-label') || '';
+          const rowKey = row ? row.dataset.key || null : null;
+          const caret = getCaretOffsetWithin(active);
+          lastFocusInfo = { rowKey, rowIndex, colLabel, caret };
+        }
+
+        function focusCellFromInfo(info){
+          if (!info) return false;
+          const tbody = document.getElementById('table-body');
+          let targetRow = null;
+          if (info.rowKey) {
+            targetRow = Array.from(tbody.querySelectorAll('tr')).find(tr => tr.dataset.key === String(info.rowKey));
+          }
+          if (!targetRow) {
+            const rows = tbody.querySelectorAll('tr');
+            targetRow = rows[info.rowIndex] || null;
+          }
+          if (!targetRow) return false;
+          const cells = Array.from(targetRow.querySelectorAll('td'));
+          // skip first two fixed cells (No, Effacer)
+          const editableCells = cells.slice(2);
+          const cell = editableCells.find(td => (td.getAttribute('data-label')||'') === info.colLabel) || null;
+          if (!cell) return false;
+          // Ensure focus and caret placement
+          try { cell.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch(_) {}
+          let placed=false;
+          try { setCaretAt(cell, null); placed=true; } catch(_) {}
+          if (!placed) { setTimeout(() => { try { setCaretAt(cell, null); } catch(_) {} }, 50); }
+          // Fallback: if selection API failed, at least focus the cell
+          if (document.activeElement !== cell) { try { cell.focus(); } catch(_) {} }
+          return true;
+        }
 
         // ===== Helpers & constants (DRY) =====
         const BOLD_HEADERS = ['nom_prénom','pec finale','diagnostic_initial'];
@@ -181,7 +310,22 @@
             cell.style.fontWeight='bold';
             cell.style.color='#000';
           }
-          cell.oninput=()=>{ saveStateToHistory(); saveLocalDraft(); markEdited(); };
+          cell.setAttribute('tabindex','0');
+          cell.oninput=()=>{
+            saveStateToHistory();
+            saveLocalDraft();
+            markEdited();
+            // keep caret/position updated while typing
+            captureFocusInfo();
+            captureSimplePos();
+          };
+          cell.addEventListener('keyup', (e) => {
+            // update caret after navigation keys
+            if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown'].includes(e.key)) {
+              captureFocusInfo();
+              captureSimplePos();
+            }
+          });
           return cell;
         }
 
@@ -291,6 +435,8 @@
           log('Données du tableau chargées.','success');
           appState.localData=collectTableData();
           appState.dataHash=generateDataHash(appState.localData);
+          document.dispatchEvent(new CustomEvent('table:reloaded'));
+          log('table:reloaded dispatched');
           return true;
         }
 
@@ -330,10 +476,81 @@
             } catch(e){ log('Erreur lors du chargement des données : '+e.message,'error'); updateStatus('Erreur de connexion','error'); }
         }
 
-        async function syncToMaster(isManualSave=false){ const modal=document.getElementById('confirmation-modal'); if(modal && !modal.classList.contains('hidden')){ log('Sync ignorée: modale ouverte.'); return; } if(isManualSave && saveTimeout){ clearTimeout(saveTimeout); } const current=collectTableData(); const currentHash=generateDataHash(current); let rowsForSync=current.rows.map(row=>{ if(!appState.serverColumns) return row; const allowed=new Set([supabaseConfig.primaryKeyColumn, ...appState.serverColumns]); const filtered={}; for(const k in row){ if(allowed.has(k)) filtered[k]=row[k]; } return filtered; }); if(!isManualSave && currentHash===appState.dataHash){ log('Pas de changement détecté.'); isDirty=false; updateStatus('Synchronisé','success'); return; } log('Synchronisation des données vers Supabase...'); updateStatus('Sauvegarde en cours...','saving'); isDirty=false; try{ const updates=rowsForSync.filter(r=>r[supabaseConfig.primaryKeyColumn]); const inserts=rowsForSync.filter(r=>!r[supabaseConfig.primaryKeyColumn]); let error=null; if(inserts.length>0){ const { error: insertError } = await supabase.from(supabaseConfig.tableName).insert(inserts); if(insertError) error=insertError; } if(updates.length>0 && !error){ const { error: updateError } = await supabase.from(supabaseConfig.tableName).upsert(updates, { onConflict: supabaseConfig.primaryKeyColumn }); if(updateError) error=updateError; } if(error) throw error; updateStatus('Sauvegardé','success'); updateLastSaveTime(); await fetchInitialData(); } catch(e){ log('Erreur de sauvegarde : '+e.message,'error'); updateStatus('Erreur de sauvegarde','error'); } }
+        async function syncToMaster(isManualSave=false){
+          const modal=document.getElementById('confirmation-modal');
+          if(modal && !modal.classList.contains('hidden')){ log('Sync ignorée: modale ouverte.'); return; }
+          // Remember which cell and caret position were active before saving
+          captureFocusInfo();
+          captureSimplePos();
+          if(isManualSave && saveTimeout){ clearTimeout(saveTimeout); }
+          const current=collectTableData();
+          const currentHash=generateDataHash(current);
+          let rowsForSync=current.rows.map(row=>{ if(!appState.serverColumns) return row; const allowed=new Set([supabaseConfig.primaryKeyColumn, ...appState.serverColumns]); const filtered={}; for(const k in row){ if(allowed.has(k)) filtered[k]=row[k]; } return filtered; });
+          if(!isManualSave && currentHash===appState.dataHash){ log('Pas de changement détecté.'); isDirty=false; updateStatus('Synchronisé','success'); return; }
+          log('Synchronisation des données vers Supabase...');
+          updateStatus('Sauvegarde en cours...','saving');
+          isDirty=false;
+          try{
+            const updates=rowsForSync.filter(r=>r[supabaseConfig.primaryKeyColumn]);
+            const inserts=rowsForSync.filter(r=>!r[supabaseConfig.primaryKeyColumn]);
+            let error=null;
+            if(inserts.length>0){
+              const { error: insertError } = await supabase.from(supabaseConfig.tableName).insert(inserts);
+              if(insertError) error=insertError;
+            }
+            if(updates.length>0 && !error){
+              const { error: updateError } = await supabase.from(supabaseConfig.tableName).upsert(updates, { onConflict: supabaseConfig.primaryKeyColumn });
+              if(updateError) error=updateError;
+            }
+            if(error) throw error;
+            updateStatus('Sauvegardé','success');
+            updateLastSaveTime();
+            log(`syncToMaster -> set restore listener (lastCellPos=${JSON.stringify(lastCellPos)}, lastFocusInfo.col=${lastFocusInfo?lastFocusInfo.colLabel:''})`);
+            await new Promise((resolve) => {
+              const restoreOnce = () => {
+                log('syncToMaster -> table:reloaded caught; attempting focus restore');
+                document.removeEventListener('table:reloaded', restoreOnce);
+                // Try simple row/cell index first ("as simple as this")
+                if (!focusCellByPos(lastCellPos)) {
+                  // Fallback to the richer label+caret based restore
+                  if (!focusCellFromInfo(lastFocusInfo)) {
+                    setTimeout(() => { if (!focusCellByPos(lastCellPos) && !focusCellFromInfo(lastFocusInfo)) { setTimeout(() => { focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo); }, 250); } }, 50);
+                  }
+                }
+                // Final delayed retry in case layout settles after a tick
+                setTimeout(() => { focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo); }, 300);
+                resolve();
+              };
+              document.addEventListener('table:reloaded', restoreOnce, { once: true });
+              fetchInitialData();
+            });
+          } catch(e){
+            log('Erreur de sauvegarde : '+e.message,'error');
+            updateStatus('Erreur de sauvegarde','error');
+          }
+        }
 
         async function pullFromMaster(){ log('Récupération des dernières données...'); await fetchInitialData(); }
-        function handleRealtimeUpdate(){ log('Mise à jour en temps réel reçue.'); if(isDirty){ log('Modifs locales en attente, on ignore.'); } else { fetchInitialData(); } }
+        function handleRealtimeUpdate(){
+          log('Mise à jour en temps réel reçue.');
+          if (isDirty) { log('Modifs locales en attente, on ignore.'); return; }
+          // Try to preserve focus across realtime-driven reload as well
+          captureFocusInfo();
+          captureSimplePos();
+          const onReload = () => {
+            log('realtime -> table:reloaded caught; attempting focus restore');
+            document.removeEventListener('table:reloaded', onReload);
+            focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo);
+          };
+          document.addEventListener('table:reloaded', onReload, { once: true });
+          fetchInitialData();
+        }
+        // Also capture simple cell position on focusin globally
+        document.addEventListener('focusin', (e) => {
+          if (e.target && e.target.tagName === 'TD' && e.target.contentEditable === 'true') {
+            captureSimplePos();
+          }
+        });
         function setupRealtimeSubscription(){ if(realtimeSubscription){ try{ supabase.removeChannel(realtimeSubscription);}catch(e){} } realtimeSubscription = supabase.channel('table-changes').on('postgres_changes', { event: 'INSERT', schema: 'public', table: supabaseConfig.tableName }, handleRealtimeUpdate).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: supabaseConfig.tableName }, handleRealtimeUpdate).on('postgres_changes', { event: 'DELETE', schema: 'public', table: supabaseConfig.tableName }, handleRealtimeUpdate).subscribe(status => log('Realtime status: '+status)); }
         function undo(){ if(history.length>1){ history.pop(); const prev=history[history.length-1]; loadTableData(prev.rows); updateUndoButtonState(); log('Annulation effectuée.'); } }
 
@@ -445,7 +662,6 @@
           document.addEventListener('keydown', handleKey, true);
         }
 
-        document.addEventListener('focusin', function(e){ if(e.target && e.target.tagName==='TD' && e.target.contentEditable==='true'){ const range=document.createRange(); range.selectNodeContents(e.target); const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range); } });
         document.addEventListener('change', function(e){ if(e.target && e.target.id==='select-all'){ const checked=e.target.checked; document.querySelectorAll('#table-body tr').forEach(tr=>{ const cb=tr.querySelector('td:nth-child(2) input[type="checkbox"]'); if(cb){ cb.checked=checked; tr.classList.toggle('selected-row', checked); } }); } });
 
         function saveManually(){ syncToMaster(true); }
