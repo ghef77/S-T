@@ -199,7 +199,9 @@ const AUTOSAVE_DELAY_MS = 3000; // 3 seconds after last edit when idle
 let autosaveTicker = null;
 let lastShownCountdown = null; // remember last seconds value we displayed
 let lastFocusInfo = null; // remembers the last edited cell and caret offset
-let lastCellPos = null; // simple row/cell index memory
+let lastCellPos = null;   // simple row/cell index memory
+try { lastFocusInfo = JSON.parse(localStorage.getItem('lastFocusInfo') || 'null'); } catch(_) { lastFocusInfo = null; }
+try { lastCellPos   = JSON.parse(localStorage.getItem('lastCellPos')   || 'null'); } catch(_) { lastCellPos   = null; }
 let zoomFactor = parseFloat(localStorage.getItem('zoomFactor') || '1');
 function updateZoomDisplay(){
   const btn = document.getElementById('zoom-display');
@@ -368,6 +370,7 @@ function captureSimplePos(){
   const cellIndex = Array.from(rowEl.cells).indexOf(active);
   if (rowIndex >= 0 && cellIndex >= 0) lastCellPos = { rowIndex, cellIndex };
   if (lastCellPos) { log(`captureSimplePos -> row=${lastCellPos.rowIndex}, cell=${lastCellPos.cellIndex}`); }
+  try { localStorage.setItem('lastCellPos', JSON.stringify(lastCellPos)); } catch(_) {}
 }
 // Mobile detection + focus helper (ensures caret inside the cell on phones/tablets)
 function isMobile() {
@@ -535,6 +538,7 @@ function focusCellByPos(pos){
           const rowKey = row ? row.dataset.key || null : null;
           const caret = getCaretOffsetWithin(active);
           lastFocusInfo = { rowKey, rowIndex, colLabel, caret };
+          try { localStorage.setItem('lastFocusInfo', JSON.stringify(lastFocusInfo)); } catch(_) {}
         }
 
 function focusCellFromInfo(info){
@@ -1396,7 +1400,26 @@ if(picker){
 }
 updatePaintModeButton();
 maybeShowFirstUseHint();
-const already=sessionStorage.getItem('isLoggedIn')==='1'; if(already){ document.getElementById('login-container').classList.add('hidden'); document.getElementById('table-container').classList.remove('hidden'); restoreLocalDraft(); ensureDDNHeader(); fetchInitialData(); setupRealtimeSubscription(); startPeriodicSync(); scheduleAutosaveCountdown(); setTimeout(() => { if (lastCellPos) { focusCellByPos(lastCellPos); } else if (lastFocusInfo) { focusCellFromInfo(lastFocusInfo); } }, 400); } else { document.getElementById('login-container').classList.remove('hidden'); } setInterval(updateClock,1000); });
+const already=sessionStorage.getItem('isLoggedIn')==='1';
+if(already){
+  document.getElementById('login-container').classList.add('hidden');
+  document.getElementById('table-container').classList.remove('hidden');
+  restoreLocalDraft(); ensureDDNHeader();
+  const restoreAfterReload = () => {
+    document.removeEventListener('table:reloaded', restoreAfterReload);
+    setTimeout(() => {
+      if (!focusCellFromInfo(lastFocusInfo)) { focusCellByPos(lastCellPos); }
+      if (isMobile()) {
+        setTimeout(() => { if (!focusCellFromInfo(lastFocusInfo)) { focusCellByPos(lastCellPos); } }, 350);
+      }
+    }, 50);
+  };
+  document.addEventListener('table:reloaded', restoreAfterReload, { once: true });
+  fetchInitialData(); setupRealtimeSubscription(); startPeriodicSync(); scheduleAutosaveCountdown();
+} else {
+  document.getElementById('login-container').classList.remove('hidden');
+}
+setInterval(updateClock,1000); });
     </script>
 </body>
 </html>
