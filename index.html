@@ -1395,7 +1395,7 @@ document.addEventListener('keydown', function(e){
 
         function saveManually(){ syncToMaster(true); }
 window.checkPassword=checkPassword; window.syncToMaster=syncToMaster; window.addRow=addRow; window.saveManually=saveManually; window.undo=undo; window.downloadExcel=downloadExcel; window.downloadPDF=downloadPDF; window.downloadImage=downloadImage; window.importExcelFromFile=importExcelFromFile; window.zoomIn=zoomIn; window.zoomOut=zoomOut; window.zoomReset=zoomReset; window.clearAllRowColors=clearAllRowColors; window.cyclePaintMode=cyclePaintMode;
-window.addEventListener('load', function(){ applyZoom();
+window.addEventListener('load', function(){ if (isMobile() && !localStorage.getItem('zoomFactor')) { zoomFactor = 0.6; localStorage.setItem('zoomFactor','0.6'); } applyZoom();
 const picker = document.getElementById('row-color-picker');
 if(picker){
   try { picker.value = currentRowColor; } catch(_) {}
