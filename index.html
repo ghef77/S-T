@@ -1165,6 +1165,12 @@ function restoreLocalDraft(){
                 } catch(_) {}
                 // Final delayed retry in case layout settles after a tick
                 setTimeout(() => { focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo); }, 300);
+                if (isMobile()) {
+                  setTimeout(() => {
+                    // Prefer rich restore (label+caret) on mobile; fallback to simple position
+                    if (!focusCellFromInfo(lastFocusInfo)) { focusCellByPos(lastCellPos); }
+                  }, 650);
+                }
                 resolve();
               };
               document.addEventListener('table:reloaded', restoreOnce, { once: true });
