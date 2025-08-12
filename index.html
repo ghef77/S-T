@@ -14,7 +14,21 @@
         #data-table tfoot { position: sticky; bottom: 0; z-index: 10; background-color: white; border-top: 2px solid #ddd; }
         .sync-pending-animation { animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%{opacity:1;} 50%{opacity:.5;} 100%{opacity:1;} }
-        .message-box { position: fixed; top: 2rem; left: 50%; transform: translateX(-50%); padding: 1rem 1.5rem; border-radius: .5rem; box-shadow: 0 4px 12px rgba(0,0,0,.15); z-index:100; opacity:0; transition: opacity .5s, transform .5s; }
+        .message-box {
+            position: fixed;
+            top: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem; /* ~12px */
+            line-height: 1rem; /* ~16px */
+            padding: 4px 8px;
+            margin-top: 4px;
+            border-radius: .5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,.15);
+            z-index:100;
+            opacity:0;
+            transition: opacity .5s, transform .5s;
+        }
         .message-box.show { opacity:1; transform: translateX(-50%) translateY(0); }
         .message-box.success { background-color:#d1fae5; color:#065f46; }
         .message-box.info { background-color:#dbeafe; color:#1e40af; }
@@ -162,6 +176,10 @@
 
         const appState = { isLoggedIn: false, masterSource: 'supabase', dataHash: null, localData: null, serverColumns: null };
 let isDirty=false, saveTimeout=null, history=[], historyDebounceTimeout=null, isTyping=false, lastEditAt=0, typingTimer=null, isSyncing=false;
+// --- Autosave countdown state ---
+const AUTOSAVE_DELAY_MS = 3000; // 3 seconds after last edit when idle
+let autosaveTicker = null;
+let lastShownCountdown = null; // remember last seconds value we displayed
 let lastFocusInfo = null; // remembers the last edited cell and caret offset
 let lastCellPos = null; // simple row/cell index memory
 let zoomFactor = parseFloat(localStorage.getItem('zoomFactor') || '1');
@@ -849,6 +867,38 @@ function focusCellFromInfo(info){
           }
         }
         function showMessage(message, type='success'){ const box=document.getElementById('message-box'); const txt=document.getElementById('message-text'); if(window._msgTimer) clearTimeout(window._msgTimer); box.classList.remove('show'); txt.textContent=message; box.className=`message-box ${type}`; void box.offsetWidth; box.classList.add('show'); box.classList.remove('hidden'); window._msgTimer=setTimeout(()=>{ box.classList.remove('show'); setTimeout(()=>box.classList.add('hidden'), 500); }, 3000); }
+
+// --- Autosave countdown scheduler ---
+function scheduleAutosaveCountdown(){
+  try { if (autosaveTicker) clearInterval(autosaveTicker); } catch(_) {}
+  lastShownCountdown = null;
+  autosaveTicker = setInterval(() => {
+    try {
+      // If syncing or a confirm modal is open, don't spam messages
+      if (isSyncing) return;
+      const modal=document.getElementById('confirmation-modal');
+      if(modal && !modal.classList.contains('hidden')) return;
+
+      // Only show countdown when user is not typing
+      if (isTyping) { lastShownCountdown = null; return; }
+
+      const remaining = AUTOSAVE_DELAY_MS - (Date.now() - lastEditAt);
+      if (remaining > 0) {
+        const secs = Math.ceil(remaining / 1000);
+        if (secs !== lastShownCountdown) {
+          showMessage(`Sauvegarde dans ${secs} s`, 'info');
+          lastShownCountdown = secs;
+        }
+      } else {
+        // Past the threshold—save should fire imminently via the periodic sync checker
+        if (lastShownCountdown !== 0) {
+          showMessage('Sauvegarde imminente…', 'info');
+          lastShownCountdown = 0;
+        }
+      }
+    } catch(_) {}
+  }, 250);
+}
         function getFormattedDate(){ const d=new Date(); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}` }
         function generateDataHash(data){ return JSON.stringify(data.rows.map(r=>({...r,[supabaseConfig.primaryKeyColumn]:undefined}))).split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a;},0).toString(16) }
 
@@ -877,8 +927,31 @@ function restoreLocalDraft(){
     }
   }catch(e){}
 }
-        function markEdited(){ isDirty=true; isTyping=true; lastEditAt=Date.now(); if(typingTimer) clearTimeout(typingTimer); typingTimer=setTimeout(()=>{isTyping=false;},1200); }
-        function startPeriodicSync(){ if(window._syncTimer) clearInterval(window._syncTimer); window._syncTimer=setInterval(async()=>{ if(isTyping) return; if(Date.now()-lastEditAt<3000) return; const modal=document.getElementById('confirmation-modal'); if(modal && !modal.classList.contains('hidden')) return; if(isSyncing) return; if(!isDirty) return; try{ isSyncing=true; log('Auto-sync (5s, idle) vers Supabase…'); await syncToMaster(false); } finally { isSyncing=false; } },5000); }
+        function markEdited(){
+          isDirty=true; isTyping=true; lastEditAt=Date.now();
+          if(typingTimer) clearTimeout(typingTimer);
+          scheduleAutosaveCountdown();
+          typingTimer=setTimeout(()=>{isTyping=false;},1200);
+        }
+        function startPeriodicSync(){
+          if(window._syncTimer) clearInterval(window._syncTimer);
+          window._syncTimer = setInterval(async () => {
+            // Only trigger when idle and the 3s delay has elapsed
+            if (isTyping) return;
+            if (Date.now() - lastEditAt < AUTOSAVE_DELAY_MS) return;
+            const modal=document.getElementById('confirmation-modal');
+            if(modal && !modal.classList.contains('hidden')) return;
+            if (isSyncing) return;
+            if (!isDirty) return;
+            try {
+              isSyncing = true;
+              log('Auto-sync (500ms poll, 3s idle) vers Supabase…');
+              await syncToMaster(false);
+            } finally {
+              isSyncing = false;
+            }
+          }, 500);
+        }
 
         function loadTableData(data){
           if(!data){ log('Structure invalide','error'); return false; }
@@ -995,6 +1068,8 @@ function restoreLocalDraft(){
         }
 
         async function syncToMaster(isManualSave=false){
+          try { if (autosaveTicker) clearInterval(autosaveTicker); } catch(_) {}
+          lastShownCountdown = null;
           const modal=document.getElementById('confirmation-modal');
           if(modal && !modal.classList.contains('hidden')){ log('Sync ignorée: modale ouverte.'); return; }
           // Remember which cell and caret position were active before saving
@@ -1267,7 +1342,7 @@ if(picker){
 }
 updatePaintModeButton();
 maybeShowFirstUseHint();
-const already=sessionStorage.getItem('isLoggedIn')==='1'; if(already){ document.getElementById('login-container').classList.add('hidden'); document.getElementById('table-container').classList.remove('hidden'); restoreLocalDraft(); ensureDDNHeader(); fetchInitialData(); setupRealtimeSubscription(); startPeriodicSync(); } else { document.getElementById('login-container').classList.remove('hidden'); } setInterval(updateClock,1000); });
+const already=sessionStorage.getItem('isLoggedIn')==='1'; if(already){ document.getElementById('login-container').classList.add('hidden'); document.getElementById('table-container').classList.remove('hidden'); restoreLocalDraft(); ensureDDNHeader(); fetchInitialData(); setupRealtimeSubscription(); startPeriodicSync(); scheduleAutosaveCountdown(); } else { document.getElementById('login-container').classList.remove('hidden'); } setInterval(updateClock,1000); });
     </script>
 </body>
 </html>
