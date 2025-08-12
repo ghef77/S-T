@@ -70,8 +70,6 @@
             position: absolute; right: 6px; top: 4px;
             font-weight: 700; font-size: 0.8em; color: #1f2937;
         }
-        /* Quand le clavier virtuel est ouvert, réserve de la place en bas */
-        .kb-open #table-container { padding-bottom: var(--kb-inset, 300px); }
 
         /* Respect des safe areas iOS/Android */
         body {
@@ -1203,23 +1201,6 @@ function restoreLocalDraft(){
             setTimeout(() => ensureCellVisible(cell), 100);
           }
         });
-        // VisualViewport handling for on-screen keyboard
-        (function setupVisualViewportHandling(){
-          if (!('visualViewport' in window)) return;
-          const vv = window.visualViewport;
-          const root = document.documentElement;
-          const update = () => {
-            try {
-              const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-              root.style.setProperty('--kb-inset', inset > 0 ? inset + 'px' : '0px');
-              document.body.classList.toggle('kb-open', inset > 0.5);
-            } catch(_) {}
-          };
-          vv.addEventListener('resize', update);
-          vv.addEventListener('scroll', update);
-          window.addEventListener('orientationchange', update);
-          update();
-        })();
         function setupRealtimeSubscription(){ if(realtimeSubscription){ try{ supabase.removeChannel(realtimeSubscription);}catch(e){} } realtimeSubscription = supabase.channel('table-changes').on('postgres_changes', { event: 'INSERT', schema: 'public', table: supabaseConfig.tableName }, handleRealtimeUpdate).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: supabaseConfig.tableName }, handleRealtimeUpdate).on('postgres_changes', { event: 'DELETE', schema: 'public', table: supabaseConfig.tableName }, handleRealtimeUpdate).subscribe(status => log('Realtime status: '+status)); }
         function undo(){ if(history.length>1){ history.pop(); const prev=history[history.length-1]; loadTableData(prev.rows); updateUndoButtonState(); log('Annulation effectuée.'); } }
 
