@@ -45,8 +45,20 @@
           /* Laisse de la place sous la barre fixe pour le contenu */
           #table-container { padding-top: 56px; }
         }
-        #data-table th:first-child, #data-table td:first-child { position: sticky; left:0; z-index:2; background:#fff; }
-        #data-table thead th:first-child { z-index:3; }
+        /* Keep first column sticky, but let it inherit row background color */
+        #data-table td:first-child {
+          position: sticky;
+          left: 0;
+          z-index: 2;
+          background-color: inherit !important;
+        }
+
+        /* Header first cell stays sticky; background comes from the thead (green) */
+        #data-table th:first-child {
+          position: sticky;
+          left: 0;
+          z-index: 3;
+        }
         td.editable-cell:empty::after { content: attr(data-label); color:#9ca3af; font-weight: normal; }
         td.editable-cell[data-label="DDN"]:empty::after { content: 'JJ/MM/YYYY'; color:#9ca3af; font-weight: normal; }
         tr.selected-row { background-color:#FEF3C7; }
@@ -76,6 +88,7 @@
           padding-top: env(safe-area-inset-top, 0px);
           padding-bottom: env(safe-area-inset-bottom, 0px);
         }
+
     </style>
 </head>
 <body class="bg-gray-100 flex flex-col h-screen overflow-hidden text-sm md:text-base lg:text-lg">
@@ -127,6 +140,11 @@
                    title="Choisir la couleur de surlignage des lignes"
                    class="w-8 h-8 p-0 border rounded cursor-pointer" />
             <button onclick="clearAllRowColors()" title="Effacer toutes les couleurs" aria-label="Effacer toutes les couleurs" class="bg-gray-200 text-gray-800 font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-gray-300 transition-colors flex items-center md:text-sm">🧹</button>
+            <button id="filter-colored-toggle"
+                    onclick="toggleColoredFilter()"
+                    title="Afficher seulement les lignes colorées"
+                    aria-label="Filtrer lignes colorées"
+                    class="bg-gray-200 text-gray-800 font-bold p-2 md:p-3 rounded-lg shadow-md hover:bg-gray-300 transition-colors flex items-center md:text-sm">🏷️</button>
             <button id="paint-mode-toggle"
                     onclick="cyclePaintMode()"
                     title="Mode de peinture: Auto (appuyez sur P pour changer)"
@@ -235,6 +253,7 @@ function setRowColor(tr, color){
   if(color){ tr.style.backgroundColor = color; tr.dataset.rowColored = '1'; }
   else { tr.style.backgroundColor = ''; tr.dataset.rowColored = '0'; }
 }
+// (Desktop color swatch helpers removed)
 function keyForRow(tr){
   // Prefer stable primary key if present; else fall back to current visual index (1-based)
   return tr.dataset.key || (Array.from(tr.parentElement.children).indexOf(tr) + 1);
@@ -313,6 +332,45 @@ startRowPaint = function(row){
   isRowPaintDragging = true;
   applyRowPaint(row);
 };
+
+// === Filter: show only colored rows (toggle) ===
+let showOnlyColored = false;
+
+function applyColoredFilter(){
+  try {
+    const tbody = document.getElementById('table-body');
+    Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+      const colored = tr.dataset.rowColored === '1' || (tr.style.backgroundColor && tr.style.backgroundColor !== '');
+      tr.style.display = (showOnlyColored && !colored) ? 'none' : '';
+    });
+  } catch(_) {}
+}
+
+function updateFilterColoredButton(){
+  const btn = document.getElementById('filter-colored-toggle');
+  if (!btn) return;
+  if (showOnlyColored) {
+    btn.textContent = '🎯';
+    btn.title = 'Afficher toutes les lignes';
+    btn.setAttribute('aria-pressed','true');
+  } else {
+    btn.textContent = '🏷️';
+    btn.title = 'Afficher seulement les lignes colorées';
+    btn.setAttribute('aria-pressed','false');
+  }
+}
+
+function toggleColoredFilter(){
+  showOnlyColored = !showOnlyColored;
+  applyColoredFilter();
+  updateFilterColoredButton();
+}
+window.toggleColoredFilter = toggleColoredFilter;
+
+// Re-apply filter after table rebuilds
+try {
+  document.addEventListener('table:reloaded', () => { if (showOnlyColored) applyColoredFilter(); });
+} catch(_) {}
 
 // Helper to (re)bind the click/drag handler on the No cell for all rows
 function rebindRowNumberCells(){
@@ -1401,11 +1459,12 @@ if(picker){
   try { picker.value = currentRowColor; } catch(_) {}
   picker.addEventListener('input', (e) => {
     currentRowColor = e.target.value || '#FFF59D';
-    localStorage.setItem('rowColor', currentRowColor);
+    try { localStorage.setItem('rowColor', currentRowColor); } catch(_) {}
   });
 }
 updatePaintModeButton();
 maybeShowFirstUseHint();
+updateFilterColoredButton();  // ← init the colored-rows filter button label/state
 const already=sessionStorage.getItem('isLoggedIn')==='1';
 if(already){
   document.getElementById('login-container').classList.add('hidden');
