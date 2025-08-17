@@ -1,6 +1,38 @@
 /* Enhanced CSS with advanced features inspired by reference file */
 
 /* Essential Tailwind Utility Classes */
+
+/* Mobile-specific improvements for keyboard visibility */
+@media (max-width: 768px) {
+    /* Ensure table container has proper mobile behavior */
+    #table-container {
+        /* Prevent horizontal scrolling issues on mobile */
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Improve cell editing experience on mobile */
+    .editable-cell {
+        /* Ensure cells are properly sized for mobile */
+        min-height: 2.5rem;
+        /* Better touch targets */
+        padding: 0.75rem 0.5rem !important;
+    }
+    
+    /* Smooth scrolling for mobile */
+    #table-container .overflow-auto {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+    }
+}
+
+/* Prevent zoom on double-tap for mobile */
+@media (max-width: 768px) {
+    input, textarea, [contenteditable] {
+        font-size: 16px !important; /* Prevents zoom on iOS */
+    }
+}
+
 .bg-gray-100 { background-color: #f3f4f6; }
 .bg-gray-50 { background-color: #f9fafb; }
 .bg-white { background-color: #ffffff; }

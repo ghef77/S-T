@@ -675,6 +675,29 @@ function createEditableCell(label, value = '') {
         }
     });
     
+    // Mobile keyboard support - ensure cell remains visible when keyboard appears
+    if (isMobile()) {
+        // Handle focus on mobile to ensure cell visibility
+        cell.addEventListener('focus', () => {
+            setTimeout(() => {
+                ensureCellVisibleOnMobile(cell);
+            }, 100); // Small delay to let keyboard appear
+        });
+        
+        // Handle input events on mobile to maintain visibility
+        cell.addEventListener('input', () => {
+            setTimeout(() => {
+                ensureCellVisibleOnMobile(cell);
+            }, 50);
+        });
+        
+        // Handle touch events for better mobile experience
+        cell.addEventListener('touchstart', () => {
+            // Prevent default to avoid double-tap zoom
+            // The focus event will handle visibility
+        }, { passive: false });
+    }
+    
     return cell;
 }
 
@@ -1133,6 +1156,29 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// Mobile viewport change detection for keyboard visibility
+if (isMobile() && window.visualViewport) {
+    let lastViewportHeight = window.visualViewport.height;
+    
+    window.visualViewport.addEventListener('resize', () => {
+        const currentHeight = window.visualViewport.height;
+        const heightDiff = lastViewportHeight - currentHeight;
+        
+        // If viewport height decreased significantly (keyboard appeared)
+        if (heightDiff > 100) {
+            // Find currently focused cell and ensure it's visible
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.tagName === 'TD' && activeElement.isContentEditable) {
+                setTimeout(() => {
+                    ensureCellVisibleOnMobile(activeElement);
+                }, 100);
+            }
+        }
+        
+        lastViewportHeight = currentHeight;
+    });
+}
+
 
 
 // Paint mode management
@@ -1476,11 +1522,75 @@ function ensureCellVisible(cell) {
     } catch (_) {}
 }
 
+// Mobile-specific cell visibility function
+function ensureCellVisibleOnMobile(cell) {
+    try {
+        if (!cell || !isMobile()) return;
+        
+        const vv = window.visualViewport;
+        if (!vv) {
+            // Fallback to regular function if visualViewport not supported
+            ensureCellVisible(cell);
+            return;
+        }
+        
+        const rect = cell.getBoundingClientRect();
+        const sc = getScrollContainer();
+        if (!sc) return;
+        
+        // Calculate available viewport height (accounting for keyboard)
+        const availableHeight = vv.height;
+        const keyboardHeight = window.innerHeight - availableHeight;
+        
+        // If keyboard is visible, adjust scroll to keep cell visible
+        if (keyboardHeight > 100) { // Keyboard is likely visible
+            // Calculate where the cell should be positioned
+            const targetTop = Math.max(20, availableHeight * 0.3); // Keep cell in upper third
+            const currentTop = rect.top;
+            
+            if (currentTop > targetTop) {
+                // Cell is too low, scroll up
+                const scrollDelta = currentTop - targetTop;
+                sc.scrollTop -= scrollDelta;
+            } else if (currentTop < 20) {
+                // Cell is too high, scroll down slightly
+                const scrollDelta = 20 - currentTop;
+                sc.scrollTop += scrollDelta;
+            }
+        } else {
+            // No keyboard, use regular visibility logic
+            ensureCellVisible(cell);
+        }
+        
+        // Additional mobile-specific adjustments
+        setTimeout(() => {
+            try {
+                // Smooth scroll to ensure cell is perfectly visible
+                cell.scrollIntoView({
+                    block: 'center',
+                    inline: 'nearest',
+                    behavior: 'smooth'
+                });
+            } catch (_) {}
+        }, 50);
+        
+    } catch (error) {
+        console.warn('Mobile cell visibility error:', error);
+        // Fallback to regular function
+        ensureCellVisible(cell);
+    }
+}
+
 function focusCellWithMobileSupport(cell) {
     try {
-        try { 
-            cell.scrollIntoView({ block: 'center', inline: 'nearest' }); 
-        } catch (_) {}
+        // Use mobile-specific visibility function if on mobile
+        if (isMobile()) {
+            ensureCellVisibleOnMobile(cell);
+        } else {
+            try { 
+                cell.scrollIntoView({ block: 'center', inline: 'nearest' }); 
+            } catch (_) {}
+        }
         
         setTimeout(() => {
             try {
