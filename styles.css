@@ -385,6 +385,25 @@ body {
         justify-content: center; /* Center the buttons on mobile */
     }
     
+    /* Hide S-T title and sync message on small screens, keep only the indicator */
+    #button-bar h2,
+    #button-bar #current-time,
+    #button-bar #sync-status-text {
+        display: none !important;
+    }
+    
+    /* Show only the sync indicator icon */
+    #button-bar #sync-indicator {
+        padding: 0.5rem; /* Increase padding to make the icon more visible */
+        background-color: transparent; /* Remove background */
+        border: none; /* Remove border */
+    }
+    
+    #button-bar #sync-status-icon {
+        width: 1rem; /* Slightly larger icon */
+        height: 1rem; /* Slightly larger icon */
+    }
+    
     #table-container { 
         padding-top: 0; /* Remove top padding since button bar is now in flow */
     }
@@ -726,6 +745,19 @@ button:hover::before {
     
     #button-bar > div:last-child {
         justify-content: center; /* Center the buttons */
+    }
+    
+    /* On medium screens, reduce the title size but keep sync message */
+    #button-bar h2 {
+        font-size: 1rem; /* Smaller title on medium screens */
+    }
+    
+    #button-bar #current-time {
+        font-size: 0.75rem; /* Smaller timestamp on medium screens */
+    }
+    
+    #button-bar #sync-status-text {
+        font-size: 0.625rem; /* Smaller sync text on medium screens */
     }
 
 }
