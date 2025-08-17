@@ -2140,14 +2140,28 @@
                         log('syncToMaster -> table:reloaded caught; attempting focus restore');
                         document.removeEventListener('table:reloaded', restoreOnce);
                         
+                        // Log détaillé pour le débogage
+                        log(`🔍 Focus restore - lastCellPos: ${JSON.stringify(lastCellPos)}`);
+                        log(`🔍 Focus restore - lastFocusInfo: ${JSON.stringify(lastFocusInfo)}`);
+                        
                         // Try simple row/cell index first
-                        if (!focusCellByPos(lastCellPos)) {
+                        const posResult = focusCellByPos(lastCellPos);
+                        log(`🔍 focusCellByPos result: ${posResult}`);
+                        
+                        if (!posResult) {
                             // Fallback to the richer label+caret based restore
-                            if (!focusCellFromInfo(lastFocusInfo)) {
+                            const infoResult = focusCellFromInfo(lastFocusInfo);
+                            log(`🔍 focusCellFromInfo result: ${infoResult}`);
+                            
+                            if (!infoResult) {
+                                log('🔍 Both focus methods failed, trying delayed retry...');
                                 setTimeout(() => { 
                                     if (!focusCellByPos(lastCellPos) && !focusCellFromInfo(lastFocusInfo)) { 
+                                        log('🔍 Delayed retry also failed, trying final attempt...');
                                         setTimeout(() => { 
-                                            focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo); 
+                                            const finalPos = focusCellByPos(lastCellPos);
+                                            const finalInfo = focusCellFromInfo(lastFocusInfo);
+                                            log(`🔍 Final attempt - pos: ${finalPos}, info: ${finalInfo}`);
                                         }, 250); 
                                     } 
                                 }, 50);
@@ -2157,22 +2171,28 @@
                         // Try again on the next animation frames
                         try {
                             requestAnimationFrame(() => {
-                                focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo);
+                                const raf1 = focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo);
+                                log(`🔍 RAF1 result: ${raf1}`);
                                 requestAnimationFrame(() => { 
-                                    focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo); 
+                                    const raf2 = focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo);
+                                    log(`🔍 RAF2 result: ${raf2}`);
                                 });
                             });
-                        } catch(_) {}
+                        } catch(e) {
+                            log(`🔍 RAF error: ${e.message}`);
+                        }
                         
                         // Final delayed retry
                         setTimeout(() => { 
-                            focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo); 
+                            const finalRetry = focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo);
+                            log(`🔍 Final retry result: ${finalRetry}`);
                         }, 300);
                         
                         if (isMobile()) {
                             setTimeout(() => {
                                 if (!focusCellFromInfo(lastFocusInfo)) { 
-                                    focusCellByPos(lastCellPos); 
+                                    const mobileFallback = focusCellByPos(lastCellPos);
+                                    log(`🔍 Mobile fallback result: ${mobileFallback}`);
                                 }
                             }, 650);
                         }
@@ -2181,6 +2201,7 @@
                     };
                     
                     document.addEventListener('table:reloaded', restoreOnce, { once: true });
+                    log('🔍 Event listener added, calling fetchInitialData...');
                     fetchInitialData();
                 });
             } catch(e) {
