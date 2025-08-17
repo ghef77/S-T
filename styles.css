@@ -1,21 +1,105 @@
-/* Enhanced CSS with advanced features inspired by reference file */
+/* CSS simplifié et propre pour correspondre au fichier de référence */
 
-/* Global table container adjustments for sticky headers */
-#table-container {
-    /* Ensure proper positioning for sticky headers */
-    position: relative;
-    /* Prevent any interference with sticky positioning */
-    overflow: visible;
-    /* Remove padding-top to allow headers to stick to the very top */
-    padding-top: 0 !important;
+/* Table styles - exactement comme le fichier de référence */
+#data-table { 
+    border-collapse: collapse; 
+    border-spacing: 0; 
+    margin-bottom: 50px; 
+    width: 100%; 
+    background-color: var(--bg-primary);
+    box-shadow: var(--shadow-md);
+    border-radius: 0.5rem;
 }
 
-/* Ensure the overflow container doesn't interfere with sticky headers */
-#table-container .overflow-auto {
-    /* Maintain scroll behavior */
-    overflow: auto;
-    /* Ensure sticky headers work correctly */
-    position: relative;
+#data-table th, #data-table td { 
+    border: 1px solid var(--border-color); 
+    transition: var(--transition);
+}
+
+#data-table thead { 
+    position: sticky !important; 
+    top: 0 !important; 
+    z-index: 10 !important; 
+    background-color: var(--primary-color) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+#data-table thead th {
+    padding: 1rem;
+    font-size: 0.875rem;
+}
+
+#data-table tbody tr {
+    transition: var(--transition);
+}
+
+#data-table tbody tr:hover {
+    background-color: var(--bg-hover);
+    transform: scale(1.005);
+    box-shadow: var(--shadow-sm);
+}
+
+#data-table tfoot {
+    position: static;
+    background: transparent;
+    border-top: 0;
+    box-shadow: none;
+}
+
+/* Floating Action Button - exactement comme le fichier de référence */
+#fab-add {
+    position: fixed;
+    right: 16px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+    z-index: 60;
+    width: 56px;
+    height: 56px;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-lg);
+}
+
+#fab-add:active { transform: scale(0.97); }
+
+/* Hide the old add-row button area - exactement comme le fichier de référence */
+#data-table tfoot td { padding: 0 !important; height: 0 !important; }
+#data-table tfoot button { display: none !important; }
+
+/* Sticky first column - exactement comme le fichier de référence */
+#data-table td:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 2 !important;
+    background-color: white !important;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1) !important;
+}
+
+#data-table th:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 3 !important;
+    background-color: var(--primary-color) !important;
+}
+
+/* Frozen column classes for JavaScript - exactement comme le fichier de référence */
+.frozen-column.frozen-1 {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 2 !important;
+    background-color: white !important;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1) !important;
+}
+
+.frozen-column-header.frozen-1 {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 3 !important;
+    background-color: var(--primary-color) !important;
 }
 
 /* Essential Tailwind Utility Classes */
