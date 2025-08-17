@@ -2199,75 +2199,39 @@
                 
                 log(`syncToMaster -> set restore listener (lastCellPos=${JSON.stringify(lastCellPos)}, lastFocusInfo.col=${lastFocusInfo ? lastFocusInfo.colLabel : ''})`);
                 
-                await new Promise((resolve) => {
-                    const restoreOnce = () => {
-                        log('syncToMaster -> table:reloaded caught; attempting focus restore');
-                        document.removeEventListener('table:reloaded', restoreOnce);
-                        
-                        // Log détaillé pour le débogage
-                        log(`🔍 Focus restore - lastCellPos: ${JSON.stringify(lastCellPos)}`);
-                        log(`🔍 Focus restore - lastFocusInfo: ${JSON.stringify(lastFocusInfo)}`);
-                        
-                        // Try simple row/cell index first
-                        const posResult = focusCellByPos(lastCellPos);
-                        log(`🔍 focusCellByPos result: ${posResult}`);
-                        
-                        if (!posResult) {
-                            // Fallback to the richer label+caret based restore
-                            const infoResult = focusCellFromInfo(lastFocusInfo);
-                            log(`🔍 focusCellFromInfo result: ${infoResult}`);
-                            
-                            if (!infoResult) {
-                                log('🔍 Both focus methods failed, trying delayed retry...');
-                                setTimeout(() => { 
-                                    if (!focusCellByPos(lastCellPos) && !focusCellFromInfo(lastFocusInfo)) { 
-                                        log('🔍 Delayed retry also failed, trying final attempt...');
-                                        setTimeout(() => { 
-                                            const finalPos = focusCellByPos(lastCellPos);
-                                            const finalInfo = focusCellFromInfo(lastFocusInfo);
-                                            log(`🔍 Final attempt - pos: ${finalPos}, info: ${finalInfo}`);
-                                        }, 250); 
-                                    } 
-                                }, 50);
-                            }
-                        }
-                        
-                        // Try again on the next animation frames
-                        try {
-                            requestAnimationFrame(() => {
-                                const raf1 = focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo);
-                                log(`🔍 RAF1 result: ${raf1}`);
-                                requestAnimationFrame(() => { 
-                                    const raf2 = focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo);
-                                    log(`🔍 RAF2 result: ${raf2}`);
-                                });
-                            });
-                        } catch(e) {
-                            log(`🔍 RAF error: ${e.message}`);
-                        }
-                        
-                        // Final delayed retry
-                        setTimeout(() => { 
-                            const finalRetry = focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo);
-                            log(`🔍 Final retry result: ${finalRetry}`);
-                        }, 300);
-                        
-                        if (isMobile()) {
-                            setTimeout(() => {
-                                if (!focusCellFromInfo(lastFocusInfo)) { 
-                                    const mobileFallback = focusCellByPos(lastCellPos);
-                                    log(`🔍 Mobile fallback result: ${mobileFallback}`);
-                                }
-                            }, 650);
-                        }
-                        
-                        resolve();
-                    };
+                // Optimisation : éviter le rechargement automatique après sauvegarde
+                // pour prévenir la double sauvegarde
+                log('✅ Sauvegarde réussie - pas de rechargement automatique pour éviter la double sauvegarde');
+                
+                // Restaurer le focus directement sans recharger les données
+                // car les données sont déjà synchronisées avec Supabase
+                setTimeout(() => {
+                    log('🔍 Restauration directe du focus sans rechargement...');
                     
-                    document.addEventListener('table:reloaded', restoreOnce, { once: true });
-                    log('🔍 Event listener added, calling fetchInitialData...');
-                    fetchInitialData();
-                });
+                    // Try simple row/cell index first
+                    const posResult = focusCellByPos(lastCellPos);
+                    log(`🔍 focusCellByPos result: ${posResult}`);
+                    
+                    if (!posResult) {
+                        // Fallback to the richer label+caret based restore
+                        const infoResult = focusCellFromInfo(lastFocusInfo);
+                        log(`🔍 focusCellFromInfo result: ${infoResult}`);
+                        
+                        if (!infoResult) {
+                            log('🔍 Both focus methods failed, trying delayed retry...');
+                            setTimeout(() => { 
+                                if (!focusCellByPos(lastCellPos) && !focusCellFromInfo(lastFocusInfo)) { 
+                                    log('🔍 Delayed retry also failed, trying final attempt...');
+                                    setTimeout(() => { 
+                                        const finalPos = focusCellByPos(lastCellPos);
+                                        const finalInfo = focusCellFromInfo(lastFocusInfo);
+                                        log(`🔍 Final attempt - pos: ${finalPos}, info: ${finalInfo}`);
+                                    }, 250); 
+                                } 
+                            }, 50);
+                        }
+                    }
+                }, 100);
             } catch(e) {
                 log('Erreur de sauvegarde : ' + e.message, 'error');
                 updateStatus('Erreur de sauvegarde', 'error');
