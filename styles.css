@@ -750,21 +750,19 @@ button:hover::before {
     border-radius: 6px;
     background-color: #f3f4f6;
     border: 1px solid #d1d5db;
-    flex-wrap: wrap; /* Allow wrapping */
-    min-width: 0; /* Allow shrinking */
-    flex-shrink: 1; /* Allow shrinking */
+    flex-wrap: nowrap; /* Prevent wrapping - keep next to clock */
+    flex-shrink: 0; /* Prevent shrinking */
+    white-space: nowrap; /* Keep text on one line */
 }
 
-/* Top bar container wrapping */
+/* Top bar container - keep elements together */
 #table-container .flex.flex-col.md\\:flex-row {
-    flex-wrap: wrap; /* Allow wrapping */
-    gap: 0.5rem; /* Add gap between wrapped elements */
+    flex-wrap: nowrap; /* Keep elements on one line */
 }
 
-/* Clock and sync indicator container */
+/* Clock and sync indicator container - keep together */
 #table-container .flex.flex-col.md\\:flex-row .flex.flex-col.md\\:flex-row {
-    flex-wrap: wrap; /* Allow wrapping */
-    gap: 0.25rem; /* Add gap between wrapped elements */
+    flex-wrap: nowrap; /* Keep elements on one line */
 }
 
 #sync-status-icon {
@@ -868,9 +866,9 @@ button:hover::before {
     align-items: center;
     gap: 0.5rem;
     margin-left: 1rem;
-    flex-wrap: wrap; /* Allow wrapping */
-    min-width: 0; /* Allow shrinking */
-    flex-shrink: 1; /* Allow shrinking */
+    flex-wrap: nowrap; /* Prevent wrapping - keep next to clock */
+    flex-shrink: 0; /* Prevent shrinking */
+    white-space: nowrap; /* Keep text on one line */
 }
 
 #realtime-status-icon {
@@ -923,12 +921,10 @@ button:hover::before {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Sync status text wrapping */
+/* Sync status text - keep on one line */
 #sync-status-text {
-    white-space: normal; /* Allow text wrapping */
-    word-wrap: break-word; /* Break long words */
-    max-width: 200px; /* Limit width to encourage wrapping */
-    flex-shrink: 1; /* Allow shrinking */
+    white-space: nowrap; /* Keep text on one line */
+    flex-shrink: 0; /* Prevent shrinking */
 }
 
 #sync-status-icon.manual {
