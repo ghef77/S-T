@@ -1,8 +1,9 @@
 /* Enhanced CSS with advanced features inspired by reference file */
 
-/* Global table container adjustments for sticky headers */
+/* Global table container adjustments for fixed headers */
 #table-container {
-    /* Ensure proper positioning for sticky headers */
+    /* Compensate for fixed header height */
+    padding-top: 7rem !important; /* 4rem (button-bar) + 3rem (header) */
     position: relative;
 }
 
@@ -319,8 +320,10 @@ body {
 }
 
 #data-table thead { 
-    position: sticky !important; /* Use sticky positioning for proper table alignment */
-    top: 0 !important; /* Stick to top of container */
+    position: fixed !important; /* Fixed positioning for absolute stability */
+    top: 4rem !important; /* Fixed below button-bar (adjust this value as needed) */
+    left: 0 !important; /* Align with left edge */
+    right: 0 !important; /* Extend to right edge */
     z-index: 10000 !important; /* Extremely high z-index to ensure visibility */
     background-color: var(--primary-color) !important;
     color: white !important;
@@ -341,7 +344,7 @@ body {
 /* Mobile-specific header positioning to account for button bar */
 @media (max-width: 768px) {
     #data-table thead {
-        top: 0; /* Keep at top on mobile */
+        top: 3.5rem !important; /* Fixed below button-bar on mobile */
         z-index: 200; /* Much higher z-index on mobile */
     }
     
