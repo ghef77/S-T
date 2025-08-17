@@ -530,6 +530,9 @@
                     class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-8 h-8">
                 <i class="fa-solid fa-palette w-4 h-4"></i>
             </button>
+            <button onclick="openSimpleGallery()" title="Ouvrir la galerie d'images" aria-label="Galerie d'images" class="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center w-8 h-8">
+                <i class="fa-solid fa-images w-4 h-4"></i>
+            </button>
         </div>
 
         <!-- Table container -->
@@ -560,7 +563,7 @@
                     <h3 class="text-lg md:text-xl leading-6 font-medium text-gray-900" id="modal-message"></h3>
                     <div class="mt-4 flex justify-around">
                         <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">Oui</button>
-                        <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-300 text-black text-base font-medium rounded-md w-24 shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">Non</button>
+                        <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-300 text-black text-base font-medium rounded-md w-24 shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500">Non</button>
                     </div>
                 </div>
             </div>
@@ -575,5 +578,51 @@
 
     <!-- Main Application Script -->
     <script type="module" src="app.js"></script>
+
+    <!-- Simple Gallery Integration -->
+    <script type="module" src="simple-gallery.js"></script>
+
+    <!-- Gallery Functions -->
+    <script>
+        // Function to open the simple gallery
+        function openSimpleGallery() {
+            // Create a new window/tab with the simple gallery
+            window.open('simple-gallery.html', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+        }
+
+        // Message display function
+        function showMessage(message, type = 'success') {
+            const messageBox = document.getElementById('message-box');
+            const messageText = document.getElementById('message-text');
+            
+            if (messageBox && messageText) {
+                messageText.textContent = message;
+                messageBox.className = `message-box ${type}`;
+                messageBox.classList.remove('hidden');
+                messageBox.classList.add('show');
+                
+                setTimeout(() => {
+                    messageBox.classList.remove('show');
+                    setTimeout(() => messageBox.classList.add('hidden'), 500);
+                }, 3000);
+            }
+        }
+
+        // Keyboard navigation for gallery
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeGallery();
+                closeImageViewer();
+            } else if (e.key === 'ArrowLeft') {
+                if (!document.getElementById('image-viewer-modal').classList.contains('hidden')) {
+                    previousImage();
+                }
+            } else if (e.key === 'ArrowRight') {
+                if (!document.getElementById('image-viewer-modal').classList.contains('hidden')) {
+                    nextImage();
+                }
+            }
+        });
+    </script>
 </body>
 </html>
