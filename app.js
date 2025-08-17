@@ -1233,6 +1233,45 @@ if (isMobile()) {
     
     // Apply initially
     ensureMobileZoomCompatibility();
+    
+    // Enhanced header visibility fix for mobile
+    function forceHeaderVisibility() {
+        const thead = document.querySelector('#data-table thead');
+        const theadThs = document.querySelectorAll('#data-table thead th');
+        
+        if (thead && theadThs.length > 0) {
+            // Force extremely high z-index
+            thead.style.zIndex = '9999';
+            thead.style.position = 'sticky';
+            thead.style.top = '0';
+            
+            theadThs.forEach(th => {
+                th.style.zIndex = '9999';
+                th.style.position = 'sticky';
+                th.style.top = '0';
+                th.style.backgroundColor = 'var(--primary-color)';
+                th.style.backgroundImage = 'linear-gradient(to bottom, var(--primary-color), var(--primary-color))';
+            });
+            
+            log('🔒 Headers forced to stay visible on mobile');
+        }
+    }
+    
+    // Apply header visibility fix on scroll and touch events
+    let headerVisibilityTimeout;
+    document.addEventListener('scroll', () => {
+        clearTimeout(headerVisibilityTimeout);
+        headerVisibilityTimeout = setTimeout(forceHeaderVisibility, 50);
+    }, { passive: true });
+    
+    document.addEventListener('touchmove', () => {
+        clearTimeout(headerVisibilityTimeout);
+        headerVisibilityTimeout = setTimeout(forceHeaderVisibility, 50);
+    }, { passive: true });
+    
+    // Apply initially and periodically
+    forceHeaderVisibility();
+    setInterval(forceHeaderVisibility, 2000); // Check every 2 seconds
 }
 
 
