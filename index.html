@@ -125,6 +125,73 @@
             100% { opacity: 1; } 
         }
         
+        /* Sync status dot styles */
+        .sync-dot {
+            transition: all 0.3s ease;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+            flex-shrink: 0;
+            display: inline-block;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            cursor: help;
+        }
+        
+        .sync-dot.animate-pulse {
+            animation: dot-pulse 2s infinite;
+        }
+        
+        @keyframes dot-pulse {
+            0%, 100% { 
+                opacity: 1; 
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 0.7; 
+                transform: scale(1.1);
+            }
+        }
+        
+        /* Mobile-specific sync status adjustments */
+        @media (max-width: 768px) {
+            #sync-status {
+                min-width: 1.5rem;
+                min-height: 1.5rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: relative;
+            }
+            
+            .sync-dot {
+                width: 0.875rem !important;
+                height: 0.875rem !important;
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
+            
+            /* Hide title on small screens */
+            #staff-title {
+                transition: all 0.3s ease;
+            }
+            
+            #staff-title.hidden {
+                opacity: 0;
+                visibility: hidden;
+                height: 0;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                transform: scale(0.8);
+            }
+            
+
+            
+
+            
+
+        }
+        
 
         
         /* Optimisation de l'espace */
@@ -135,6 +202,7 @@
         #button-bar {
             max-width: 100%;
             justify-content: flex-start;
+            overflow-x: auto;
         }
         
         #button-bar button {
@@ -209,6 +277,7 @@
                 top: calc(env(safe-area-inset-top, 0px) + 8px);
                 right: 8px;
                 z-index: 50;
+                overflow-x: auto;
             }
             
             #table-container { 
@@ -474,7 +543,7 @@
         <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-2 p-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
             <div class="flex-grow">
                 <div class="flex flex-wrap items-center gap-2 mb-1">
-                    <h2 class="text-lg md:text-xl font-bold text-gray-800 tracking-tight">Tableau de Staff</h2>
+                    <h2 id="staff-title" class="text-lg md:text-xl font-bold text-gray-800 tracking-tight">Tableau de Staff</h2>
                     <span id="sync-status" class="sync-pending-animation px-2 py-1 rounded-full text-xs font-semibold border-2 bg-white shadow-sm">
                         <span class="sync-text">Initialisation...</span>
                         <i class="sync-icon fa-solid fa-check hidden"></i>
@@ -724,6 +793,12 @@
             
             el.className = `px-3 py-1 rounded-full text-xs font-semibold border-2 bg-white shadow-sm transition-all duration-300 ${getSyncStatusClasses(type)}`;
             
+            // Mettre à jour le point coloré si il existe (pour petits écrans)
+            const dotEl = el.querySelector('.sync-dot');
+            if (dotEl) {
+                applyDotColor(dotEl, type);
+            }
+            
             // Adapter l'affichage selon la taille d'écran
             adaptStatusDisplay();
         }
@@ -743,23 +818,94 @@
         
         function adaptStatusDisplay() {
             const el = document.getElementById('sync-status');
+            if (!el) return;
+            
             const textEl = el.querySelector('.sync-text');
             const iconEl = el.querySelector('.sync-icon');
             
             if (!textEl || !iconEl) return;
             
-            // Sur petits écrans, afficher seulement l'icône
+            // Trouver le titre "Tableau de Staff" par son ID
+            const titleEl = document.getElementById('staff-title');
+            
+            // Sur petits écrans, afficher seulement un point coloré et cacher le titre
             if (window.innerWidth <= 768) {
                 textEl.classList.add('hidden');
-                iconEl.classList.remove('hidden');
+                iconEl.classList.add('hidden');
+                
+                // Cacher le titre sur petits écrans
+                if (titleEl) {
+                    titleEl.classList.add('hidden');
+                }
+                
+                // Créer ou mettre à jour le point coloré
+                let dotEl = el.querySelector('.sync-dot');
+                if (!dotEl) {
+                    dotEl = document.createElement('div');
+                    dotEl.className = 'sync-dot w-3 h-3 md:w-3.5 md:h-3.5 rounded-full';
+                    dotEl.setAttribute('aria-label', 'Statut de synchronisation');
+                    dotEl.setAttribute('title', 'Statut de synchronisation');
+                    el.appendChild(dotEl);
+                }
+                
+                // S'assurer que le point est visible
+                dotEl.classList.remove('hidden');
+                
+                // Appliquer la couleur selon le type actuel
+                const currentType = getCurrentStatusType(el);
+                applyDotColor(dotEl, currentType);
+                
                 el.classList.add('px-1', 'py-0.5'); // Padding minimal
                 el.classList.remove('px-2', 'px-3');
             } else {
-                // Sur grands écrans, afficher le texte
+                // Sur grands écrans, afficher le texte et le titre, cacher le point
                 textEl.classList.remove('hidden');
                 iconEl.classList.add('hidden');
+                
+                // Afficher le titre sur grands écrans
+                if (titleEl) {
+                    titleEl.classList.remove('hidden');
+                }
+                
+                const dotEl = el.querySelector('.sync-dot');
+                if (dotEl) {
+                    dotEl.classList.add('hidden');
+                    // Optionnel: supprimer complètement le point pour économiser la mémoire
+                    // dotEl.remove();
+                }
+                
                 el.classList.add('px-2');
                 el.classList.remove('px-1', 'px-3');
+            }
+        }
+        
+        function getCurrentStatusType(el) {
+            if (!el) return 'pending';
+            
+            // Détecter le type actuel basé sur les classes CSS
+            if (el.classList.contains('bg-green-100')) return 'success';
+            if (el.classList.contains('bg-red-100')) return 'error';
+            if (el.classList.contains('bg-blue-100')) return 'saving';
+            return 'pending';
+        }
+        
+        function applyDotColor(dotEl, type) {
+            if (!dotEl) return;
+            
+            // Appliquer la couleur appropriée au point
+            switch(type) {
+                case 'success':
+                    dotEl.className = 'sync-dot w-3 h-3 md:w-3.5 md:h-3.5 rounded-full bg-green-500';
+                    break;
+                case 'error':
+                    dotEl.className = 'sync-dot w-3 h-3 md:w-3.5 md:h-3.5 rounded-full bg-red-500';
+                    break;
+                case 'saving':
+                    dotEl.className = 'sync-dot w-3 h-3 md:w-3.5 md:h-3.5 rounded-full bg-blue-500 animate-pulse';
+                    break;
+                default:
+                    dotEl.className = 'sync-dot w-3 h-3 md:w-3.5 md:h-3.5 rounded-full bg-yellow-500';
+                    break;
             }
         }
         
@@ -2327,6 +2473,11 @@
                 fetchInitialData(); 
                 setupRealtimeSubscription(); 
                 startPeriodicSync(); 
+                
+                // Adapter l'affichage du statut après la connexion
+                setTimeout(() => {
+                    adaptStatusDisplay();
+                }, 100); 
             } else { 
                 err.textContent = 'Mot de passe incorrect. Le champ est maintenant visible pour faciliter la correction.';
                 
@@ -3512,6 +3663,8 @@
         window.openSimpleGallery = openSimpleGallery;
 
         // Raccourcis clavier étendus
+
+        
         function setupExtendedKeyboardShortcuts() {
             document.addEventListener('keydown', function(e) {
                 // Seulement appliquer les raccourcis quand pas dans les champs de formulaire
@@ -3563,6 +3716,11 @@
         // Initialiser les raccourcis clavier étendus
         document.addEventListener('DOMContentLoaded', function() {
             setupExtendedKeyboardShortcuts();
+            
+            // Adapter l'affichage du statut selon la taille d'écran initiale
+            setTimeout(() => {
+                adaptStatusDisplay();
+            }, 100);
         });
 
         // Initialize when DOM is ready
