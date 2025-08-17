@@ -1708,27 +1708,56 @@
             const rows = XLSX.utils.sheet_to_json(ws, { defval:'', raw:false });
             if(!Array.isArray(rows) || rows.length===0){ showMessage('Feuille vide','info'); updateStatus('Synchronisé','success'); return; }
 
-            const tableHeaders = getHeaders(); // from current table (skipping No/Effacer)
-            const sheetKeys = Object.keys(rows[0]||{});
-            const map = buildHeaderMap(sheetKeys, tableHeaders);
+            // Colonnes système à ignorer lors de l'import
+            const systemColumns = ['No', 'Effacer', 'Date de saisie'];
+            
+            // Colonnes de données à importer (excluant les colonnes système)
+            const dataColumns = getHeaders().filter(header => !systemColumns.includes(header));
+            
+            // Filtrer les lignes : seulement celles avec Nom_Prénom rempli
+            const validRows = rows.filter(row => {
+              const nomPrenom = row['Nom_Prénom'] || row['Nom_Prénom'] || row['Nom Prénom'] || row['NomPrénom'];
+              return nomPrenom && nomPrenom.trim() !== '';
+            });
 
-            // Build data array compatible with loadTableData()
-            const importData = rows.map(r => {
+            if(validRows.length === 0){
+              showMessage('Aucune ligne avec Nom_Prénom rempli trouvée dans le fichier','info');
+              updateStatus('Import terminé','success');
+              return;
+            }
+
+            console.log(`📊 Import Excel : ${rows.length} lignes totales, ${validRows.length} lignes valides`);
+
+            // Construire les données d'import avec gestion intelligente
+            const importData = validRows.map((row, index) => {
               const obj = {};
-              tableHeaders.forEach(th => {
-                const sheetKey = map[th];
-                obj[th] = sheetKey ? coerceCellValue(th, r[sheetKey]) : '';
+              
+              // Générer automatiquement une clé primaire unique
+              obj[supabaseConfig.primaryKeyColumn] = Date.now() + index;
+              
+              // Ajouter automatiquement la date de saisie
+              obj['Date de saisie'] = getFormattedDate();
+              
+              // Importer seulement les colonnes de données (pas les colonnes système)
+              dataColumns.forEach(column => {
+                const sheetKey = findBestMatch(column, Object.keys(row));
+                if (sheetKey && row[sheetKey] !== undefined && row[sheetKey] !== '') {
+                  obj[column] = coerceCellValue(column, row[sheetKey]);
+                } else {
+                  obj[column] = '';
+                }
               });
+              
               return obj;
             });
 
-            // Load into the table (local only). Primary keys absent => treated as new rows
+            // Charger dans le tableau
             if(loadTableData(importData)){
               saveStateToHistory();
               saveLocalDraft();
               markEdited();
               updateStatus('Importé (non sauvegardé)','success');
-              showMessage(`Import réussi: ${importData.length} ligne(s).`);
+              showMessage(`Import réussi: ${importData.length} ligne(s) avec Nom_Prénom. Colonnes système générées automatiquement.`);
             } else {
               updateStatus('Erreur import','error');
               showMessage('Échec du chargement des données importées.','info');
@@ -1738,6 +1767,33 @@
             updateStatus('Erreur import','error');
             showMessage('Erreur lors de l\'import. Vérifiez le fichier.','info');
           }
+        }
+
+        // Fonction pour trouver la meilleure correspondance de colonne
+        function findBestMatch(targetColumn, availableColumns) {
+          // Correspondance exacte
+          if (availableColumns.includes(targetColumn)) {
+            return targetColumn;
+          }
+          
+          // Correspondance sans espaces ni caractères spéciaux
+          const normalizedTarget = targetColumn.replace(/[\s\-_]/g, '').toLowerCase();
+          for (const col of availableColumns) {
+            const normalizedCol = col.replace(/[\s\-_]/g, '').toLowerCase();
+            if (normalizedCol === normalizedTarget) {
+              return col;
+            }
+          }
+          
+          // Correspondance partielle
+          for (const col of availableColumns) {
+            const normalizedCol = col.replace(/[\s\-_]/g, '').toLowerCase();
+            if (normalizedCol.includes(normalizedTarget) || normalizedTarget.includes(normalizedCol)) {
+              return col;
+            }
+          }
+          
+          return null;
         }
 
         function loadTableData(data) {
