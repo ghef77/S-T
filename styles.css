@@ -831,40 +831,80 @@ button:hover::before {
 
 @media (max-width: 320px) {
     #button-bar button {
-        width: 1.5rem !important; /* Ultra-compact buttons */
-        height: 1.5rem !important; /* Ultra-compact buttons */
-        padding: 0.125rem !important; /* Minimal padding */
-        font-size: 0.5rem; /* Minimal font size */
+        width: 1.25rem !important; /* Ultra-compact buttons - reduced from 1.5rem */
+        height: 1.25rem !important; /* Ultra-compact buttons - reduced from 1.5rem */
+        padding: 0.0625rem !important; /* Minimal padding - reduced from 0.125rem */
+        font-size: 0.375rem; /* Minimal font size - reduced from 0.5rem */
     }
     
     #button-bar button i {
-        width: 0.625rem !important; /* Minimal icon size */
-        height: 0.625rem !important; /* Minimal icon size */
+        width: 0.5rem !important; /* Minimal icon size - reduced from 0.625rem */
+        height: 0.5rem !important; /* Minimal icon size - reduced from 0.625rem */
     }
     
     #button-bar #zoom-display {
-        font-size: 0.375rem !important; /* Minimal zoom text */
+        font-size: 0.25rem !important; /* Minimal zoom text - reduced from 0.375rem */
     }
     
     #button-bar input[type="color"] {
-        width: 1.5rem !important; /* Ultra-compact color picker */
-        height: 1.5rem !important; /* Ultra-compact color picker */
+        width: 1.25rem !important; /* Ultra-compact color picker - reduced from 1.5rem */
+        height: 1.25rem !important; /* Ultra-compact color picker - reduced from 1.5rem */
     }
     
     /* Ultra-compact spacing for very small screens */
     #button-bar {
-        gap: 0.125rem !important; /* Minimal gap between elements */
-        padding: 0.5rem !important; /* Reduced padding */
+        gap: 0.0625rem !important; /* Minimal gap between elements - reduced from 0.125rem */
+        padding: 0.375rem !important; /* Reduced padding - reduced from 0.5rem */
     }
     
     #button-bar > div:last-child {
-        gap: 0.125rem !important; /* Minimal gap between buttons */
+        gap: 0.0625rem !important; /* Minimal gap between buttons - reduced from 0.125rem */
         justify-content: flex-start; /* Align buttons to the left */
         background: linear-gradient(to left, rgba(255,255,255,0.99) 0%, rgba(255,255,255,0.95) 30%, transparent 100%); /* Maximum fade effect */
-        padding-left: 2.5rem; /* Maximum padding for fade effect */
+        padding-left: 2rem; /* Reduced padding for fade effect - reduced from 2.5rem */
         width: 100% !important; /* Use full available width */
         position: static !important; /* Remove sticky positioning to use full width */
         right: auto !important; /* Remove right positioning */
+    }
+}
+
+/* Extremely small screens - maximum compactness */
+@media (max-width: 280px) {
+    #button-bar button {
+        width: 1rem !important; /* Maximum compact buttons */
+        height: 1rem !important; /* Maximum compact buttons */
+        padding: 0.03125rem !important; /* Absolute minimal padding */
+        font-size: 0.25rem; /* Absolute minimal font size */
+    }
+    
+    #button-bar button i {
+        width: 0.375rem !important; /* Absolute minimal icon size */
+        height: 0.375rem !important; /* Absolute minimal icon size */
+    }
+    
+    #button-bar #zoom-display {
+        font-size: 0.1875rem !important; /* Absolute minimal zoom text */
+    }
+    
+    #button-bar input[type="color"] {
+        width: 1rem !important; /* Maximum compact color picker */
+        height: 1rem !important; /* Maximum compact color picker */
+    }
+    
+    /* Maximum compact spacing */
+    #button-bar {
+        gap: 0.03125rem !important; /* Absolute minimal gap */
+        padding: 0.25rem !important; /* Absolute minimal padding */
+    }
+    
+    #button-bar > div:last-child {
+        gap: 0.03125rem !important; /* Absolute minimal gap between buttons */
+        justify-content: flex-start; /* Align buttons to the left */
+        background: linear-gradient(to left, rgba(255,255,255,0.99) 0%, rgba(255,255,255,0.95) 30%, transparent 100%);
+        padding-left: 1.5rem; /* Minimal padding for fade effect */
+        width: 100% !important;
+        position: static !important;
+        right: auto !important;
     }
 }
 
