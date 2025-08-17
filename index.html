@@ -110,6 +110,55 @@
         }
         #fab-add:active { transform: scale(0.97); }
         
+        /* Mobile-specific FAB button styling */
+        @media (max-width: 768px) {
+            #fab-add {
+                width: 36px;
+                height: 36px;
+                opacity: 0.5;
+                background-color: rgba(34, 197, 94, 0.7);
+                backdrop-filter: blur(8px);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            }
+            
+            #fab-add:hover,
+            #fab-add:focus {
+                opacity: 0.9;
+                transform: scale(1.05);
+                background-color: rgba(34, 197, 94, 0.85);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            }
+            
+            #fab-add:active {
+                transform: scale(0.95);
+                opacity: 1;
+            }
+            
+            #fab-add svg {
+                width: 18px;
+                height: 18px;
+                color: rgba(255, 255, 255, 0.9);
+            }
+            
+            /* Animation d'apparition subtile */
+            #fab-add {
+                animation: fadeInSubtle 0.5s ease-out;
+            }
+            
+            @keyframes fadeInSubtle {
+                from {
+                    opacity: 0;
+                    transform: scale(0.8) translateY(10px);
+                }
+                to {
+                    opacity: 0.5;
+                    transform: scale(1) translateY(0);
+                }
+            }
+        }
+        
 
 
         /* Hide the old add-row button area to remove the white bar */
@@ -3791,6 +3840,12 @@
                     if (fabButton) {
                         const bottomOffset = Math.max(16, window.innerHeight - window.visualViewport.height + 16);
                         fabButton.style.bottom = `${bottomOffset}px`;
+                        
+                        // Sur mobile, positionner le bouton plus discrètement
+                        if (window.innerWidth <= 768) {
+                            fabButton.style.right = '12px';
+                            fabButton.style.bottom = `${Math.max(12, bottomOffset - 4)}px`;
+                        }
                     }
                 }
             }
