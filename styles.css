@@ -373,16 +373,20 @@ body {
         margin: 0; /* Reset margins */
         margin-bottom: 1rem !important; /* Ensure bottom margin on mobile */
         padding: 0.75rem; /* Slightly more padding on mobile */
-        flex-direction: column; /* Stack left and right sections vertically on small screens */
-        gap: 1rem; /* More gap between sections on mobile */
+        flex-direction: row; /* Keep horizontal layout - no wrapping to new lines */
+        gap: 0.5rem; /* Reduced gap to fit everything on one line */
+        flex-wrap: nowrap; /* Prevent wrapping to new lines */
+        overflow-x: auto; /* Allow horizontal scrolling if needed */
     }
     
     #button-bar > div:first-child {
-        justify-content: center; /* Center the title/sync section on mobile */
+        justify-content: flex-start; /* Align left section to the left */
+        flex-shrink: 0; /* Prevent shrinking */
     }
     
     #button-bar > div:last-child {
-        justify-content: center; /* Center the buttons on mobile */
+        justify-content: flex-end; /* Align buttons to the right */
+        flex-shrink: 0; /* Prevent shrinking */
     }
     
     /* Hide S-T title and sync message on small screens, keep only the indicator */
@@ -735,16 +739,20 @@ button:hover::before {
         padding: 0.75rem !important; /* Increased padding for better touch targets */
         margin: 0 !important; /* Remove all margins on medium screens */
         margin-bottom: 1rem !important; /* Ensure bottom margin to prevent table overlap */
-        flex-direction: column; /* Stack sections vertically on medium screens */
-        gap: 1rem; /* More gap between sections */
+        flex-direction: row; /* Keep horizontal layout - no wrapping to new lines */
+        gap: 0.5rem; /* Reduced gap to fit everything on one line */
+        flex-wrap: nowrap; /* Prevent wrapping to new lines */
+        overflow-x: auto; /* Allow horizontal scrolling if needed */
     }
     
     #button-bar > div:first-child {
-        justify-content: center; /* Center the title/sync section */
+        justify-content: flex-start; /* Align left section to the left */
+        flex-shrink: 0; /* Prevent shrinking */
     }
     
     #button-bar > div:last-child {
-        justify-content: center; /* Center the buttons */
+        justify-content: flex-end; /* Align buttons to the right */
+        flex-shrink: 0; /* Prevent shrinking */
     }
     
     /* On medium screens, reduce the title size but keep sync message */
@@ -788,12 +796,12 @@ button:hover::before {
     display: flex;
     justify-content: space-between; /* Space between left and right sections */
     align-items: center; /* Center align items vertically */
-    flex-wrap: wrap; /* Allow wrapping if needed */
+    flex-wrap: nowrap; /* Prevent wrapping to new lines */
     margin: 0;
     margin-bottom: 1rem !important; /* Keep bottom margin to prevent table overlap */
     transform: none;
     max-width: 100%;
-    overflow: visible;
+    overflow-x: auto; /* Allow horizontal scrolling if content is too wide */
     gap: 0.5rem; /* Gap between left and right sections */
     padding: 0.75rem; /* Increased padding for better spacing */
     min-height: 3rem; /* Ensure minimum height */
