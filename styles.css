@@ -1,6 +1,5 @@
-/* CSS simplifié et propre pour correspondre au fichier de référence */
+/* CSS du tableau copié exactement depuis le fichier de référence */
 
-/* Table styles - exactement comme le fichier de référence */
 #data-table { 
     border-collapse: collapse; 
     border-spacing: 0; 
@@ -17,14 +16,14 @@
 }
 
 #data-table thead { 
-    position: sticky !important; 
-    top: 0 !important; 
-    z-index: 10 !important; 
-    background-color: var(--primary-color) !important;
-    color: white !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.05em !important;
+    position: sticky; 
+    top: 0; 
+    z-index: 10; 
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 #data-table thead th {
@@ -49,7 +48,7 @@
     box-shadow: none;
 }
 
-/* Floating Action Button - exactement comme le fichier de référence */
+/* Floating + button to free vertical space */
 #fab-add {
     position: fixed;
     right: 16px;
@@ -66,33 +65,33 @@
 
 #fab-add:active { transform: scale(0.97); }
 
-/* Hide the old add-row button area - exactement comme le fichier de référence */
+/* Hide the old add-row button area to remove the white bar */
 #data-table tfoot td { padding: 0 !important; height: 0 !important; }
 #data-table tfoot button { display: none !important; }
 
-/* Sticky first column - exactement comme le fichier de référence */
+/* Sticky first column */
 #data-table td:first-child {
-    position: sticky !important;
-    left: 0 !important;
-    z-index: 2 !important;
+    position: sticky;
+    left: 0;
+    z-index: 2;
     background-color: white !important;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1) !important;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
 }
 
 #data-table th:first-child {
-    position: sticky !important;
-    left: 0 !important;
-    z-index: 3 !important;
+    position: sticky;
+    left: 0;
+    z-index: 3;
     background-color: var(--primary-color) !important;
 }
 
-/* Frozen column classes for JavaScript - exactement comme le fichier de référence */
+/* Frozen column classes for JavaScript */
 .frozen-column.frozen-1 {
     position: sticky !important;
     left: 0 !important;
     z-index: 2 !important;
     background-color: white !important;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1) !important;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
 }
 
 .frozen-column-header.frozen-1 {
