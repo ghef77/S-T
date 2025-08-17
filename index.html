@@ -1250,11 +1250,16 @@
             const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent); 
             const rows = []; 
             
-            document.querySelectorAll('#data-table tbody tr').forEach(rowEl => { 
+            document.querySelectorAll('#data-table tbody tr').forEach((rowEl, index) => { 
                 const rowData = {}; 
-                if (rowEl.dataset.key) { 
-                    rowData[supabaseConfig.primaryKeyColumn] = rowEl.dataset.key; 
-                } 
+                
+                // Gestion améliorée de la clé primaire
+                if (rowEl.dataset.key && rowEl.dataset.key !== '') { 
+                    rowData[supabaseConfig.primaryKeyColumn] = parseInt(rowEl.dataset.key) || rowEl.dataset.key; 
+                } else {
+                    // Si pas de clé, utiliser l'index + 1 comme clé temporaire
+                    rowData[supabaseConfig.primaryKeyColumn] = index + 1;
+                }
                 
                 const cells = Array.from(rowEl.querySelectorAll('td')).slice(2); 
                 cells.forEach((td, i) => { 
@@ -2030,25 +2035,20 @@
             isDirty = false;
             
             try {
-                const updates = rowsForSync.filter(r => r[supabaseConfig.primaryKeyColumn]);
-                const inserts = rowsForSync.filter(r => !r[supabaseConfig.primaryKeyColumn]);
-                let error = null;
-                
-                if (inserts.length > 0) {
-                    const { error: insertError } = await supabase
+                // Utiliser upsert pour toutes les opérations pour éviter les conflits de clé primaire
+                if (rowsForSync.length > 0) {
+                    const { error: upsertError } = await supabase
                         .from(supabaseConfig.tableName)
-                        .insert(inserts);
-                    if (insertError) error = insertError;
+                        .upsert(rowsForSync, { 
+                            onConflict: supabaseConfig.primaryKeyColumn,
+                            ignoreDuplicates: false
+                        });
+                    
+                    if (upsertError) {
+                        console.error('❌ Erreur upsert:', upsertError);
+                        throw upsertError;
+                    }
                 }
-                
-                if (updates.length > 0 && !error) {
-                    const { error: updateError } = await supabase
-                        .from(supabaseConfig.tableName)
-                        .upsert(updates, { onConflict: supabaseConfig.primaryKeyColumn });
-                    if (updateError) error = updateError;
-                }
-                
-                if (error) throw error;
                 
                 updateStatus('Sauvegardé', 'success');
                 
