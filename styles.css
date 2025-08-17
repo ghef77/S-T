@@ -1,9 +1,18 @@
 /* Enhanced CSS with advanced features inspired by reference file */
 
-/* Global table container adjustments for fixed headers */
+/* Global table container adjustments for sticky headers */
 #table-container {
-    /* Compensate for fixed header height */
-    padding-top: 7rem !important; /* 4rem (button-bar) + 3rem (header) */
+    /* Ensure proper positioning for sticky headers */
+    position: relative;
+    /* Prevent any interference with sticky positioning */
+    overflow: visible;
+}
+
+/* Ensure the overflow container doesn't interfere with sticky headers */
+#table-container .overflow-auto {
+    /* Maintain scroll behavior */
+    overflow: auto;
+    /* Ensure sticky headers work correctly */
     position: relative;
 }
 
@@ -320,10 +329,8 @@ body {
 }
 
 #data-table thead { 
-    position: fixed !important; /* Fixed positioning for absolute stability */
-    top: 4rem !important; /* Fixed below button-bar (adjust this value as needed) */
-    left: 0 !important; /* Align with left edge */
-    right: 0 !important; /* Extend to right edge */
+    position: sticky !important; /* Use sticky positioning for proper table alignment */
+    top: 0 !important; /* Stick to top of container */
     z-index: 10000 !important; /* Extremely high z-index to ensure visibility */
     background-color: var(--primary-color) !important;
     color: white !important;
@@ -341,10 +348,22 @@ body {
     will-change: transform !important;
 }
 
+/* Enhanced sticky behavior for headers */
+#data-table thead {
+    /* Force sticky behavior */
+    transform: translateZ(0) !important;
+    -webkit-transform: translateZ(0) !important;
+    /* Prevent any movement */
+    backface-visibility: hidden !important;
+    -webkit-backface-visibility: hidden !important;
+    /* Ensure sticky positioning works */
+    position: -webkit-sticky !important;
+}
+
 /* Mobile-specific header positioning to account for button bar */
 @media (max-width: 768px) {
     #data-table thead {
-        top: 3.5rem !important; /* Fixed below button-bar on mobile */
+        top: 0; /* Keep at top on mobile */
         z-index: 200; /* Much higher z-index on mobile */
     }
     
@@ -356,8 +375,8 @@ body {
     
     /* Force headers to stay in view on mobile */
 #data-table thead th {
-        position: sticky;
-        top: 0;
+    position: sticky; 
+    top: 0; 
         z-index: 200; /* Same high z-index as thead */
         background-color: var(--primary-color) !important;
         /* Force background to prevent transparency */
@@ -376,9 +395,9 @@ body {
     #data-table thead {
         top: 0 !important;
         z-index: 300 !important; /* Extremely high priority */
-    }
-    
-    #data-table thead th {
+}
+
+#data-table thead th {
         top: 0 !important;
         z-index: 300 !important;
         background-color: var(--primary-color) !important;
