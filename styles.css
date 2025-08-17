@@ -743,7 +743,7 @@ button:hover::before {
 
 }
 
-/* Simple sync indicator styles - absolute minimum height */
+/* Fixed sync indicator height - ultra compact */
 #sync-indicator {
     transition: all 0.3s ease;
     padding: 2px 4px; /* Absolute minimum padding */
@@ -753,8 +753,11 @@ button:hover::before {
     flex-wrap: nowrap; /* Prevent wrapping - keep next to clock */
     flex-shrink: 0; /* Prevent shrinking */
     white-space: nowrap; /* Keep text on one line */
-    height: auto; /* Auto height */
-    min-height: 0; /* No minimum height */
+    height: 20px; /* Fixed height - slightly smaller than container */
+    min-height: 20px; /* Fixed minimum height */
+    max-height: 20px; /* Fixed maximum height */
+    display: flex;
+    align-items: center; /* Center content vertically */
 }
 
 /* Top bar container - keep elements together */
@@ -767,30 +770,43 @@ button:hover::before {
     flex-wrap: nowrap; /* Keep elements on one line */
 }
 
-/* Reduce top bar height to absolute minimum */
+/* Fixed top bar height - ultra compact */
 #table-container .flex.flex-col.md\\:flex-row .flex-grow {
-    padding: 0.125rem; /* Absolute minimum padding */
+    height: 24px; /* Fixed height - ultra compact */
+    min-height: 24px; /* Fixed minimum height */
+    max-height: 24px; /* Fixed maximum height */
+    padding: 0; /* No padding */
+    overflow: hidden; /* Hide any overflow */
+    display: flex;
+    align-items: center; /* Center content vertically */
 }
 
 #table-container .flex.flex-col.md\\:flex-row .flex-grow .flex.flex-wrap {
     margin-bottom: 0; /* No margin */
     gap: 0.25rem; /* Minimal gap */
+    height: 24px; /* Fixed height */
+    align-items: center; /* Center vertically */
 }
 
 #table-container .flex.flex-col.md\\:flex-row .flex-grow .flex.flex-col.md\\:flex-row {
     gap: 0.125rem; /* Minimal gap */
     flex-wrap: nowrap; /* Prevent wrapping */
+    height: 24px; /* Fixed height */
+    align-items: center; /* Center vertically */
 }
 
-/* Reduce title size to minimum */
+/* Fixed title height - ultra compact */
 #table-container .flex.flex-col.md\\:flex-row .flex-grow h2 {
     font-size: 0.75rem; /* Minimum readable size */
-    line-height: 1; /* Tighter line height */
+    line-height: 24px; /* Fixed line height to match container */
     margin: 0; /* No margins */
     padding: 0; /* No padding */
+    height: 24px; /* Fixed height */
+    display: flex;
+    align-items: center; /* Center vertically */
 }
 
-/* Reduce clock and sync indicator to minimum */
+/* Fixed clock and sync indicator height - ultra compact */
 #table-container .flex.flex-col.md\\:flex-row .flex-grow #current-time,
 #table-container .flex.flex-col.md\\:flex-row .flex-grow #sync-indicator {
     font-size: 0.5rem; /* Minimum readable size */
@@ -798,6 +814,10 @@ button:hover::before {
     margin: 0; /* No margins */
     white-space: nowrap; /* Prevent text wrapping */
     flex-shrink: 0; /* Prevent shrinking */
+    height: 24px; /* Fixed height */
+    line-height: 24px; /* Fixed line height */
+    display: flex;
+    align-items: center; /* Center vertically */
 }
 
 #sync-status-icon {
