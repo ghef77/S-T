@@ -363,34 +363,38 @@ body {
 
 /* Button bar positioning */
 #button-bar { 
-    position: absolute; 
-    top: 8px; 
-    right: 8px; 
+    position: relative; /* Changed from absolute to relative to prevent overlap */
+    top: auto; /* Remove absolute positioning */
+    right: auto; /* Remove absolute positioning */
     z-index: 20; 
     display: flex;
     justify-content: flex-end; /* Align buttons to the right */
     align-items: flex-start; /* Align buttons to the top */
     flex-wrap: wrap; /* Allow buttons to wrap to next line */
-    margin-left: 0; /* Removed left margin */
-    margin-right: 0; /* Removed right margin */
-    transform: translateX(0); /* Removed transform offset */
-    max-width: calc(100vw - 40px);
-    overflow: hidden;
-    gap: 0; /* No gap between buttons */
+    margin: 0; /* Reset margins */
+    margin-bottom: 1rem !important; /* Add bottom margin to prevent table overlap */
+    transform: none; /* Remove transform */
+    max-width: 100%; /* Use full width */
+    overflow: visible; /* Allow content to be visible */
+    gap: 0.25rem; /* Small gap between buttons */
+    padding: 0.5rem; /* Add padding for better spacing */
+    min-height: 2.5rem; /* Ensure minimum height for single row */
 }
 
-/* Mobile-safe positioning for the top-right button bar */
+/* Mobile-safe positioning for the button bar */
 @media (max-width: 640px) {
     #button-bar {
-        position: fixed;
-        top: calc(env(safe-area-inset-top, 0px) + 8px);
-        right: 8px;
-        z-index: 50;
-        margin: 0; /* Ensure no margins on mobile */
+        position: relative; /* Keep relative positioning on mobile */
+        top: auto;
+        right: auto;
+        z-index: 20;
+        margin: 0; /* Reset margins */
+        margin-bottom: 1rem !important; /* Ensure bottom margin on mobile */
+        padding: 0.75rem; /* Slightly more padding on mobile */
     }
     
     #table-container { 
-        padding-top: 56px; 
+        padding-top: 0; /* Remove top padding since button bar is now in flow */
     }
 }
 
@@ -705,7 +709,7 @@ button:hover::before {
 
 #button-bar {
     max-width: 100%;
-    justify-content: flex-start;
+    justify-content: flex-end; /* Keep buttons aligned to the right */
 }
 
 #button-bar button {
@@ -736,9 +740,9 @@ button:hover::before {
     }
     
     #button-bar {
-        padding: 0.5rem !important;
+        padding: 0.75rem !important; /* Increased padding for better touch targets */
         margin: 0 !important; /* Remove all margins on medium screens */
-        margin-bottom: 0.5rem !important;
+        margin-bottom: 1rem !important; /* Ensure bottom margin to prevent table overlap */
     }
 
 }
@@ -812,6 +816,18 @@ button:hover::before {
     height: 20px !important; /* Increased from 16px to 20px (30% increase) */
     line-height: 20px !important; /* Match container height */
     white-space: nowrap !important;
+}
+
+/* Ensure proper spacing between button bar and table */
+#button-bar + .overflow-auto {
+    margin-top: 0.5rem; /* Add space between button bar and table */
+}
+
+/* Prevent button wrapping from overlapping table content */
+#button-bar {
+    background-color: rgba(255, 255, 255, 0.95); /* Semi-transparent background */
+    border-radius: 0.5rem; /* Rounded corners */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
 }
 
 /* Fixed top bar height - ultra compact */
