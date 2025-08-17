@@ -789,6 +789,9 @@ button:hover::before {
         gap: 0.5rem; /* Increase gap to use more space */
         background: linear-gradient(to left, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.8) 50%, transparent 100%); /* Stronger fade */
         padding-left: 1.5rem; /* More padding for fade effect */
+        width: 100%; /* Use full available width */
+        position: static; /* Remove sticky positioning to use full width */
+        right: auto; /* Remove right positioning */
     }
 }
 
@@ -820,6 +823,9 @@ button:hover::before {
         gap: 0.75rem; /* Larger gaps to use more space */
         background: linear-gradient(to left, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.9) 40%, transparent 100%); /* Very strong fade */
         padding-left: 2rem; /* Maximum padding for fade effect */
+        width: 100%; /* Use full available width */
+        position: static; /* Remove sticky positioning to use full width */
+        right: auto; /* Remove right positioning */
     }
 }
 
@@ -856,6 +862,9 @@ button:hover::before {
         justify-content: space-evenly; /* Distribute buttons evenly across full width */
         background: linear-gradient(to left, rgba(255,255,255,0.99) 0%, rgba(255,255,255,0.95) 30%, transparent 100%); /* Maximum fade effect */
         padding-left: 2.5rem; /* Maximum padding for fade effect */
+        width: 100% !important; /* Use full available width */
+        position: static !important; /* Remove sticky positioning to use full width */
+        right: auto !important; /* Remove right positioning */
     }
 }
 
@@ -889,6 +898,8 @@ button:hover::before {
         flex-shrink: 0; /* Prevent shrinking */
         transition: all 0.3s ease; /* Smooth transitions */
         background: linear-gradient(to left, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.8) 60%, transparent 100%); /* Stronger fade effect */
+        width: 100%; /* Use full available width */
+        justify-content: space-between; /* Distribute buttons across full width */
     }
     
     /* On medium screens, reduce the title size but keep sync message */
@@ -929,6 +940,8 @@ button:hover::before {
         gap: 0.375rem; /* Slightly larger gaps */
         background: linear-gradient(to left, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.75) 60%, transparent 100%); /* Moderate fade */
         padding-left: 1.25rem; /* Moderate padding for fade effect */
+        width: 100%; /* Use full available width */
+        justify-content: space-between; /* Distribute buttons across full width */
     }
 
 }
@@ -997,6 +1010,8 @@ button:hover::before {
     right: 0; /* Stick to right side */
     background: linear-gradient(to left, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 70%, transparent 100%); /* Fade effect */
     padding-left: 1rem; /* Add padding for fade effect */
+    width: auto; /* Allow width to adjust */
+    min-width: 0; /* Allow shrinking */
 }
 
 /* Title styling */
