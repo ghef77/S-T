@@ -782,6 +782,14 @@ button:hover::before {
         width: 2rem !important; /* Smaller color picker */
         height: 2rem !important; /* Smaller color picker */
     }
+    
+    /* Use more horizontal space on small screens */
+    #button-bar > div:last-child {
+        justify-content: space-between; /* Distribute buttons across available space */
+        gap: 0.5rem; /* Increase gap to use more space */
+        background: linear-gradient(to left, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.8) 50%, transparent 100%); /* Stronger fade */
+        padding-left: 1.5rem; /* More padding for fade effect */
+    }
 }
 
 @media (max-width: 400px) {
@@ -804,6 +812,14 @@ button:hover::before {
     #button-bar input[type="color"] {
         width: 1.75rem !important; /* Smaller color picker */
         height: 1.75rem !important; /* Smaller color picker */
+    }
+    
+    /* Use even more horizontal space on very small screens */
+    #button-bar > div:last-child {
+        justify-content: space-around; /* Distribute buttons evenly across full width */
+        gap: 0.75rem; /* Larger gaps to use more space */
+        background: linear-gradient(to left, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.9) 40%, transparent 100%); /* Very strong fade */
+        padding-left: 2rem; /* Maximum padding for fade effect */
     }
 }
 
@@ -837,6 +853,9 @@ button:hover::before {
     
     #button-bar > div:last-child {
         gap: 0.125rem !important; /* Minimal gap between buttons */
+        justify-content: space-evenly; /* Distribute buttons evenly across full width */
+        background: linear-gradient(to left, rgba(255,255,255,0.99) 0%, rgba(255,255,255,0.95) 30%, transparent 100%); /* Maximum fade effect */
+        padding-left: 2.5rem; /* Maximum padding for fade effect */
     }
 }
 
@@ -903,6 +922,13 @@ button:hover::before {
     #button-bar input[type="color"] {
         width: 2.25rem !important; /* Adjusted color picker */
         height: 2.25rem !important; /* Adjusted color picker */
+    }
+    
+    /* Start using more horizontal space on medium screens */
+    #button-bar > div:last-child {
+        gap: 0.375rem; /* Slightly larger gaps */
+        background: linear-gradient(to left, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.75) 60%, transparent 100%); /* Moderate fade */
+        padding-left: 1.25rem; /* Moderate padding for fade effect */
     }
 
 }
