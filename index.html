@@ -1253,9 +1253,16 @@
             document.querySelectorAll('#data-table tbody tr').forEach((rowEl, index) => { 
                 const rowData = {}; 
                 
-                // Gestion améliorée de la clé primaire
+                // Gestion améliorée de la clé primaire compatible smallint
                 if (rowEl.dataset.key && rowEl.dataset.key !== '') { 
-                    rowData[supabaseConfig.primaryKeyColumn] = parseInt(rowEl.dataset.key) || rowEl.dataset.key; 
+                    const keyValue = parseInt(rowEl.dataset.key);
+                    // S'assurer que la clé est dans la plage smallint (-32,768 à 32,767)
+                    if (keyValue >= -32768 && keyValue <= 32767) {
+                        rowData[supabaseConfig.primaryKeyColumn] = keyValue;
+                    } else {
+                        // Si la clé est hors plage, utiliser l'index + 1
+                        rowData[supabaseConfig.primaryKeyColumn] = index + 1;
+                    }
                 } else {
                     // Si pas de clé, utiliser l'index + 1 comme clé temporaire
                     rowData[supabaseConfig.primaryKeyColumn] = index + 1;
@@ -1732,8 +1739,9 @@
             const importData = validRows.map((row, index) => {
               const obj = {};
               
-              // Générer automatiquement une clé primaire unique
-              obj[supabaseConfig.primaryKeyColumn] = Date.now() + index;
+              // Générer automatiquement une clé primaire unique compatible smallint
+              // Utiliser un index simple pour éviter les dépassements de type
+              obj[supabaseConfig.primaryKeyColumn] = index + 1;
               
               // Ajouter automatiquement la date de saisie
               obj['Date de saisie'] = getFormattedDate();
@@ -1898,6 +1906,23 @@
             const tbody = document.getElementById('table-body');
             const row = document.createElement('tr');
             row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+            
+            // Générer une clé primaire unique compatible smallint
+            const existingKeys = Array.from(tbody.querySelectorAll('tr'))
+                .map(tr => parseInt(tr.dataset.key) || 0)
+                .filter(key => key > 0);
+            
+            let newKey = 1;
+            if (existingKeys.length > 0) {
+                newKey = Math.max(...existingKeys) + 1;
+            }
+            
+            // S'assurer que la clé est dans la plage smallint
+            if (newKey > 32767) {
+                newKey = 1; // Recommencer à 1 si on dépasse la limite
+            }
+            
+            row.dataset.key = newKey.toString();
 
             // Create row number cell
             const numCell = document.createElement('td');
