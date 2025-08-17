@@ -1179,6 +1179,45 @@ if (isMobile() && window.visualViewport) {
     });
 }
 
+// Mobile header visibility fix - ensure headers stay visible during scroll
+if (isMobile()) {
+    // Function to force header visibility
+    function ensureHeadersVisible() {
+        const thead = document.querySelector('#data-table thead');
+        const theadThs = document.querySelectorAll('#data-table thead th');
+        
+        if (thead && theadThs.length > 0) {
+            // Force sticky positioning
+            thead.style.position = 'sticky';
+            thead.style.top = '0';
+            thead.style.zIndex = '25';
+            
+            theadThs.forEach(th => {
+                th.style.position = 'sticky';
+                th.style.top = '0';
+                th.style.zIndex = '25';
+                th.style.backgroundColor = 'var(--primary-color)';
+            });
+        }
+    }
+    
+    // Apply fix on scroll to ensure headers stay visible
+    let scrollTimeout;
+    document.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(ensureHeadersVisible, 50);
+    }, { passive: true });
+    
+    // Apply fix on touch events for mobile
+    document.addEventListener('touchmove', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(ensureHeadersVisible, 50);
+    }, { passive: true });
+    
+    // Apply fix initially
+    setTimeout(ensureHeadersVisible, 100);
+}
+
 
 
 // Paint mode management

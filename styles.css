@@ -324,6 +324,61 @@ body {
     min-height: 3rem; /* Ensure minimum height for better appearance */
 }
 
+/* Mobile-specific header positioning to account for button bar */
+@media (max-width: 768px) {
+    #data-table thead {
+        top: 0; /* Keep at top on mobile */
+        z-index: 15; /* Higher z-index to stay above other elements */
+    }
+    
+    /* Ensure headers stay visible when scrolling on mobile */
+    #table-container .overflow-auto {
+        position: relative;
+    }
+    
+    /* Force headers to stay in view on mobile */
+    #data-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 15;
+        background-color: var(--primary-color) !important;
+    }
+    
+    /* Ensure button bar doesn't interfere with header visibility */
+    #button-bar {
+        z-index: 20; /* Higher than headers but lower than modals */
+        position: relative;
+    }
+}
+
+/* Extra small screens - ensure headers are always visible */
+@media (max-width: 480px) {
+    #data-table thead {
+        top: 0 !important;
+        z-index: 25 !important; /* Very high priority */
+    }
+    
+    #data-table thead th {
+        top: 0 !important;
+        z-index: 25 !important;
+        background-color: var(--primary-color) !important;
+        /* Force background to prevent transparency issues */
+        background-image: linear-gradient(to bottom, var(--primary-color), var(--primary-color)) !important;
+    }
+    
+    /* Ensure table container doesn't interfere */
+    #table-container {
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Force overflow container to respect sticky positioning */
+    #table-container .overflow-auto {
+        position: relative;
+        z-index: 1;
+    }
+}
+
 #data-table thead th {
     padding: 0.75rem; /* Increased from 0.5rem to 0.75rem for better readability */
     font-size: 0.75rem; /* Increased from 0.4375rem to 0.75rem for better readability */
