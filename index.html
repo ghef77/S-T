@@ -354,6 +354,17 @@
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
         
+        /* Style pour le champ mot de passe en erreur */
+        .password-error {
+            border-color: var(--danger-color) !important;
+            background-color: rgba(220, 38, 38, 0.05) !important;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1) !important;
+        }
+        
+        .password-error::placeholder {
+            color: var(--danger-color);
+        }
+        
         /* Enhanced button styles */
         button {
             transition: var(--transition);
@@ -2319,6 +2330,8 @@
         function checkPassword() { 
             const pwd = document.getElementById('password').value; 
             const err = document.getElementById('error-message'); 
+            const passwordInput = document.getElementById('password');
+            const togglePassword = document.getElementById('toggle-password');
             
             if (pwd === APP_CONFIG.password) { 
                 appState.isLoggedIn = true; 
@@ -2331,7 +2344,26 @@
                 setupRealtimeSubscription(); 
                 startPeriodicSync(); 
             } else { 
-                err.textContent = 'Mot de passe incorrect.'; 
+                err.textContent = 'Mot de passe incorrect. Le champ est maintenant visible pour faciliter la correction.';
+                
+                // Transformer automatiquement le champ en texte visible pour faciliter la correction
+                passwordInput.type = 'text';
+                togglePassword.checked = true;
+                
+                // Remettre le focus dans le champ pour permettre la correction immédiate
+                passwordInput.focus();
+                
+                // Sélectionner tout le texte pour faciliter la correction
+                passwordInput.select();
+                
+                // Ajouter une classe CSS pour indiquer visuellement l'erreur
+                passwordInput.classList.add('password-error');
+                
+                // Retirer la classe d'erreur quand l'utilisateur commence à taper
+                passwordInput.addEventListener('input', function clearErrorStyle() {
+                    passwordInput.classList.remove('password-error');
+                    passwordInput.removeEventListener('input', clearErrorStyle);
+                }, { once: true });
             } 
         }
 
