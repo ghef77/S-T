@@ -637,6 +637,8 @@
         let typingTimer = null;
         let isSyncing = false;
         let realtimeSubscription = null;
+        let lastSaveTime = 0; // Timestamp de la dernière sauvegarde
+        const REALTIME_COOLDOWN_MS = 2000; // 2 secondes de cooldown après sauvegarde
         
         // Autosave configuration
         const AUTOSAVE_DELAY_MS = 3000; // 3 seconds after last edit when idle
@@ -2197,11 +2199,11 @@
                 
                 updateStatus('Sauvegardé', 'success');
                 
-                log(`syncToMaster -> set restore listener (lastCellPos=${JSON.stringify(lastCellPos)}, lastFocusInfo.col=${lastFocusInfo ? lastFocusInfo.colLabel : ''})`);
+                // Enregistrer le timestamp de sauvegarde pour éviter les conflits temps réel
+                lastSaveTime = Date.now();
+                log(`✅ Sauvegarde réussie à ${new Date(lastSaveTime).toLocaleTimeString()} - Cooldown temps réel activé pour ${REALTIME_COOLDOWN_MS}ms`);
                 
-                // Optimisation : éviter le rechargement automatique après sauvegarde
-                // pour prévenir la double sauvegarde
-                log('✅ Sauvegarde réussie - pas de rechargement automatique pour éviter la double sauvegarde');
+                log(`syncToMaster -> Focus restoration (lastCellPos=${JSON.stringify(lastCellPos)}, lastFocusInfo.col=${lastFocusInfo ? lastFocusInfo.colLabel : ''})`);
                 
                 // Restaurer le focus directement sans recharger les données
                 // car les données sont déjà synchronisées avec Supabase
@@ -2245,10 +2247,20 @@
         
         function handleRealtimeUpdate() {
             log('Mise à jour en temps réel reçue.');
+            
+            // Vérifier le cooldown pour éviter les conflits avec nos propres sauvegardes
+            const timeSinceLastSave = Date.now() - lastSaveTime;
+            if (timeSinceLastSave < REALTIME_COOLDOWN_MS) {
+                log(`⏰ Cooldown actif (${REALTIME_COOLDOWN_MS - timeSinceLastSave}ms restant) - Ignore l'événement temps réel`);
+                return;
+            }
+            
             if (isDirty) { 
                 log('Modifs locales en attente, on ignore.'); 
                 return; 
             }
+            
+            log('🔄 Synchronisation temps réel - Capture du focus et rechargement...');
             
             // Try to preserve focus across realtime-driven reload as well
             captureFocusInfo();
@@ -2257,7 +2269,15 @@
             const onReload = () => {
                 log('realtime -> table:reloaded caught; attempting focus restore');
                 document.removeEventListener('table:reloaded', onReload);
-                focusCellByPos(lastCellPos) || focusCellFromInfo(lastFocusInfo);
+                
+                // Restauration du focus après rechargement temps réel
+                setTimeout(() => {
+                    const posResult = focusCellByPos(lastCellPos);
+                    if (!posResult) {
+                        const infoResult = focusCellFromInfo(lastFocusInfo);
+                        log(`🔍 Focus restore temps réel - pos: ${posResult}, info: ${infoResult}`);
+                    }
+                }, 100);
             };
             
             document.addEventListener('table:reloaded', onReload, { once: true });
