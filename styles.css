@@ -361,25 +361,7 @@ body {
     color: #991b1b; 
 }
 
-/* Button bar positioning */
-#button-bar { 
-    position: relative; /* Changed from absolute to relative to prevent overlap */
-    top: auto; /* Remove absolute positioning */
-    right: auto; /* Remove absolute positioning */
-    z-index: 20; 
-    display: flex;
-    justify-content: flex-end; /* Align buttons to the right */
-    align-items: flex-start; /* Align buttons to the top */
-    flex-wrap: wrap; /* Allow buttons to wrap to next line */
-    margin: 0; /* Reset margins */
-    margin-bottom: 1rem !important; /* Add bottom margin to prevent table overlap */
-    transform: none; /* Remove transform */
-    max-width: 100%; /* Use full width */
-    overflow: visible; /* Allow content to be visible */
-    gap: 0.25rem; /* Small gap between buttons */
-    padding: 0.5rem; /* Add padding for better spacing */
-    min-height: 2.5rem; /* Ensure minimum height for single row */
-}
+/* Button bar positioning - now handled by the new unified structure above */
 
 /* Mobile-safe positioning for the button bar */
 @media (max-width: 640px) {
@@ -391,6 +373,16 @@ body {
         margin: 0; /* Reset margins */
         margin-bottom: 1rem !important; /* Ensure bottom margin on mobile */
         padding: 0.75rem; /* Slightly more padding on mobile */
+        flex-direction: column; /* Stack left and right sections vertically on small screens */
+        gap: 1rem; /* More gap between sections on mobile */
+    }
+    
+    #button-bar > div:first-child {
+        justify-content: center; /* Center the title/sync section on mobile */
+    }
+    
+    #button-bar > div:last-child {
+        justify-content: center; /* Center the buttons on mobile */
     }
     
     #table-container { 
@@ -707,29 +699,10 @@ button:hover::before {
     overflow: hidden; /* Empêche le débordement du container */
 }
 
-#button-bar {
-    max-width: 100%;
-    justify-content: flex-end; /* Keep buttons aligned to the right */
-}
-
+/* Button styling within the new unified structure */
 #button-bar button {
     margin: 0; /* No margins on buttons */
     flex-shrink: 0;
-}
-
-/* Ensure wrapped buttons stay aligned to the right */
-#button-bar {
-    flex-direction: row-reverse; /* Reverse direction so buttons wrap from right to left */
-}
-
-/* Reset button order to maintain visual order */
-#button-bar button {
-    order: 0; /* Reset order */
-}
-
-/* Specific order for keyboard shortcuts button to appear last */
-#button-bar button[onclick*="toggleKeyboardShortcuts"] {
-    order: 1; /* Appears last in the visual order */
 }
 
 /* Réduction des marges sur petits écrans */
@@ -743,6 +716,16 @@ button:hover::before {
         padding: 0.75rem !important; /* Increased padding for better touch targets */
         margin: 0 !important; /* Remove all margins on medium screens */
         margin-bottom: 1rem !important; /* Ensure bottom margin to prevent table overlap */
+        flex-direction: column; /* Stack sections vertically on medium screens */
+        gap: 1rem; /* More gap between sections */
+    }
+    
+    #button-bar > div:first-child {
+        justify-content: center; /* Center the title/sync section */
+    }
+    
+    #button-bar > div:last-child {
+        justify-content: center; /* Center the buttons */
     }
 
 }
@@ -764,70 +747,93 @@ button:hover::before {
     align-items: center; /* Center content vertically */
 }
 
-/* Target the specific top bar div from the image */
-#table-container > div:first-child {
-    padding: 0.25rem !important; /* Reduced from 0.125rem to 0.25rem (30% increase) */
-    margin-bottom: 0.25rem !important; /* Reduced from 0.125rem to 0.25rem (30% increase) */
-    min-height: 40px !important; /* Increased from 32px to 40px (30% increase) */
-    max-height: 40px !important; /* Increased from 32px to 40px (30% increase) */
-    height: 40px !important; /* Increased from 32px to 40px (30% increase) */
+/* New unified button bar with title and sync indicators */
+#button-bar {
+    position: relative; /* Keep relative positioning */
+    top: auto;
+    right: auto;
+    z-index: 20;
+    display: flex;
+    justify-content: space-between; /* Space between left and right sections */
+    align-items: center; /* Center align items vertically */
+    flex-wrap: wrap; /* Allow wrapping if needed */
+    margin: 0;
+    margin-bottom: 1rem !important; /* Keep bottom margin to prevent table overlap */
+    transform: none;
+    max-width: 100%;
+    overflow: visible;
+    gap: 0.5rem; /* Gap between left and right sections */
+    padding: 0.75rem; /* Increased padding for better spacing */
+    min-height: 3rem; /* Ensure minimum height */
+    background-color: rgba(255, 255, 255, 0.95); /* Semi-transparent background */
+    border-radius: 0.5rem; /* Rounded corners */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
 }
 
-/* Target the inner flex-grow container */
-#table-container > div:first-child .flex-grow {
-    padding: 0.125rem !important; /* Added small padding back (30% of original) */
-    margin: 0 !important; /* Keep margins at 0 */
-    height: 40px !important; /* Increased from 32px to 40px (30% increase) */
-    min-height: 40px !important;
-    max-height: 40px !important;
+/* Left section: Title, timestamp, and sync indicator */
+#button-bar > div:first-child {
+    display: flex;
+    align-items: center;
+    gap: 1rem; /* Space between title, timestamp, and sync indicator */
+    flex-shrink: 0; /* Prevent shrinking */
 }
 
-/* Target the title section */
-#table-container > div:first-child .flex-grow .flex.flex-wrap {
-    margin-bottom: 0.125rem !important; /* Added small margin back (30% of original) */
-    gap: 0.25rem !important; /* Increased from 0.125rem to 0.25rem (30% increase) */
-    height: 20px !important; /* Increased from 16px to 20px (30% increase) */
-    align-items: center !important;
+/* Right section: Function buttons */
+#button-bar > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem; /* Small gap between buttons */
+    justify-content: flex-end; /* Align buttons to the right */
+    align-items: center;
+    flex-shrink: 0; /* Prevent shrinking */
 }
 
-/* Target the clock and sync section */
-#table-container > div:first-child .flex-grow .flex.flex-col.md\\:flex-row {
-    gap: 0.25rem !important; /* Increased from 0.125rem to 0.25rem (30% increase) */
-    height: 20px !important; /* Increased from 16px to 20px (30% increase) */
-    align-items: center !important;
-    flex-wrap: nowrap !important;
+/* Title styling */
+#button-bar h2 {
+    font-size: 1.125rem; /* Slightly larger title */
+    font-weight: bold;
+    color: #1f2937; /* Dark gray */
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
 }
 
-/* Target the title text */
-#table-container > div:first-child .flex-grow h2 {
-    font-size: 0.875rem !important; /* Increased from 0.75rem to 0.875rem (30% increase) */
-    line-height: 20px !important; /* Match container height */
-    margin: 0 !important;
-    padding: 0 !important;
-    height: 20px !important; /* Increased from 16px to 20px (30% increase) */
+/* Timestamp styling */
+#button-bar #current-time {
+    font-size: 0.875rem;
+    color: #374151; /* Medium gray */
+    font-weight: 500;
+    white-space: nowrap;
 }
 
-/* Target the clock and sync indicator */
-#table-container > div:first-child .flex-grow #current-time,
-#table-container > div:first-child .flex-grow #sync-indicator {
-    font-size: 0.625rem !important; /* Increased from 0.5rem to 0.625rem (30% increase) */
-    padding: 0.125rem !important; /* Added small padding back (30% of original) */
-    margin: 0 !important;
-    height: 20px !important; /* Increased from 16px to 20px (30% increase) */
-    line-height: 20px !important; /* Match container height */
-    white-space: nowrap !important;
+/* Sync indicator styling */
+#button-bar #sync-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    white-space: nowrap;
+}
+
+#button-bar #sync-status-icon {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    background-color: #10b981; /* Green */
+}
+
+#button-bar #sync-status-text {
+    font-size: 0.75rem;
+    color: #374151;
+    font-weight: 500;
 }
 
 /* Ensure proper spacing between button bar and table */
 #button-bar + .overflow-auto {
     margin-top: 0.5rem; /* Add space between button bar and table */
-}
-
-/* Prevent button wrapping from overlapping table content */
-#button-bar {
-    background-color: rgba(255, 255, 255, 0.95); /* Semi-transparent background */
-    border-radius: 0.5rem; /* Rounded corners */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
 }
 
 /* Fixed top bar height - ultra compact */
