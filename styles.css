@@ -1,9 +1,8 @@
 /* Enhanced CSS with advanced features inspired by reference file */
 
-/* Global table container adjustments for fixed headers */
+/* Global table container adjustments for sticky headers */
 #table-container {
-    /* Compensate for fixed header height */
-    padding-top: 3rem !important; /* Match thead min-height */
+    /* Ensure proper positioning for sticky headers */
     position: relative;
 }
 
@@ -320,10 +319,8 @@ body {
 }
 
 #data-table thead { 
-    position: fixed !important; /* Use fixed positioning for absolute stability */
-    top: 0 !important; /* Fixed at top of viewport */
-    left: 0 !important; /* Fixed at left of viewport */
-    right: 0 !important; /* Extend to right edge */
+    position: sticky !important; /* Use sticky positioning for proper table alignment */
+    top: 0 !important; /* Stick to top of container */
     z-index: 10000 !important; /* Extremely high z-index to ensure visibility */
     background-color: var(--primary-color) !important;
     color: white !important;
@@ -659,9 +656,9 @@ body {
     vertical-align: middle; /* Center content vertically */
     border-bottom: 2px solid rgba(255, 255, 255, 0.2); /* Subtle border for better separation */
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* Text shadow for better readability */
-    /* Ensure each header cell stays fixed */
-    position: fixed !important; /* Use fixed positioning for absolute stability */
-    top: 0 !important; /* Fixed at top of viewport */
+    /* Ensure each header cell stays sticky */
+    position: sticky !important; /* Use sticky positioning for proper alignment */
+    top: 0 !important; /* Stick to top of container */
     z-index: 10000 !important; /* Same high z-index as thead */
     background-color: var(--primary-color) !important;
     /* Force background to prevent transparency */
