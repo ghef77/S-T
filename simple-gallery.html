@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galerie d'Images Simplifiée - Supabase</title>
+    
+    <!-- Tailwind CSS -->
+    <link rel="stylesheet" href="tailwind-custom.css">
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Styles personnalisés pour une galerie plus spacieuse et belle */
+        .image-card {
+            transition: all 0.3s ease;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .image-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .upload-area {
+            border: 3px dashed #e5e7eb;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            transform: scale(1.02);
+        }
+        
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Grille de galerie classique avec images alignées en séquence */
+        .gallery-grid-spacious {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+        
+        /* Cartes d'images compactes */
+        .image-card-large {
+            aspect-ratio: 1;
+            min-height: 80px;
+            flex-shrink: 0;
+        }
+        
+        /* Images dans la galerie avec largeur fixe mais hauteur adaptative */
+        .gallery-grid-spacious .image-card {
+            width: 250px;
+            min-height: 250px;
+            height: auto;
+            margin: 0;
+            transform: none;
+            flex-shrink: 0;
+        }
+        
+        /* Images à l'intérieur des cartes */
+        .gallery-grid-spacious .image-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        /* Zone des sélecteurs de patients */
+        .gallery-grid-spacious .image-card .p-3 {
+            padding: 12px;
+            background: white;
+        }
+        
+        /* Sélecteur de patient */
+        .gallery-grid-spacious .image-card select {
+            width: 100%;
+            font-size: 12px;
+            padding: 6px 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+        }
+        
+        /* Patient sélectionné */
+        .gallery-grid-spacious .image-card .bg-blue-50,
+        .gallery-grid-spacious .image-card .bg-green-50 {
+            font-size: 11px;
+            padding: 6px 8px;
+            margin-bottom: 8px;
+        }
+        
+        /* Bouton de suppression - styles personnalisés */
+        .gallery-grid-spacious .image-card .delete-btn {
+            background-color: #ef4444 !important;
+            color: white !important;
+            border: 2px solid white !important;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        .gallery-grid-spacious .image-card .delete-btn:hover {
+            background-color: #dc2626 !important;
+            transform: scale(1.1) !important;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4) !important;
+        }
+        
+        .gallery-grid-spacious .image-card .delete-btn i {
+            color: white !important;
+            font-size: 12px !important;
+        }
+        
+        /* Styles responsifs pour mobile et tablette */
+        @media (max-width: 768px) {
+            .gallery-grid-spacious .image-card .delete-btn {
+                background-color: #dc2626 !important;
+                border: 3px solid white !important;
+                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5) !important;
+                width: 36px !important;
+                height: 36px !important;
+            }
+            
+            .gallery-grid-spacious .image-card .delete-btn i {
+                font-size: 14px !important;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .gallery-grid-spacious .image-card .delete-btn {
+                background-color: #b91c1c !important;
+                border: 3px solid white !important;
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6) !important;
+                width: 40px !important;
+                height: 40px !important;
+            }
+            
+            .gallery-grid-spacious .image-card .delete-btn i {
+                font-size: 16px !important;
+            }
+        }
+        
+        /* Styles très spécifiques pour mobile avec haute visibilité */
+        @media (max-width: 640px) {
+            .gallery-grid-spacious .image-card .delete-btn {
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+                border: 3px solid #ffffff !important;
+                box-shadow: 
+                    0 4px 8px rgba(0, 0, 0, 0.4),
+                    0 0 0 2px rgba(255, 255, 255, 0.8) !important;
+                width: 38px !important;
+                height: 38px !important;
+                position: absolute !important;
+                z-index: 1000 !important;
+            }
+            
+            .gallery-grid-spacious .image-card .delete-btn:active {
+                background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%) !important;
+                transform: scale(0.95) !important;
+            }
+            
+            .gallery-grid-spacious .image-card .delete-btn i {
+                color: #ffffff !important;
+                font-size: 15px !important;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+            }
+        }
+        
+        /* Suppression des marges négatives */
+        .gallery-grid-spacious .image-card {
+            margin: 0;
+        }
+        
+        /* Header plus compact */
+        .header-compact {
+            padding: 1rem 0;
+        }
+        
+        /* Section d'upload plus compacte */
+        .upload-section-compact {
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        /* Zone de glisser-déposer plus petite */
+        .upload-area-compact {
+            padding: 2rem;
+            min-height: 120px;
+        }
+        
+        /* Galerie responsive avec espacement adaptatif */
+        @media (min-width: 640px) {
+            .gallery-grid-spacious {
+                gap: 12px;
+            }
+        }
+        @media (min-width: 768px) {
+            .gallery-grid-spacious {
+                gap: 16px;
+            }
+        }
+        @media (min-width: 1024px) {
+            .gallery-grid-spacious {
+                gap: 20px;
+            }
+        }
+        @media (min-width: 1280px) {
+            .gallery-grid-spacious {
+                gap: 24px;
+            }
+        }
+        
+        /* Masquer les boutons de suppression quand l'image viewer est ouvert */
+        #image-viewer:not(.hidden) ~ .gallery-grid-spacious .delete-btn,
+        #image-viewer:not(.hidden) ~ .gallery-grid-spacious .image-card .delete-btn,
+        #image-viewer:not(.hidden) ~ * .delete-btn {
+            display: none !important;
+        }
+        
+        /* Solution alternative plus agressive pour masquer tous les boutons de suppression */
+        #image-viewer:not(.hidden) ~ * .delete-btn,
+        #image-viewer:not(.hidden) ~ * .gallery-grid-spacious .delete-btn,
+        #image-viewer:not(.hidden) ~ * .image-card .delete-btn {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        
+        /* Masquer spécifiquement sur mobile quand l'image viewer est ouvert */
+        @media (max-width: 768px) {
+            #image-viewer:not(.hidden) ~ * .delete-btn,
+            #image-viewer:not(.hidden) ~ * .gallery-grid-spacious .delete-btn,
+            #image-viewer:not(.hidden) ~ * .image-card .delete-btn {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+                z-index: -1 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+    
+    <!-- Header avec meilleure responsivité mobile -->
+    <header class="bg-gradient-to-br from-blue-50 to-indigo-100 border-b border-blue-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                <!-- Logo et titre -->
+                <div class="flex items-center space-x-3 sm:space-x-4">
+                    <i class="fas fa-images text-red-600 text-2xl sm:text-4xl"></i>
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Galerie d'Images</h1>
+                        <p class="text-xs sm:text-sm text-gray-600 font-medium">Synchronisée avec Supabase</p>
+                    </div>
+                </div>
+                
+                <!-- Boutons d'action avec meilleure responsivité -->
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4">
+                    <div class="flex items-center space-x-2 text-xs sm:text-sm text-green-600 bg-green-50 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg">
+                        <i class="fas fa-check-circle"></i>
+                        <span class="font-medium hidden sm:inline">Supabase connecté</span>
+                        <span class="font-medium sm:hidden">Connecté</span>
+                    </div>
+                    <button id="info-btn" class="bg-white text-gray-800 border-2 border-gray-300 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm">
+                        <i class="fas fa-info-circle"></i>
+                        <span class="hidden sm:inline">Infos</span>
+                        <span class="sm:hidden">ℹ️</span>
+                    </button>
+                    <button id="config-btn" class="bg-white text-gray-800 border-2 border-gray-300 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm hidden">
+                        <i class="fas fa-cog"></i>
+                        <span class="hidden sm:inline">Config</span>
+                        <span class="sm:hidden">⚙️</span>
+                    </button>
+                    <button id="refresh-btn" class="bg-white text-gray-800 border-2 border-gray-300 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm">
+                        <i class="fas fa-sync-alt"></i>
+                        <span class="hidden sm:inline">Actualiser</span>
+                        <span class="sm:hidden">🔄</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content avec plus d'espace -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        
+        <!-- Upload Section plus compacte -->
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-200 upload-section-compact">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
+                <h2 class="text-lg sm:text-xl font-bold text-gray-900 flex items-center space-x-2">
+                    <i class="fas fa-cloud-upload-alt text-blue-600"></i>
+                    <span>Ajouter des Images</span>
+                </h2>
+                <div class="flex items-center space-x-2 text-xs sm:text-sm text-green-600 bg-green-50 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg">
+                    <i class="fas fa-check-circle"></i>
+                    <span class="font-medium">Prêt pour l'upload</span>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+                <!-- Upload Area plus compacte -->
+                <div class="lg:col-span-2">
+                    <div class="upload-area upload-area-compact rounded-2xl text-center cursor-pointer" id="upload-area">
+                        <input type="file" id="file-input" multiple accept="image/*" class="hidden">
+                        <div class="space-y-3 sm:space-y-4 p-4 sm:p-6">
+                            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                                <i class="fas fa-cloud-upload-alt text-2xl sm:text-3xl text-blue-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-base sm:text-lg font-semibold text-gray-800">Glissez vos images ici</p>
+                                <p class="text-xs sm:text-sm text-gray-600 mt-1">ou cliquez pour sélectionner</p>
+                            </div>
+                            <div class="bg-blue-50 rounded-lg px-3 sm:px-4 py-2 inline-block">
+                                <p class="text-xs text-blue-700 font-medium">PNG, JPG, GIF jusqu'à 10MB</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Upload Progress avec plus d'espace -->
+                <div class="space-y-6">
+                    <div id="upload-progress" class="hidden">
+                        <h3 class="text-sm font-semibold text-gray-800 mb-3 flex items-center space-x-2">
+                            <i class="fas fa-chart-line text-blue-600"></i>
+                            <span>Progression de l'upload</span>
+                        </h3>
+                        <div class="space-y-3" id="progress-list">
+                            <!-- Progress items will be added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gallery Section avec plus d'espace -->
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6 lg:p-8">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center space-x-2 sm:space-x-3">
+                    <i class="fas fa-images text-purple-600"></i>
+                    <span>Images dans la Galerie</span>
+                </h2>
+                <div class="flex flex-wrap items-center gap-3 sm:gap-4">
+                    <!-- Bulk Actions -->
+                    <div id="bulk-actions" class="hidden flex items-center space-x-3">
+                        <button id="delete-selected-btn" 
+                                class="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2.5 rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 text-sm flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                            <i class="fas fa-trash"></i>
+                            <span id="delete-count">0</span>
+                        </button>
+                        <button id="clear-selection-btn" 
+                                class="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-4 py-2.5 rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-300 text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                            Annuler
+                        </button>
+                    </div>
+                    
+                    <!-- Tri des images -->
+                    <select id="sort-select" class="border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-32 sm:min-w-48">
+                        <option value="newest">Plus récentes</option>
+                        <option value="oldest">Plus anciennes</option>
+                        <option value="name">Nom</option>
+                        <option value="size">Taille</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Loading State -->
+            <div id="loading-state" class="text-center py-16">
+                <div class="loading-spinner w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full mx-auto mb-6"></div>
+                <p class="text-gray-600 text-lg font-medium">Chargement des images...</p>
+            </div>
+            
+            <!-- Empty State -->
+            <div id="empty-state" class="text-center py-16 hidden">
+                <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-images text-3xl text-gray-400"></i>
+                </div>
+                <p class="text-gray-600 text-lg font-medium mb-2">Aucune image dans la galerie</p>
+                <p class="text-gray-500">Commencez par télécharger quelques images</p>
+            </div>
+            
+            <!-- Gallery Grid plus spacieuse -->
+            <div id="gallery-grid" class="gallery-grid-spacious hidden">
+                <!-- Image cards will be added here -->
+            </div>
+        </div>
+    </main>
+
+
+
+    <!-- Image Viewer Modal -->
+    <div id="image-viewer" class="fixed inset-0 bg-black bg-opacity-95 hidden z-50">
+        <div class="relative w-full h-full flex items-center justify-center">
+            <!-- Close Button -->
+            <button id="close-viewer" class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300 z-10 bg-black bg-opacity-50 rounded-full p-2">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <!-- Zoom Controls -->
+            <div class="absolute top-4 left-4 flex flex-col space-y-2 z-10">
+                <button id="zoom-in-btn" class="bg-black bg-opacity-50 text-white rounded-full p-3 hover:bg-opacity-70 transition-all" title="Zoom + (Molette souris)">
+                    <i class="fas fa-search-plus text-xl"></i>
+                </button>
+                <button id="zoom-out-btn" class="bg-black bg-opacity-50 text-white rounded-full p-3 hover:bg-opacity-70 transition-all" title="Zoom - (Molette souris)">
+                    <i class="fas fa-search-minus text-xl"></i>
+                </button>
+                <button id="zoom-reset-btn" class="bg-black bg-opacity-50 text-white rounded-full p-3 hover:bg-opacity-70 transition-all" title="Reset Zoom">
+                    <i class="fas fa-undo text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Navigation Buttons -->
+            <button id="prev-image" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-3xl hover:text-gray-300 z-10 bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-70 transition-all">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            
+            <button id="next-image" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white text-3xl hover:text-gray-300 z-10 bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-70 transition-all">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+            <!-- Image Container with Zoom -->
+            <div class="relative max-w-5xl max-h-[90vh] flex items-center justify-center overflow-hidden">
+                <img id="viewer-image" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-transform duration-300" style="transform-origin: center;">
+            </div>
+            
+            <!-- Image Info -->
+            <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-center bg-black bg-opacity-50 rounded-lg px-4 py-2">
+                <p id="viewer-caption" class="text-sm font-medium"></p>
+                <p id="viewer-counter" class="text-xs text-gray-300 mt-1"></p>
+                <p id="zoom-level" class="text-xs text-gray-300 mt-1">Zoom: 100%</p>
+            </div>
+            
+            <!-- Keyboard Shortcuts Info -->
+            <div class="absolute bottom-4 left-4 text-white text-xs bg-black bg-opacity-50 rounded-lg px-3 py-2 hidden sm:block">
+                <p>← → Navigation | +/- Zoom | ESC Fermer</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Information Modal -->
+    <div id="info-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full">
+                <div class="flex items-center justify-between p-6 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                        <i class="fas fa-info-circle text-blue-600"></i>
+                        <span>Informations Supabase - Lecture Seule</span>
+                    </h3>
+                    <button id="close-info" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="p-6 space-y-6">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <i class="fas fa-info-circle text-blue-600"></i>
+                            <span class="text-sm font-medium text-blue-800">Informations de Connexion</span>
+                        </div>
+                        <p class="text-sm text-blue-700">Ces informations sont intégrées dans le code et ne peuvent pas être modifiées. Vous pouvez les copier pour les utiliser ailleurs.</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                URL du Projet Supabase
+                            </label>
+                            <div class="flex space-x-2">
+                                <input type="text" id="info-supabase-url" 
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                                       readonly>
+                                <button onclick="window.simpleGallery.copyToClipboard('info-supabase-url')" 
+                                        class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Nom du Bucket
+                            </label>
+                            <div class="flex space-x-2">
+                                <input type="text" id="info-bucket-name" 
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                                       readonly>
+                                <button onclick="window.simpleGallery.copyToClipboard('info-bucket-name')" 
+                                        class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Clé Anonyme (Anon Key)
+                        </label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="info-supabase-anon-key" 
+                                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 text-xs"
+                                   readonly>
+                            <button onclick="window.simpleGallery.copyToClipboard('info-supabase-anon-key')" 
+                                    class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Utilisée pour afficher et télécharger les images</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Clé de Service (Service Role Key)
+                        </label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="info-supabase-service-key" 
+                                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 text-xs"
+                                   readonly>
+                            <button onclick="window.simpleGallery.copyToClipboard('info-supabase-service-key')" 
+                                    class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Nécessaire pour créer le bucket, uploader et supprimer des images</p>
+                    </div>
+                    
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <i class="fas fa-exclamation-triangle text-yellow-600"></i>
+                            <span class="text-sm font-medium text-yellow-800">Important</span>
+                        </div>
+                        <ul class="text-sm text-yellow-700 space-y-1">
+                            <li>• La clé de service a des permissions d'administration complètes</li>
+                            <li>• Ne partagez jamais ces clés publiquement</li>
+                            <li>• Utilisez ces informations uniquement pour vos propres projets</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end p-6 border-t bg-gray-50">
+                    <button id="close-info-btn" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm">
+                        Fermer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Viewer Modal -->
+    <div id="image-viewer" class="fixed inset-0 bg-black bg-opacity-95 hidden z-50">
+        <div class="relative w-full h-full flex items-center justify-center">
+            <!-- Close Button -->
+            <button id="close-viewer" class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300 z-10 bg-black bg-opacity-50 rounded-full p-2">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <!-- Zoom Controls -->
+            <div class="absolute top-4 left-4 flex flex-col space-y-2 z-10">
+                <button id="zoom-in-btn" class="bg-black bg-opacity-50 text-white rounded-full p-3 hover:bg-opacity-70 transition-all" title="Zoom + (Molette souris)">
+                    <i class="fas fa-search-plus text-xl"></i>
+                </button>
+                <button id="zoom-out-btn" class="bg-black bg-opacity-50 text-white rounded-full p-3 hover:bg-opacity-70 transition-all" title="Zoom - (Molette souris)">
+                    <i class="fas fa-search-minus text-xl"></i>
+                </button>
+                <button id="zoom-reset-btn" class="bg-black bg-opacity-50 text-white rounded-full p-3 hover:bg-opacity-70 transition-all" title="Reset Zoom">
+                    <i class="fas fa-undo text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Navigation Buttons -->
+            <button id="prev-image" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-3xl hover:text-gray-300 z-10 bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-70 transition-all">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            
+            <button id="next-image" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white text-3xl hover:text-gray-300 z-10 bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-70 transition-all">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+            <!-- Image Container with Zoom -->
+            <div class="relative max-w-5xl max-h-[90vh] flex items-center justify-center overflow-hidden">
+                <img id="viewer-image" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-transform duration-300" style="transform-origin: center;">
+            </div>
+            
+            <!-- Image Info -->
+            <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-center bg-black bg-opacity-50 rounded-lg px-4 py-2">
+                <p id="viewer-caption" class="text-sm font-medium"></p>
+                <p id="viewer-counter" class="text-xs text-gray-300 mt-1"></p>
+                <p id="zoom-level" class="text-xs text-gray-300 mt-1">Zoom: 100%</p>
+            </div>
+            
+            <!-- Keyboard shortcuts info -->
+            <div class="absolute bottom-4 left-4 text-white text-xs bg-black bg-opacity-50 rounded-lg px-3 py-2 hidden sm:block">
+                <p>← → Navigation | +/- Zoom | ESC Fermer</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase Client -->
+    <script type="module" src="simple-gallery.js"></script>
+</body>
+</html>

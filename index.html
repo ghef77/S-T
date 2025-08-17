@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang='fr'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Tableau de Staff synchronisé - Version Modulaire</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100 flex flex-col h-screen overflow-hidden text-sm md:text-base lg:text-lg">
+
+    <div id="message-box" class="message-box hidden"><p id="message-text" class="font-bold"></p></div>
+
+    <!-- Login container -->
+    <div id='login-container' class="bg-white p-8 md:p-10 lg:p-12 rounded-xl shadow-lg w-full max-w-md mx-auto my-auto flex flex-col items-center space-y-4 md:space-y-6 transition-all duration-300 ease-in-out hidden">
+        <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800">Accéder au tableau</h2>
+        <input type='password' id='password-input' placeholder='Mot de passe' onkeypress="handlePasswordKeyPress(event)" class="w-full p-3 md:p-4 lg:p-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+        <div class="flex items-center space-x-2 w-full">
+            <input type='checkbox' id='toggle-password' class="w-4 h-4 md:w-5 md:h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
+            <label for="toggle-password" class="text-sm md:text-base font-medium text-gray-700">Afficher le mot de passe</label>
+        </div>
+        <button onclick='checkPassword()' class="w-full bg-green-500 text-white font-bold p-3 md:p-4 lg:p-5 rounded-lg shadow-md hover:bg-green-600 transition-colors">Valider</button>
+        <p id='error-message' class="text-red-500 font-medium text-sm md:text-base"></p>
+    </div>
+
+    <!-- Table container -->
+    <div id='table-container' class="bg-white relative p-2 md:p-4 lg:p-6 rounded-xl w-full flex-grow overflow-y-auto hidden transition-all duration-300 ease-in-out flex flex-col m-2 shadow-xl">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-2 p-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+            <div class="flex-grow">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                    <h2 class="text-lg md:text-xl font-bold text-gray-800 tracking-tight">S-T</h2>
+                    
+                </div>
+                <div class="flex flex-col md:flex-row items-start md:items-center gap-1 md:gap-2 text-xs">
+
+                    <span id="current-time" class="text-gray-700 font-medium flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                        </svg>
+                    </span>
+                    
+                    <!-- Indicateur de synchronisation simple -->
+                    <div id="sync-indicator" class="flex items-center gap-2 ml-4">
+                        <div id="sync-status-icon" class="w-3 h-3 rounded-full bg-green-500"></div>
+                        <span id="sync-status-text" class="text-xs text-gray-700 font-medium">Synchronisé</span>
+                    </div>
+                    
+
+                </div>
+            </div>
+        </div>
+
+        <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
+
+        <!-- Barre de boutons principale -->
+        <div id="button-bar" class="flex flex-wrap items-center gap-1 mb-1 p-1">
+            <button onclick='saveManually()' title="Sauvegarder" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-2 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-10 h-10'>
+                <i class="fa-solid fa-save w-5 h-5"></i>
+            </button>
+            <button id="undo-button" onclick="undo()" disabled title="Annuler" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-2 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-undo w-5 h-5"></i>
+            </button>
+            <button onclick="downloadExcel()" title="Exporter en Excel" aria-label="Exporter en Excel" class="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-file-excel w-5 h-5"></i>
+            </button>
+            <button onclick="downloadPDF()" title="Exporter en PDF" aria-label="Exporter en PDF" class="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-file-pdf w-5 h-5"></i>
+            </button>
+            <button onclick="downloadImage()" title="Exporter en image (PNG)" aria-label="Exporter en image (PNG)" class="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-image w-5 h-5"></i>
+            </button>
+            <button onclick="document.getElementById('excel-input').click()" title="Importer depuis Excel" aria-label="Importer depuis Excel" class="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-upload w-5 h-5"></i>
+            </button>
+            <input id="excel-input" type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="importExcelFromFile(this.files[0])" />
+            <button onclick="zoomOut()" title="Réduire (−)" aria-label="Réduire" class="bg-gray-700 text-white p-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-minus w-5 h-5"></i>
+            </button>
+            <button id="zoom-display" onclick="zoomReset()" title="Réinitialiser à 100%" aria-label="Réinitialiser à 100%" class="bg-gray-500 text-white px-2 py-2 rounded-lg hover:bg-gray-600 transition-colors text-xs w-10 h-10">100%</button>
+            <button onclick="zoomIn()" title="Agrandir (+)" aria-label="Agrandir" class="bg-gray-700 text-white p-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-plus w-5 h-5"></i>
+            </button>
+            <input id="row-color-picker"
+                   type="color"
+                   title="Choisir la couleur de surlignage des lignes"
+                   class="w-10 h-10 p-1 border border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors" onchange="updateCurrentRowColor(this.value)" />
+            
+            <button id="filter-colored-toggle"
+                    onclick="toggleColoredFilter()"
+                    title="Afficher seulement les lignes colorées"
+                    aria-label="Filtrer lignes colorées"
+                    class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-filter w-5 h-5"></i>
+            </button>
+            <button onclick="clearAllRowColors()" title="Effacer toutes les couleurs" aria-label="Effacer toutes les couleurs" class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-trash-can w-5 h-5"></i>
+            </button>
+            
+            <button id="paint-mode-toggle" onclick="cyclePaintMode()" 
+                    title="Mode de peinture: Auto/Colorer/Effacer (appuyez sur P pour changer)"
+                    aria-label="Basculer le mode de peinture"
+                    class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-palette w-5 h-5"></i>
+            </button>
+            <button onclick="openImageGallery()" title="Ouvrir la galerie d'images" aria-label="Galerie d'images" class="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-image w-5 h-5"></i>
+            </button>
+            <button onclick="toggleKeyboardShortcuts()" title="Raccourcis clavier" aria-label="Raccourcis clavier" class="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center w-10 h-10 border-2 border-blue-400 shadow-lg">
+                <i class="fa-solid fa-keyboard w-5 h-5"></i>
+            </button>
+
+        </div>
+
+
+
+        <div class="overflow-auto w-full" style="max-width: 100vw; max-height: 85vh;">
+            <table id='data-table' class="w-full text-left text-gray-500 text-xs md:text-sm lg:text-base">
+                <thead class="text-xs text-white uppercase bg-green-700">
+                    <tr>
+                        <th scope="col" class="py-2 px-2 md:px-4 rounded-tl-lg frozen-column-header frozen-1">No</th>
+                        <th scope="col" class="py-2 px-1 text-center">Effacer<br><input id="select-all" type="checkbox" class="align-middle"></th>
+                        <th scope="col" class="py-2 px-2 md:px-4">Date de saisie</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">PEC finale</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">PEC initiale</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">Nom_Prénom</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">DDN</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">Diagnostic_initial</th>
+                        <th scope="col" class="py-2 px-2 md:px-4">information complementaire</th>
+                        <th scope="col" class="py-2 px-2 md:px-4 rounded-tr-lg">numero_tel</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">                </tbody>
+                <tfoot class="bg-white border-t-2 border-gray-300">
+                    <tr>
+                        <td colspan="2" class="py-2 px-2">
+                            <button class="bg-green-500 text-white font-bold p-2 rounded-lg hover:bg-green-600 transition-colors text-lg w-10 h-10 flex items-center justify-center mx-auto" onclick="addRow()" title="Ajouter une nouvelle ligne">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/>
+                                </svg>
+                            </button>
+                        </td>
+                        <td colspan="8" class="bg-white"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div id="confirmation-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full hidden z-50">
+            <div class="relative top-1/4 mx-auto p-5 border w-11/12 max-w-sm shadow-lg rounded-md bg-white">
+                <div class="mt-3 text-center">
+                    <h3 class="text-lg md:text-xl leading-6 font-medium text-gray-900" id="modal-message"></h3>
+                    <div class="mt-4 flex justify-around">
+                        <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">Oui</button>
+                        <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-300 text-black text-base font-medium rounded-md w-24 shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">Non</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal des raccourcis clavier -->
+        <div id="keyboard-shortcuts-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full hidden z-50">
+            <div class="relative top-1/4 mx-auto p-6 border w-11/12 max-w-2xl shadow-xl rounded-lg bg-white">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                        <i class="fa-solid fa-keyboard text-blue-600"></i>
+                        Raccourcis Clavier
+                    </h3>
+                    <button onclick="toggleKeyboardShortcuts()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fa-solid fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="shortcuts-scroll-container" style="max-height: 400px; overflow-y: scroll; padding-right: 8px;">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="shortcuts-list">
+                        <!-- Les raccourcis seront générés ici -->
+                    </div>
+                </div>
+                <div class="mt-6 text-center">
+                    <button onclick="toggleKeyboardShortcuts()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                        Fermer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Attendre que Supabase soit initialisé -->
+    <script>
+        // Charger les scripts
+        async function loadScriptsSequentially() {
+            console.log('✅ Scripts principaux chargés !');
+        }
+        
+        // Démarrer le chargement séquentiel
+        loadScriptsSequentially().catch(console.error);
+
+    </script>
+    
+    <!-- Main Application Script -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>

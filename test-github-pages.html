@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Pages Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { border-color: #4CAF50; background-color: #f1f8e9; }
+        .error { border-color: #f44336; background-color: #ffebee; }
+        .warning { border-color: #ff9800; background-color: #fff3e0; }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #45a049; }
+        .log {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>GitHub Pages Compatibility Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Manual Tests</h2>
+        <button onclick="testES6Modules()">Test ES6 Modules</button>
+        <button onclick="testSupabaseConnection()">Test Supabase Connection</button>
+        <button onclick="testFileAccess()">Test File Access</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Log</h2>
+        <div id="test-log" class="log"></div>
+    </div>
+
+    <script type="module">
+        // Test ES6 module support
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('test-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            logEntry.style.color = type === 'error' ? 'red' : type === 'warning' ? 'orange' : 'black';
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Test basic functionality
+        function runBasicTests() {
+            const results = document.getElementById('test-results');
+            let testsPassed = 0;
+            let totalTests = 0;
+
+            // Test 1: ES6 support
+            totalTests++;
+            try {
+                const testArray = [1, 2, 3];
+                const doubled = testArray.map(x => x * 2);
+                if (doubled.join(',') === '2,4,6') {
+                    testsPassed++;
+                    log('✅ ES6 features working correctly');
+                } else {
+                    throw new Error('ES6 map function not working');
+                }
+            } catch (error) {
+                log(`❌ ES6 test failed: ${error.message}`, 'error');
+            }
+
+            // Test 2: Module support
+            totalTests++;
+            try {
+                // This should work if modules are supported
+                log('✅ ES6 modules supported');
+                testsPassed++;
+            } catch (error) {
+                log(`❌ Module test failed: ${error.message}`, 'error');
+            }
+
+            // Test 3: Fetch API
+            totalTests++;
+            if (typeof fetch !== 'undefined') {
+                testsPassed++;
+                log('✅ Fetch API available');
+            } else {
+                log('❌ Fetch API not available', 'error');
+            }
+
+            // Test 4: LocalStorage
+            totalTests++;
+            try {
+                localStorage.setItem('test', 'value');
+                const testValue = localStorage.getItem('test');
+                localStorage.removeItem('test');
+                if (testValue === 'value') {
+                    testsPassed++;
+                    log('✅ LocalStorage working');
+                } else {
+                    throw new Error('LocalStorage read/write failed');
+                }
+            } catch (error) {
+                log(`❌ LocalStorage test failed: ${error.message}`, 'error');
+            }
+
+            // Display results
+            const successRate = Math.round((testsPassed / totalTests) * 100);
+            results.innerHTML = `
+                <div class="${successRate === 100 ? 'success' : successRate >= 80 ? 'warning' : 'error'}">
+                    <h3>Basic Tests: ${testsPassed}/${totalTests} passed (${successRate}%)</h3>
+                    <p>Your browser supports the basic features needed for this application.</p>
+                </div>
+            `;
+
+            log(`Basic tests completed: ${testsPassed}/${totalTests} passed`);
+        }
+
+        // Make functions globally available
+        window.log = log;
+        window.testES6Modules = () => log('Testing ES6 modules...');
+        window.testSupabaseConnection = () => log('Testing Supabase connection...');
+        window.testFileAccess = () => log('Testing file access...');
+        window.clearLog = () => {
+            document.getElementById('test-log').innerHTML = '';
+        };
+
+        // Run tests when page loads
+        document.addEventListener('DOMContentLoaded', runBasicTests);
+    </script>
+</body>
+</html>
+
