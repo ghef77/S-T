@@ -309,6 +309,76 @@ body {
     line-height: 1.6;
 }
 
+/* Table styles */
+#data-table { 
+    border-collapse: collapse; 
+    border-spacing: 0; 
+    margin-bottom: 50px; 
+    width: 100%; 
+    background-color: var(--bg-primary);
+    box-shadow: var(--shadow-md);
+    border-radius: 0.5rem;
+}
+
+#data-table th, #data-table td { 
+    border: 1px solid var(--border-color); 
+    transition: var(--transition);
+}
+
+#data-table thead { 
+    position: sticky !important; /* Use sticky positioning for proper table alignment */
+    top: 0.5rem !important; /* Stick just below the button bar */
+    z-index: 10000 !important; /* Extremely high z-index to ensure visibility */
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+#data-table thead th {
+    padding: 1rem;
+    font-size: 0.875rem;
+}
+
+#data-table tbody tr {
+    transition: var(--transition);
+}
+
+#data-table tbody tr:hover {
+    background-color: var(--bg-hover);
+    transform: scale(1.005);
+    box-shadow: var(--shadow-sm);
+}
+
+#data-table tfoot {
+    position: static;
+    background: transparent;
+    border-top: 0;
+    box-shadow: none;
+}
+
+/* Floating + button to free vertical space */
+#fab-add {
+  position: fixed;
+  right: 16px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  z-index: 60;
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-lg);
+}
+
+#fab-add:active { transform: scale(0.97); }
+
+/* Hide the old add-row button area to remove the white bar */
+#data-table tfoot td { padding: 0 !important; height: 0 !important; }
+#data-table tfoot button { display: none !important; }
+
 /* Hidden class definition */
 .hidden {
     display: none !important;
