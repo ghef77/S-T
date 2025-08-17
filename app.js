@@ -51,6 +51,8 @@ let lastShownCountdown = null;
 let lastFocusInfo = null;
 let lastCellPos = null;
 let isRestoringFocus = false; // Flag to prevent edit events during focus restoration
+let isLocalSaveInProgress = false; // Flag to prevent real-time updates during local saves
+let lastRealtimeUpdate = 0; // Timestamp of last real-time update to prevent rapid updates
 
 // Zoom functionality
 let zoomFactor = parseFloat(localStorage.getItem('zoomFactor') || '1');
@@ -225,7 +227,7 @@ function startPeriodicSync() {
             
             isSyncing = true;
             updateSyncIndicator('syncing', 'Synchronisation automatique...');
-            await syncToSupabase(collectTableData(), false);
+            await syncToSupabaseLocal(collectTableData(), false);
             isDirty = false;
             updateSyncIndicator('synced', 'Synchronisé');
             
@@ -2233,6 +2235,9 @@ async function syncToSupabaseLocal(data, isManualSave = false) {
 
         log('🔄 Syncing data to Supabase...');
         
+        // Set flag to prevent real-time updates during local save
+        isLocalSaveInProgress = true;
+        
         // Store timestamp before sync to prevent infinite loops
         lastSyncTimestamp = new Date().toISOString();
         
@@ -2243,6 +2248,11 @@ async function syncToSupabaseLocal(data, isManualSave = false) {
     } catch (error) {
         log('❌ Error syncing to Supabase:', error.message);
         throw error;
+    } finally {
+        // Clear the flag after a delay to allow the save to complete
+        setTimeout(() => {
+            isLocalSaveInProgress = false;
+        }, 1000); // 1 second delay
     }
 }
 
@@ -3455,6 +3465,26 @@ async function handleRealtimeChange(payload) {
             log('🔄 Ignoring own change in real-time update');
             return;
         }
+        
+        // Prevent real-time updates during local saves to avoid loops
+        if (isLocalSaveInProgress) {
+            log('🔄 Ignoring real-time update - local save in progress');
+            return;
+        }
+        
+        // Prevent unnecessary reloads by checking if data has actually changed
+        const currentDataHash = generateDataHash(collectTableData());
+        if (window.lastDataHash === currentDataHash) {
+            log('🔄 Ignoring real-time update - data unchanged');
+            return;
+        }
+        
+        // Prevent rapid successive real-time updates (cooldown period)
+        const now = Date.now();
+        if (now - lastRealtimeUpdate < 2000) { // 2 second cooldown
+            log('🔄 Ignoring real-time update - cooldown period active');
+            return;
+        }
 
         // Capture current focus before real-time update
         captureFocusInfo();
@@ -3490,6 +3520,9 @@ async function handleRealtimeChange(payload) {
                               payload.event === 'DELETE' ? 'Suppression' : 'Changement';
             const rowNumber = payload.new?.No || payload.old?.No || 'N/A';
             showRealtimeUpdateNotification(changeType, rowNumber);
+            
+            // Update timestamp to prevent rapid successive updates
+            lastRealtimeUpdate = Date.now();
             
             // Restore focus after real-time update
             setTimeout(() => {
@@ -3537,6 +3570,9 @@ async function refreshTableFromData(data) {
                 });
             }
         }
+        
+        // Update the data hash to prevent unnecessary future reloads
+        window.lastDataHash = generateDataHash(data);
         
         log('✅ Table refreshed from real-time data');
         
