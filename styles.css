@@ -765,6 +765,35 @@ button:hover::before {
     flex-wrap: nowrap; /* Keep elements on one line */
 }
 
+/* Reduce top bar height to 50% */
+#table-container .flex.flex-col.md\\:flex-row .flex-grow {
+    padding: 0.5rem; /* Reduced from default padding */
+}
+
+#table-container .flex.flex-col.md\\:flex-row .flex-grow .flex.flex-wrap {
+    margin-bottom: 0.25rem; /* Reduced from mb-1 (0.25rem) */
+    gap: 0.5rem; /* Reduced from gap-2 (0.5rem) */
+}
+
+#table-container .flex.flex-col.md\\:flex-row .flex-grow .flex.flex-col.md\\:flex-row {
+    gap: 0.25rem; /* Reduced from gap-1 (0.25rem) */
+}
+
+/* Reduce title size */
+#table-container .flex.flex-col.md\\:flex-row .flex-grow h2 {
+    font-size: 0.875rem; /* Reduced from text-lg (1.125rem) - 50% */
+    line-height: 1; /* Tighter line height */
+    margin: 0; /* Remove default margins */
+}
+
+/* Reduce clock and sync indicator spacing */
+#table-container .flex.flex-col.md\\:flex-row .flex-grow #current-time,
+#table-container .flex.flex-col.md\\:flex-row .flex-grow #sync-indicator {
+    font-size: 0.625rem; /* Reduced from text-xs (0.75rem) - 50% */
+    padding: 0.125rem; /* Reduced padding */
+    margin: 0; /* Remove default margins */
+}
+
 #sync-status-icon {
     width: 12px;
     height: 12px;
