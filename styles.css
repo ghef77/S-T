@@ -6,8 +6,8 @@
     position: relative;
     /* Prevent any interference with sticky positioning */
     overflow: visible;
-    /* Add padding above headers to prevent overlap with function buttons */
-    padding-top: 4rem !important; /* Space for button bar + margin */
+    /* Add minimal padding above headers to prevent overlap with function buttons */
+    padding-top: 0.5rem !important; /* Minimal space to prevent overlap */
 }
 
 /* Ensure the overflow container doesn't interfere with sticky headers */
@@ -332,7 +332,7 @@ body {
 
 #data-table thead { 
     position: sticky !important; /* Use sticky positioning for proper table alignment */
-    top: 4rem !important; /* Stick below the button bar area */
+    top: 0.5rem !important; /* Stick just below the button bar */
     z-index: 10000 !important; /* Extremely high z-index to ensure visibility */
     background-color: var(--primary-color) !important;
     color: white !important;
@@ -682,7 +682,7 @@ body {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* Text shadow for better readability */
     /* Ensure each header cell stays sticky */
     position: sticky !important; /* Use sticky positioning for proper alignment */
-    top: 4rem !important; /* Stick below the button bar area */
+    top: 0.5rem !important; /* Stick just below the button bar */
     z-index: 10000 !important; /* Same high z-index as thead */
     background-color: var(--primary-color) !important;
     /* Force background to prevent transparency */
