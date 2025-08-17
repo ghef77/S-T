@@ -337,10 +337,22 @@ function createEditableCell(label, value = '') {
         cell.textContent = value || '';
     }
     
+    // Store original content for change detection
+    cell.setAttribute('data-original-content', value || '');
+    
     cell.contentEditable = true;
     cell.className = 'py-2 px-2 md:px-4 editable-cell';
     cell.setAttribute('data-label', label);
     cell.setAttribute('data-dbkey', dbKey);
+    
+    // General focus handler to update original content for all editable cells
+    cell.addEventListener('focus', () => {
+        // Store the current content as original when user starts editing
+        const currentContent = cell.textContent.trim();
+        cell.setAttribute('data-original-content', currentContent);
+    });
+    
+
     
     // --- Nom_Prénom auto-formatting logic ---
     if (isNomPrenomLabel(label)) {
@@ -349,18 +361,45 @@ function createEditableCell(label, value = '') {
             value = formatNomPrenom(value);
             cell.textContent = value;
         }
+        
+
+        
         // Format when the user leaves the cell
         cell.addEventListener('blur', () => {
-            cell.textContent = formatNomPrenom(cell.textContent);
-            saveStateToHistory();
-        markEdited();
+            const originalContent = cell.getAttribute('data-original-content') || '';
+            const currentContent = cell.textContent.trim();
+            const formattedContent = formatNomPrenom(currentContent);
+            
+            // Only mark as edited if content actually changed
+            if (originalContent !== formattedContent) {
+                cell.textContent = formattedContent;
+                saveStateToHistory();
+                markEdited();
+                log(`📝 Content changed in ${label}: "${originalContent}" → "${formattedContent}"`);
+            } else {
+                // Content unchanged, just format without marking as edited
+                cell.textContent = formattedContent;
+                log(`🔄 Content unchanged in ${label}, formatting only`);
+            }
         });
+        
         // Also normalize after paste into this cell
         cell.addEventListener('paste', () => {
             setTimeout(() => {
-                cell.textContent = formatNomPrenom(cell.textContent);
-        saveStateToHistory();
-                markEdited();
+                const originalContent = cell.getAttribute('data-original-content') || '';
+                const pastedContent = cell.textContent.trim();
+                const formattedContent = formatNomPrenom(pastedContent);
+                
+                // Only mark as edited if pasted content is different
+                if (originalContent !== formattedContent) {
+                    cell.textContent = formattedContent;
+                    saveStateToHistory();
+                    markEdited();
+                    log(`📝 Content changed via paste in ${label}: "${originalContent}" → "${formattedContent}"`);
+                } else {
+                    cell.textContent = formattedContent;
+                    log(`🔄 Pasted content unchanged in ${label}, formatting only`);
+                }
             }, 0);
         });
     }
