@@ -6,8 +6,8 @@
     position: relative;
     /* Prevent any interference with sticky positioning */
     overflow: visible;
-    /* Add minimal padding above headers to prevent overlap with function buttons */
-    padding-top: 0.5rem !important; /* Minimal space to prevent overlap */
+    /* Remove padding-top to allow headers to stick to the very top */
+    padding-top: 0 !important;
 }
 
 /* Ensure the overflow container doesn't interfere with sticky headers */
@@ -788,11 +788,11 @@ body {
     vertical-align: middle; /* Center content vertically */
     border-bottom: 2px solid rgba(255, 255, 255, 0.2); /* Subtle border for better separation */
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* Text shadow for better readability */
-    /* Ensure each header cell stays sticky */
-    position: sticky !important; /* Use sticky positioning for proper alignment */
-    top: 0.5rem !important; /* Stick just below the button bar */
-    z-index: 10000 !important; /* Same high z-index as thead */
-    background-color: var(--primary-color) !important;
+            /* Ensure each header cell stays sticky */
+        position: sticky !important; /* Use sticky positioning for proper alignment */
+        top: 0 !important; /* Stick to the very top like reference file */
+        z-index: 10000 !important; /* Same high z-index as thead */
+        background-color: var(--primary-color) !important;
     /* Force background to prevent transparency */
     background-image: linear-gradient(to bottom, var(--primary-color), var(--primary-color)) !important;
     /* Force proper stacking context */
