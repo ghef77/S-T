@@ -750,6 +750,21 @@ button:hover::before {
     border-radius: 6px;
     background-color: #f3f4f6;
     border: 1px solid #d1d5db;
+    flex-wrap: wrap; /* Allow wrapping */
+    min-width: 0; /* Allow shrinking */
+    flex-shrink: 1; /* Allow shrinking */
+}
+
+/* Top bar container wrapping */
+#table-container .flex.flex-col.md\\:flex-row {
+    flex-wrap: wrap; /* Allow wrapping */
+    gap: 0.5rem; /* Add gap between wrapped elements */
+}
+
+/* Clock and sync indicator container */
+#table-container .flex.flex-col.md\\:flex-row .flex.flex-col.md\\:flex-row {
+    flex-wrap: wrap; /* Allow wrapping */
+    gap: 0.25rem; /* Add gap between wrapped elements */
 }
 
 #sync-status-icon {
@@ -853,6 +868,9 @@ button:hover::before {
     align-items: center;
     gap: 0.5rem;
     margin-left: 1rem;
+    flex-wrap: wrap; /* Allow wrapping */
+    min-width: 0; /* Allow shrinking */
+    flex-shrink: 1; /* Allow shrinking */
 }
 
 #realtime-status-icon {
@@ -903,6 +921,14 @@ button:hover::before {
 #sync-status-icon.realtime {
     background-color: #3b82f6; /* blue-500 */
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Sync status text wrapping */
+#sync-status-text {
+    white-space: normal; /* Allow text wrapping */
+    word-wrap: break-word; /* Break long words */
+    max-width: 200px; /* Limit width to encourage wrapping */
+    flex-shrink: 1; /* Allow shrinking */
 }
 
 #sync-status-icon.manual {
