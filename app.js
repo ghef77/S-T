@@ -762,7 +762,11 @@ function addRow() {
     // Add row painting functionality
     numCell.addEventListener('mousedown', (e) => { 
         if (e.button !== 0) return; 
-        startRowPaint(row); 
+        // For auto and clear modes: start painting immediately on mousedown
+        // For color mode: let the global handler detect if this becomes a drag
+        if (paintMode === 'auto' || paintMode === 'clear') {
+            startRowPaint(row);
+        }
         e.preventDefault(); 
     });
     
@@ -776,13 +780,13 @@ function addRow() {
         if (paintMode === 'auto') {
             rowPaintAction = getPaintActionForRow(row);
             applyRowPaint(row);
-        } else if (!isRowPaintDragging) {
-            // En mode manuel, on utilise l'action sélectionnée
-            rowPaintAction = getPaintActionForRow(row);
+        } else if (paintMode === 'color') {
+            rowPaintAction = 'color';
+            applyRowPaint(row);
+        } else if (paintMode === 'clear') {
+            rowPaintAction = 'clear';
             applyRowPaint(row);
         }
-        // Toujours arrêter le drag après un clic
-        endRowPaint();
     });
     
     numCell.addEventListener('mouseup', () => {
@@ -1123,38 +1127,79 @@ function applyRowPaint(row) {
 }
 
 function startRowPaint(row) {
-    // Arrêter tout drag précédent
-    if (isRowPaintDragging) {
-        endRowPaint();
-    }
-    
-    if (paintMode === 'color') {
+    if (paintMode === 'auto') {
+        // En mode auto : détermine l'action basée sur l'état de la ligne
+        rowPaintAction = (row && row.dataset.rowColored === '1') ? 'clear' : 'color';
+        isRowPaintDragging = true;
+        applyRowPaint(row);
+    } else if (paintMode === 'color') {
         rowPaintAction = 'color';
+        isRowPaintDragging = true;
+        applyRowPaint(row);
     } else if (paintMode === 'clear') {
         rowPaintAction = 'clear';
-    } else { // paintMode === 'auto'
-        rowPaintAction = (row && row.dataset.rowColored === '1') ? 'clear' : 'color';
+        isRowPaintDragging = true;
+        applyRowPaint(row);
     }
-    isRowPaintDragging = true;
-    applyRowPaint(row);
 }
 
 function endRowPaint() { 
     isRowPaintDragging = false; 
-    rowPaintAction = null; // Reset l'action de peinture
+    rowPaintAction = null; // Reset paint action when dragging ends
 }
 
-// Ajouter un gestionnaire global pour arrêter le drag
-document.addEventListener('mouseup', () => {
-    endRowPaint();
-});
+// Add drag detection to prevent accidental painting
+let isMouseDown = false;
+let hasMoved = false;
+let startX = 0;
+let startY = 0;
 
-document.addEventListener('click', (e) => {
-    // Si on clique ailleurs que sur une cellule de numéro, arrêter le drag
-    if (!e.target.closest('#table-body td:first-child')) {
+function handleMouseDown(e) {
+    if (e.button !== 0) return; // Only left mouse button
+    isMouseDown = true;
+    hasMoved = false;
+    startX = e.clientX;
+    startY = e.clientY;
+}
+
+function handleMouseMove(e) {
+    if (!isMouseDown) return;
+    
+    const deltaX = Math.abs(e.clientX - startX);
+    const deltaY = Math.abs(e.clientY - startY);
+    
+    // Only consider it a drag if mouse has moved more than 5 pixels
+    if (deltaX > 5 || deltaY > 5) {
+        hasMoved = true;
+        
+        // If we're already painting and dragging, apply paint to the current row
+        if (isRowPaintDragging) {
+            const target = e.target;
+            const row = target.closest('#table-body tr');
+            if (row) {
+                applyRowPaint(row);
+            }
+        }
+    }
+}
+
+function handleMouseUp(e) {
+    if (!isMouseDown) return;
+    
+    // Reset mouse state
+    isMouseDown = false;
+    hasMoved = false;
+    
+    // If we were already painting, end the paint session
+    if (isRowPaintDragging) {
         endRowPaint();
     }
-});
+}
+
+// Add global event listeners for drag detection
+document.addEventListener('mousedown', handleMouseDown);
+document.addEventListener('mousemove', handleMouseMove);
+document.addEventListener('mouseup', handleMouseUp);
 
 // Mobile viewport change detection for keyboard visibility
 if (isMobile() && window.visualViewport) {
