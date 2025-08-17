@@ -6,6 +6,8 @@
     position: relative;
     /* Prevent any interference with sticky positioning */
     overflow: visible;
+    /* Add padding above headers to prevent overlap with function buttons */
+    padding-top: 4rem !important; /* Space for button bar + margin */
 }
 
 /* Ensure the overflow container doesn't interfere with sticky headers */
@@ -330,7 +332,7 @@ body {
 
 #data-table thead { 
     position: sticky !important; /* Use sticky positioning for proper table alignment */
-    top: 0 !important; /* Stick to top of container */
+    top: 4rem !important; /* Stick below the button bar area */
     z-index: 10000 !important; /* Extremely high z-index to ensure visibility */
     background-color: var(--primary-color) !important;
     color: white !important;
@@ -363,7 +365,7 @@ body {
 /* Mobile-specific header positioning to account for button bar */
 @media (max-width: 768px) {
     #data-table thead {
-        top: 0; /* Keep at top on mobile */
+        top: 3.5rem; /* Adjust for mobile button bar height */
         z-index: 200; /* Much higher z-index on mobile */
     }
     
@@ -680,7 +682,7 @@ body {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* Text shadow for better readability */
     /* Ensure each header cell stays sticky */
     position: sticky !important; /* Use sticky positioning for proper alignment */
-    top: 0 !important; /* Stick to top of container */
+    top: 4rem !important; /* Stick below the button bar area */
     z-index: 10000 !important; /* Same high z-index as thead */
     background-color: var(--primary-color) !important;
     /* Force background to prevent transparency */
