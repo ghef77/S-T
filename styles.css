@@ -762,55 +762,55 @@ button:hover::before {
 
 /* Target the specific top bar div from the image */
 #table-container > div:first-child {
-    padding: 0.125rem !important; /* Override p-2 to minimal padding */
-    margin-bottom: 0.125rem !important; /* Override mb-2 to minimal margin */
-    min-height: 32px !important; /* Force minimal height */
-    max-height: 32px !important; /* Force maximal height */
-    height: 32px !important; /* Force exact height */
+    padding: 0.25rem !important; /* Reduced from 0.125rem to 0.25rem (30% increase) */
+    margin-bottom: 0.25rem !important; /* Reduced from 0.125rem to 0.25rem (30% increase) */
+    min-height: 40px !important; /* Increased from 32px to 40px (30% increase) */
+    max-height: 40px !important; /* Increased from 32px to 40px (30% increase) */
+    height: 40px !important; /* Increased from 32px to 40px (30% increase) */
 }
 
 /* Target the inner flex-grow container */
 #table-container > div:first-child .flex-grow {
-    padding: 0 !important; /* Remove all padding */
-    margin: 0 !important; /* Remove all margins */
-    height: 32px !important; /* Force height */
-    min-height: 32px !important;
-    max-height: 32px !important;
+    padding: 0.125rem !important; /* Added small padding back (30% of original) */
+    margin: 0 !important; /* Keep margins at 0 */
+    height: 40px !important; /* Increased from 32px to 40px (30% increase) */
+    min-height: 40px !important;
+    max-height: 40px !important;
 }
 
 /* Target the title section */
 #table-container > div:first-child .flex-grow .flex.flex-wrap {
-    margin-bottom: 0 !important; /* Remove mb-1 */
-    gap: 0.125rem !important; /* Minimal gap */
-    height: 16px !important; /* Half height for title */
+    margin-bottom: 0.125rem !important; /* Added small margin back (30% of original) */
+    gap: 0.25rem !important; /* Increased from 0.125rem to 0.25rem (30% increase) */
+    height: 20px !important; /* Increased from 16px to 20px (30% increase) */
     align-items: center !important;
 }
 
 /* Target the clock and sync section */
 #table-container > div:first-child .flex-grow .flex.flex-col.md\\:flex-row {
-    gap: 0.125rem !important; /* Minimal gap */
-    height: 16px !important; /* Half height for clock/sync */
+    gap: 0.25rem !important; /* Increased from 0.125rem to 0.25rem (30% increase) */
+    height: 20px !important; /* Increased from 16px to 20px (30% increase) */
     align-items: center !important;
     flex-wrap: nowrap !important;
 }
 
 /* Target the title text */
 #table-container > div:first-child .flex-grow h2 {
-    font-size: 0.75rem !important; /* Smaller font */
-    line-height: 16px !important; /* Match container height */
+    font-size: 0.875rem !important; /* Increased from 0.75rem to 0.875rem (30% increase) */
+    line-height: 20px !important; /* Match container height */
     margin: 0 !important;
     padding: 0 !important;
-    height: 16px !important;
+    height: 20px !important; /* Increased from 16px to 20px (30% increase) */
 }
 
 /* Target the clock and sync indicator */
 #table-container > div:first-child .flex-grow #current-time,
 #table-container > div:first-child .flex-grow #sync-indicator {
-    font-size: 0.5rem !important; /* Smaller font */
-    padding: 0 !important;
+    font-size: 0.625rem !important; /* Increased from 0.5rem to 0.625rem (30% increase) */
+    padding: 0.125rem !important; /* Added small padding back (30% of original) */
     margin: 0 !important;
-    height: 16px !important;
-    line-height: 16px !important;
+    height: 20px !important; /* Increased from 16px to 20px (30% increase) */
+    line-height: 20px !important; /* Match container height */
     white-space: nowrap !important;
 }
 
