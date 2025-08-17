@@ -50,6 +50,7 @@ let autosaveTicker = null;
 let lastShownCountdown = null;
 let lastFocusInfo = null;
 let lastCellPos = null;
+let isRestoringFocus = false; // Flag to prevent edit events during focus restoration
 
 // Zoom functionality
 let zoomFactor = parseFloat(localStorage.getItem('zoomFactor') || '1');
@@ -165,6 +166,12 @@ function normalizeKey(k) {
 
 // Core autosave functionality
 function markEdited() {
+    // Don't mark as edited if we're restoring focus
+    if (isRestoringFocus) {
+        log('🔄 markEdited() skipped - focus restoration in progress');
+        return;
+    }
+    
     isDirty = true;
     isTyping = true;
     log('📝 markEdited() called - setting isTyping=true, isDirty=true');
@@ -1161,6 +1168,12 @@ function clearAllRowColors() {
 
 // Focus management
 function captureSimplePos() {
+    // Don't capture position if we're restoring focus
+    if (isRestoringFocus) {
+        log('🔄 captureSimplePos() skipped - focus restoration in progress');
+        return;
+    }
+    
     const active = document.activeElement;
     if (!(active && active.tagName === 'TD' && active.isContentEditable)) return;
     
@@ -1183,6 +1196,12 @@ function captureSimplePos() {
 }
 
 function captureFocusInfo() {
+    // Don't capture focus info if we're restoring focus
+    if (isRestoringFocus) {
+        log('🔄 captureFocusInfo() skipped - focus restoration in progress');
+        return;
+    }
+    
     const active = document.activeElement;
     if (!(active && active.tagName === 'TD' && active.isContentEditable)) return;
     
@@ -1270,6 +1289,9 @@ function setCaretAt(el, offset) {
 // Focus restoration function to maintain user's editing position
 function restoreFocus() {
     try {
+        // Set flag to prevent edit events during focus restoration
+        isRestoringFocus = true;
+        
         // Try to restore focus using detailed focus info first
         if (lastFocusInfo && lastFocusInfo.rowIndex >= 0 && lastFocusInfo.colLabel) {
             const tbody = document.getElementById('table-body');
@@ -1289,6 +1311,12 @@ function restoreFocus() {
                         ensureCellVisible(targetCell);
                         
                         log(`✅ Focus restored to ${lastFocusInfo.colLabel} at row ${lastFocusInfo.rowIndex + 1}`);
+                        
+                        // Clear the flag after a short delay to allow focus to settle
+                        setTimeout(() => {
+                            isRestoringFocus = false;
+                        }, 200);
+                        
                         return true;
                     }
                 }
@@ -1307,16 +1335,27 @@ function restoreFocus() {
                         ensureCellVisible(cells[lastCellPos.cellIndex]);
                         
                         log(`✅ Focus restored to cell ${lastCellPos.cellIndex} at row ${lastCellPos.rowIndex + 1}`);
+                        
+                        // Clear the flag after a short delay to allow focus to settle
+                        setTimeout(() => {
+                            isRestoringFocus = false;
+                        }, 200);
+                        
                         return true;
                     }
                 }
             }
         }
         
+        // Clear the flag if focus restoration failed
+        isRestoringFocus = false;
+        
         log('⚠️ Could not restore focus - no valid position information');
         return false;
         
     } catch (error) {
+        // Clear the flag on error
+        isRestoringFocus = false;
         log('❌ Error restoring focus: ' + error.message, 'error');
         return false;
     }
