@@ -368,13 +368,15 @@ body {
     right: 8px; 
     z-index: 20; 
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: flex-end; /* Align buttons to the right */
+    align-items: flex-start; /* Align buttons to the top */
+    flex-wrap: wrap; /* Allow buttons to wrap to next line */
     margin-left: 0; /* Removed left margin */
     margin-right: 0; /* Removed right margin */
     transform: translateX(0); /* Removed transform offset */
     max-width: calc(100vw - 40px);
     overflow: hidden;
+    gap: 0; /* No gap between buttons */
 }
 
 /* Mobile-safe positioning for the top-right button bar */
@@ -705,6 +707,21 @@ button:hover::before {
     flex-shrink: 0;
 }
 
+/* Ensure wrapped buttons stay aligned to the right */
+#button-bar {
+    flex-direction: row-reverse; /* Reverse direction so buttons wrap from right to left */
+}
+
+/* Reset button order to maintain visual order */
+#button-bar button {
+    order: 0; /* Reset order */
+}
+
+/* Specific order for keyboard shortcuts button to appear last */
+#button-bar button[onclick*="toggleKeyboardShortcuts"] {
+    order: 1; /* Appears last in the visual order */
+}
+
 /* Réduction des marges sur petits écrans */
 @media (max-width: 768px) {
     #table-container {
@@ -811,7 +828,14 @@ button:hover::before {
 #button-bar button[onclick*="toggleKeyboardShortcuts"] {
     position: relative;
     z-index: 15;
-    margin-right: 0; /* Removed right margin */
+    margin-right: 0; /* No margin by default */
+}
+
+/* Add right margin only on large screens */
+@media (min-width: 1024px) {
+    #button-bar button[onclick*="toggleKeyboardShortcuts"] {
+        margin-right: 10px; /* 10px margin on large screens only */
+    }
 }
 .shortcuts-scroll-container {
     overflow-y: scroll !important;
