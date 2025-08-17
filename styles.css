@@ -409,9 +409,9 @@ body {
 }
 
 #data-table thead { 
-    position: sticky !important; /* Use sticky positioning for proper table alignment */
-    top: 0.5rem !important; /* Stick just below the button bar */
-    z-index: 10000 !important; /* Extremely high z-index to ensure visibility */
+    position: sticky; 
+    top: 0; 
+    z-index: 10; 
     background-color: var(--primary-color);
     color: white;
     font-weight: 600;
