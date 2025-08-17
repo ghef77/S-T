@@ -1437,6 +1437,9 @@
           cell.setAttribute('data-label',header);
           cell.setAttribute('data-dbkey',dbKey);
           
+          // Stocker la valeur initiale pour détecter les vraies modifications
+          let initialValue = value || '';
+          let hasBeenModified = false;
           
           // --- Nom_Prénom auto-formatting logic ---
           if (isNomPrenomLabel(header)) {
@@ -1444,22 +1447,68 @@
             if (value) {
               value = formatNomPrenom(value);
               cell.textContent = value;
+              initialValue = value;
             }
             
-            // Format when the user leaves the cell
+            // Format when the user leaves the cell (seulement si modifié)
             cell.addEventListener('blur', () => {
-              cell.textContent = formatNomPrenom(cell.textContent);
-              saveStateToHistory();
-              saveLocalDraft();
-              markEdited();
-            });
-            // Also normalize after paste into this cell
-            cell.addEventListener('paste', () => {
-              setTimeout(() => {
-                cell.textContent = formatNomPrenom(cell.textContent);
+              const currentValue = cell.textContent;
+              const formattedValue = formatNomPrenom(currentValue);
+              cell.textContent = formattedValue;
+              
+              // Sauvegarder seulement si la valeur a vraiment changé
+              if (hasBeenModified || formattedValue !== initialValue) {
                 saveStateToHistory();
                 saveLocalDraft();
                 markEdited();
+                // Mettre à jour la valeur initiale pour les prochaines comparaisons
+                initialValue = formattedValue;
+                hasBeenModified = false;
+              }
+            });
+            
+            // Gérer le collage (seulement si le contenu change)
+            cell.addEventListener('paste', () => {
+              setTimeout(() => {
+                const pastedValue = cell.textContent;
+                const formattedValue = formatNomPrenom(pastedValue);
+                cell.textContent = formattedValue;
+                
+                // Sauvegarder seulement si le contenu collé est différent
+                if (formattedValue !== initialValue) {
+                  saveStateToHistory();
+                  saveLocalDraft();
+                  markEdited();
+                  initialValue = formattedValue;
+                  hasBeenModified = false;
+                }
+              }, 0);
+            });
+          } else {
+            // Pour les autres colonnes, gérer blur et paste de manière similaire
+            cell.addEventListener('blur', () => {
+              const currentValue = cell.textContent;
+              // Sauvegarder seulement si la valeur a vraiment changé
+              if (hasBeenModified || currentValue !== initialValue) {
+                saveStateToHistory();
+                saveLocalDraft();
+                markEdited();
+                initialValue = currentValue;
+                hasBeenModified = false;
+              }
+            });
+            
+            cell.addEventListener('paste', () => {
+              setTimeout(() => {
+                const pastedValue = cell.textContent;
+                // Sauvegarder seulement si le contenu collé est différent
+                if (pastedValue !== initialValue) {
+                  saveStateToHistory();
+                  saveLocalDraft();
+                  markEdited();
+                  initialValue = pastedValue;
+                  hasBeenModified = false;
+                }
               }, 0);
             });
           }
@@ -1469,7 +1518,10 @@
             cell.style.color='#000';
           }
           cell.setAttribute('tabindex','0');
+          
+          // Sauvegarder seulement lors de vraies modifications (input)
           cell.oninput=()=>{
+            hasBeenModified = true;
             saveStateToHistory();
             saveLocalDraft();
             markEdited();
@@ -1477,6 +1529,7 @@
             captureFocusInfo();
             captureSimplePos();
           };
+          
           cell.addEventListener('keyup', (e) => {
             // update caret after navigation keys
             if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown'].includes(e.key)) {
