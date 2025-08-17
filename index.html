@@ -3336,6 +3336,9 @@
         function openSimpleGallery() {
             window.open('simple-gallery.html', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
         }
+        
+        // Exposer la fonction globalement
+        window.openSimpleGallery = openSimpleGallery;
 
         // Raccourcis clavier étendus
         function setupExtendedKeyboardShortcuts() {
