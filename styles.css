@@ -288,12 +288,12 @@ body {
     color: white;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.03em; /* Reduced from 0.05em to 0.03em (60%) */
 }
 
 #data-table thead th {
-    padding: 1rem;
-    font-size: 0.875rem;
+    padding: 0.6rem; /* Reduced from 1rem to 0.6rem (60%) */
+    font-size: 0.525rem; /* Reduced from 0.875rem to 0.525rem (60%) */
 }
 
 #data-table tbody tr {
@@ -669,6 +669,12 @@ button:hover::before {
     
     #data-table th, #data-table td {
         padding: 0.25rem 0.5rem;
+    }
+    
+    /* Reduce header size to 60% on mobile as well */
+    #data-table thead th {
+        padding: 0.36rem; /* 60% of 0.6rem */
+        font-size: 0.315rem; /* 60% of 0.525rem */
     }
 }
 
