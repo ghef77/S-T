@@ -377,6 +377,96 @@ body {
         position: relative;
         z-index: 1;
     }
+    
+    /* Adjust button bar for very small screens */
+    #button-bar {
+        padding: 0.5rem; /* Reduce padding for very small screens */
+        gap: 0.25rem; /* Reduce gap for very small screens */
+    }
+    
+    /* Ensure table container padding accounts for fixed button bar */
+    #table-container {
+        padding-top: 3.5rem; /* Slightly less padding for very small screens */
+    }
+}
+
+/* Ultra-small screens - optimize for very limited space */
+@media (max-width: 320px) {
+    #button-bar {
+        padding: 0.375rem; /* Minimal padding */
+        gap: 0.125rem; /* Minimal gap */
+    }
+    
+    #table-container {
+        padding-top: 3rem; /* Minimal top padding */
+    }
+}
+
+/* Mobile keyboard visibility - ensure button bar stays visible */
+@media (max-width: 640px) {
+    /* When virtual keyboard is likely visible, adjust positioning */
+    @media (max-height: 600px) {
+        #button-bar {
+            /* Keep fixed positioning but ensure it's always visible */
+            position: fixed;
+            top: 0;
+            z-index: 1000; /* Extremely high priority */
+            /* Strong background to ensure visibility */
+            background: linear-gradient(to right, rgba(249, 250, 251, 0.99), rgba(243, 244, 246, 0.99));
+            backdrop-filter: blur(15px);
+            border-bottom: 3px solid rgba(229, 231, 235, 0.9);
+            box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Ensure content doesn't overlap */
+        #table-container {
+            padding-top: 4.5rem; /* Extra padding when keyboard is visible */
+        }
+    }
+}
+
+/* Mobile zoom compatibility - ensure zoom works correctly on mobile devices */
+@media (max-width: 768px) {
+    /* Force zoom to work on mobile by overriding any conflicting styles */
+    #data-table {
+        /* Ensure transform works correctly on mobile */
+        transform-origin: top left;
+        will-change: transform;
+        /* Prevent mobile browsers from interfering with zoom */
+        -webkit-text-size-adjust: none;
+        -moz-text-size-adjust: none;
+        text-size-adjust: none;
+    }
+    
+    #data-table td,
+    #data-table th {
+        /* Ensure font-size changes are respected on mobile */
+        -webkit-text-size-adjust: none;
+        -moz-text-size-adjust: none;
+        text-size-adjust: none;
+        /* Force font-size inheritance */
+        font-size: inherit !important;
+    }
+    
+    /* Ensure zoom buttons work correctly on mobile */
+    #button-bar button[onclick*="zoomIn"],
+    #button-bar button[onclick*="zoomOut"],
+    #button-bar button[id="zoom-display"] {
+        /* Prevent mobile browsers from interfering with button sizing */
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        /* Ensure buttons maintain their size during zoom */
+        transform: none;
+        transition: all 0.2s ease;
+    }
+    
+    /* Prevent mobile zoom conflicts */
+    #table-container {
+        /* Disable mobile browser zoom gestures on table container */
+        touch-action: pan-x pan-y;
+        /* Ensure proper scaling */
+        transform-origin: top left;
+    }
 }
 
 #data-table thead th {
@@ -459,12 +549,12 @@ body {
 /* Mobile-safe positioning for the button bar */
 @media (max-width: 640px) {
     #button-bar {
-        position: relative; /* Keep relative positioning on mobile */
-        top: auto;
-        right: auto;
-        z-index: 20;
+        position: fixed; /* Fixed positioning to stay visible when keyboard appears */
+        top: 0; /* Stick to top of viewport */
+        left: 0; /* Align to left edge */
+        right: 0; /* Extend to right edge */
+        z-index: 100; /* Very high z-index to stay above everything */
         margin: 0; /* Reset margins */
-        margin-bottom: 1rem !important; /* Ensure bottom margin on mobile */
         padding: 0.75rem; /* Slightly more padding on mobile */
         flex-direction: row; /* Keep horizontal layout - no wrapping to new lines */
         gap: 0.5rem; /* Reduced gap to fit everything on one line */
@@ -472,6 +562,11 @@ body {
         overflow-x: auto; /* Allow horizontal scrolling if needed */
         scrollbar-width: thin; /* Thin scrollbar for Firefox */
         scrollbar-color: #cbd5e1 #f1f5f9; /* Custom scrollbar colors */
+        /* Ensure visibility with strong background */
+        background: linear-gradient(to right, rgba(249, 250, 251, 0.98), rgba(243, 244, 246, 0.98));
+        backdrop-filter: blur(10px);
+        border-bottom: 2px solid rgba(229, 231, 235, 0.8);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
     
     #button-bar > div:first-child {
@@ -513,7 +608,13 @@ body {
     }
     
     #table-container { 
-        padding-top: 0; /* Remove top padding since button bar is now in flow */
+        padding-top: 4rem; /* Add top padding to account for fixed button bar */
+        margin-top: 0; /* Reset margin */
+    }
+    
+    /* Ensure table content doesn't overlap with fixed button bar */
+    #table-container .overflow-auto {
+        margin-top: 0.5rem; /* Small margin for visual separation */
     }
 }
 

@@ -1216,6 +1216,23 @@ if (isMobile()) {
     
     // Apply fix initially
     setTimeout(ensureHeadersVisible, 100);
+    
+    // Mobile zoom compatibility - ensure zoom works correctly on mobile
+    function ensureMobileZoomCompatibility() {
+        // Force re-application of zoom after a short delay
+        setTimeout(() => {
+            if (zoomFactor !== 1) {
+                applyZoom();
+            }
+        }, 500);
+    }
+    
+    // Apply zoom compatibility fix on various mobile events
+    document.addEventListener('orientationchange', ensureMobileZoomCompatibility);
+    document.addEventListener('resize', ensureMobileZoomCompatibility);
+    
+    // Apply initially
+    ensureMobileZoomCompatibility();
 }
 
 
@@ -1834,25 +1851,90 @@ function applyZoom() {
     try {
         const clamped = Math.max(0.3, Math.min(2, zoomFactor));
         zoomFactor = clamped;
+        
+        // Apply zoom to document root
         document.documentElement.style.fontSize = (16 * zoomFactor) + 'px';
-        localStorage.setItem('zoomFactor', String(zoomFactor));
+        
+        // Also apply zoom specifically to table elements for mobile compatibility
+        const table = document.getElementById('data-table');
+        if (table) {
+            // Apply zoom to table container
+            table.style.transform = `scale(${zoomFactor})`;
+            table.style.transformOrigin = 'top left';
+            
+            // Adjust table width to compensate for scaling
+            const originalWidth = table.scrollWidth / zoomFactor;
+            table.style.width = originalWidth + 'px';
+        }
+        
+        // Apply zoom to table cells specifically
+        const cells = document.querySelectorAll('#data-table td, #data-table th');
+        cells.forEach(cell => {
+            // Set font size directly on cells for mobile compatibility
+            const baseFontSize = isMobile() ? 14 : 16; // Smaller base font on mobile
+            const fontSize = Math.max(8, Math.min(24, baseFontSize * zoomFactor)); // Clamp between 8px and 24px
+            cell.style.fontSize = fontSize + 'px';
+            
+            // Adjust padding proportionally
+            const basePadding = isMobile() ? 0.5 : 0.75;
+            const padding = Math.max(0.25, Math.min(1.5, basePadding * zoomFactor));
+            cell.style.padding = padding + 'rem';
+        });
+        
+        // Update zoom display
         updateZoomDisplay();
-    } catch (_) {}
+        
+        // Save to localStorage
+        localStorage.setItem('zoomFactor', String(zoomFactor));
+        
+        // Force reflow on mobile to ensure changes are applied
+        if (isMobile()) {
+            document.body.offsetHeight; // Force reflow
+        }
+        
+        log(`🔍 Zoom applied: ${Math.round(zoomFactor * 100)}%`);
+        
+    } catch (error) {
+        log('❌ Zoom application error: ' + error.message, 'error');
+        // Fallback to basic zoom
+        try {
+            document.documentElement.style.fontSize = (16 * zoomFactor) + 'px';
+        } catch (_) {}
+    }
 }
 
 function zoomIn() { 
-    zoomFactor += 0.1; 
+    // Smaller zoom increments on mobile for better control
+    const increment = isMobile() ? 0.05 : 0.1;
+    zoomFactor += increment; 
     applyZoom(); 
+    
+    // Show feedback on mobile
+    if (isMobile()) {
+        showMessage(`Zoom: ${Math.round(zoomFactor * 100)}%`, 'info', 1000);
+    }
 }
 
 function zoomOut() { 
-    zoomFactor -= 0.1; 
+    // Smaller zoom increments on mobile for better control
+    const increment = isMobile() ? 0.05 : 0.1;
+    zoomFactor -= increment; 
     applyZoom(); 
+    
+    // Show feedback on mobile
+    if (isMobile()) {
+        showMessage(`Zoom: ${Math.round(zoomFactor * 100)}%`, 'info', 1000);
+    }
 }
 
 function zoomReset() { 
     zoomFactor = 1; 
     applyZoom(); 
+    
+    // Show feedback on mobile
+    if (isMobile()) {
+        showMessage('Zoom réinitialisé à 100%', 'info', 1000);
+    }
 }
 
 function updateZoom() {
