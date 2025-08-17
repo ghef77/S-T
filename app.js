@@ -212,16 +212,30 @@ function startPeriodicSync() {
         if (!isDirty) return;
         
         try {
+            // Capture current focus before autosave
+            captureFocusInfo();
+            captureSimplePos();
+            
             isSyncing = true;
             updateSyncIndicator('syncing', 'Synchronisation automatique...');
             await syncToSupabase(collectTableData(), false);
             isDirty = false;
             updateSyncIndicator('synced', 'Synchronisé');
             
+            // Restore focus after successful autosave
+            setTimeout(() => {
+                restoreFocus();
+            }, 100);
+            
         } catch (error) {
             console.error('❌ Autosave error:', error);
             updateSyncIndicator('error', 'Non synchronisé');
             showMessage('Erreur de sauvegarde automatique', 'error');
+            
+            // Restore focus even on error
+            setTimeout(() => {
+                restoreFocus();
+            }, 100);
         } finally { 
             isSyncing = false; 
         }
@@ -1253,6 +1267,61 @@ function setCaretAt(el, offset) {
     } catch (_) {}
 }
 
+// Focus restoration function to maintain user's editing position
+function restoreFocus() {
+    try {
+        // Try to restore focus using detailed focus info first
+        if (lastFocusInfo && lastFocusInfo.rowIndex >= 0 && lastFocusInfo.colLabel) {
+            const tbody = document.getElementById('table-body');
+            if (tbody) {
+                const rows = tbody.querySelectorAll('tr');
+                if (rows[lastFocusInfo.rowIndex]) {
+                    const targetCell = rows[lastFocusInfo.rowIndex].querySelector(`[data-label="${lastFocusInfo.colLabel}"]`);
+                    if (targetCell && targetCell.isContentEditable) {
+                        targetCell.focus();
+                        
+                        // Restore caret position if available
+                        if (lastFocusInfo.caret !== null && lastFocusInfo.caret >= 0) {
+                            setCaretAt(targetCell, lastFocusInfo.caret);
+                        }
+                        
+                        // Ensure cell is visible
+                        ensureCellVisible(targetCell);
+                        
+                        log(`✅ Focus restored to ${lastFocusInfo.colLabel} at row ${lastFocusInfo.rowIndex + 1}`);
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        // Fallback to simple position if detailed info fails
+        if (lastCellPos && lastCellPos.rowIndex >= 0 && lastCellPos.cellIndex >= 0) {
+            const tbody = document.getElementById('table-body');
+            if (tbody) {
+                const rows = tbody.querySelectorAll('tr');
+                if (rows[lastCellPos.rowIndex]) {
+                    const cells = rows[lastCellPos.rowIndex].cells;
+                    if (cells[lastCellPos.cellIndex] && cells[lastCellPos.cellIndex].isContentEditable) {
+                        cells[lastCellPos.cellIndex].focus();
+                        ensureCellVisible(cells[lastCellPos.cellIndex]);
+                        
+                        log(`✅ Focus restored to cell ${lastCellPos.cellIndex} at row ${lastCellPos.rowIndex + 1}`);
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        log('⚠️ Could not restore focus - no valid position information');
+        return false;
+        
+    } catch (error) {
+        log('❌ Error restoring focus: ' + error.message, 'error');
+        return false;
+    }
+}
+
 // Mobile detection and support
 function isMobile() {
     try { 
@@ -1743,6 +1812,10 @@ function importExcelFromFile(file) {
 // Manual save function
 async function saveManually() {
     try {
+        // Capture current focus before manual save
+        captureFocusInfo();
+        captureSimplePos();
+        
         log('💾 Manual save requested...');
         updateSyncIndicator('syncing', 'Sauvegarde manuelle...');
         showMessage('Sauvegarde manuelle en cours...', 'info');
@@ -1763,10 +1836,20 @@ async function saveManually() {
         isDirty = false;
         appState.localData = tableData;
         
+        // Restore focus after successful manual save
+        setTimeout(() => {
+            restoreFocus();
+        }, 100);
+        
     } catch (error) {
         log('❌ Manual save failed: ' + error.message, 'error');
         updateSyncIndicator('error', 'Non synchronisé');
         showMessage('Erreur de sauvegarde manuelle', 'error');
+        
+        // Restore focus even on error
+        setTimeout(() => {
+            restoreFocus();
+        }, 100);
     }
 }
 
@@ -3334,6 +3417,10 @@ async function handleRealtimeChange(payload) {
             return;
         }
 
+        // Capture current focus before real-time update
+        captureFocusInfo();
+        captureSimplePos();
+
         log('🔄 Real-time change detected:', payload.event, payload.new?.No || payload.old?.No);
         
         // Update sync indicator
@@ -3365,15 +3452,30 @@ async function handleRealtimeChange(payload) {
             const rowNumber = payload.new?.No || payload.old?.No || 'N/A';
             showRealtimeUpdateNotification(changeType, rowNumber);
             
+            // Restore focus after real-time update
+            setTimeout(() => {
+                restoreFocus();
+            }, 200);
+            
             log('✅ Real-time update completed');
         } else {
             log('⚠️ No data received from Supabase');
             updateSyncIndicator('error', 'Aucune donnée reçue');
+            
+            // Restore focus even if no data received
+            setTimeout(() => {
+                restoreFocus();
+            }, 200);
         }
         
     } catch (error) {
         log('❌ Error handling real-time change: ' + error.message, 'error');
         updateSyncIndicator('error', 'Erreur de mise à jour');
+        
+        // Restore focus even on error
+        setTimeout(() => {
+            restoreFocus();
+        }, 200);
     }
 }
 
