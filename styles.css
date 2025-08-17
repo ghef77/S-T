@@ -370,9 +370,9 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-left: 20px;
-    margin-right: auto;
-    transform: translateX(-5%);
+    margin-left: 0; /* Removed left margin */
+    margin-right: 0; /* Removed right margin */
+    transform: translateX(0); /* Removed transform offset */
     max-width: calc(100vw - 40px);
     overflow: hidden;
 }
@@ -384,6 +384,7 @@ body {
         top: calc(env(safe-area-inset-top, 0px) + 8px);
         right: 8px;
         z-index: 50;
+        margin: 0; /* Ensure no margins on mobile */
     }
     
     #table-container { 
@@ -700,7 +701,7 @@ button:hover::before {
 }
 
 #button-bar button {
-    margin: 0;
+    margin: 0; /* No margins on buttons */
     flex-shrink: 0;
 }
 
@@ -713,6 +714,7 @@ button:hover::before {
     
     #button-bar {
         padding: 0.5rem !important;
+        margin: 0 !important; /* Remove all margins on medium screens */
         margin-bottom: 0.5rem !important;
     }
 
@@ -809,7 +811,7 @@ button:hover::before {
 #button-bar button[onclick*="toggleKeyboardShortcuts"] {
     position: relative;
     z-index: 15;
-    margin-right: 20px;
+    margin-right: 0; /* Removed right margin */
 }
 .shortcuts-scroll-container {
     overflow-y: scroll !important;
