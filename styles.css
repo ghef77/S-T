@@ -313,19 +313,23 @@ body {
 }
 
 #data-table thead { 
-    position: sticky; 
-    top: 0; 
-    z-index: 100; /* Much higher z-index to ensure visibility */
-    background-color: var(--primary-color);
-    color: white;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em; /* Increased from 0.025em to 0.05em for better readability */
-    min-height: 3rem; /* Ensure minimum height for better appearance */
+    position: sticky !important; /* Force sticky positioning */
+    top: 0 !important; /* Force top position */
+    z-index: 1500 !important; /* Very high z-index to ensure visibility */
+    background-color: var(--primary-color) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important; /* Increased from 0.025em to 0.05em for better readability */
+    min-height: 3rem !important; /* Ensure minimum height for better appearance */
     /* Force background to prevent transparency */
-    background-image: linear-gradient(to bottom, var(--primary-color), var(--primary-color));
+    background-image: linear-gradient(to bottom, var(--primary-color), var(--primary-color)) !important;
     /* Ensure headers stay above all content */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+    /* Force proper stacking context */
+    isolation: isolate !important;
+    /* Prevent scrolling interference */
+    will-change: transform !important;
 }
 
 /* Mobile-specific header positioning to account for button bar */
@@ -693,45 +697,57 @@ body {
 }
 
 #data-table thead th {
-    padding: 0.75rem; /* Increased from 0.5rem to 0.75rem for better readability */
-    font-size: 0.75rem; /* Increased from 0.4375rem to 0.75rem for better readability */
-    line-height: 1.2; /* Better line height for readability */
-    min-height: 2.5rem; /* Ensure minimum height for better appearance */
-    vertical-align: middle; /* Center content vertically */
-    border-bottom: 2px solid rgba(255, 255, 255, 0.2); /* Subtle border for better separation */
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* Text shadow for better readability */
+    padding: 0.75rem !important; /* Increased from 0.5rem to 0.75rem for better readability */
+    font-size: 0.75rem !important; /* Increased from 0.4375rem to 0.75rem for better readability */
+    line-height: 1.2 !important; /* Better line height for readability */
+    min-height: 2.5rem !important; /* Ensure minimum height for better appearance */
+    vertical-align: middle !important; /* Center content vertically */
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2) !important; /* Subtle border for better separation */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important; /* Text shadow for better readability */
     /* Ensure each header cell stays sticky */
-    position: sticky;
-    top: 0;
-    z-index: 100; /* Same high z-index as thead */
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1500 !important; /* Same high z-index as thead */
     background-color: var(--primary-color) !important;
     /* Force background to prevent transparency */
     background-image: linear-gradient(to bottom, var(--primary-color), var(--primary-color)) !important;
+    /* Force proper stacking context */
+    isolation: isolate !important;
+    /* Prevent scrolling interference */
+    will-change: transform !important;
 }
 
 /* Freeze first column (No) - horizontal freeze only */
 #data-table th:first-child,
 #data-table td:first-child {
-    position: sticky;
-    left: 0;
-    z-index: 50; /* Lower than headers but higher than regular cells */
+    position: sticky !important; /* Force sticky positioning */
+    left: 0 !important; /* Force left position */
+    z-index: 1000 !important; /* Very high z-index to stay above content */
     background-color: white !important;
     /* Add shadow for visual separation */
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.15) !important;
     /* Ensure proper background */
     background-image: linear-gradient(to right, white, white) !important;
+    /* Force proper stacking context */
+    isolation: isolate !important;
+    /* Prevent scrolling interference */
+    will-change: transform !important;
 }
 
 /* Special handling for first column header (No) - both frozen (header row + column No) */
 #data-table thead th:first-child {
-    position: sticky;
-    top: 0;
-    left: 0;
-    z-index: 150; /* Higher than both regular headers and first column cells */
+    position: sticky !important; /* Force sticky positioning */
+    top: 0 !important; /* Force top position */
+    left: 0 !important; /* Force left position */
+    z-index: 2000 !important; /* Highest z-index for header + column intersection */
     background-color: var(--primary-color) !important;
     background-image: linear-gradient(to bottom right, var(--primary-color), var(--primary-color)) !important;
     /* Add shadow for visual separation */
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2) !important;
+    /* Force proper stacking context */
+    isolation: isolate !important;
+    /* Prevent scrolling interference */
+    will-change: transform !important;
 }
 
 /* Column "Effacer" - NO FREEZE, normal positioning */
@@ -869,29 +885,31 @@ body {
 /* Mobile-safe positioning for the button bar */
 @media (max-width: 640px) {
     #button-bar {
-        position: fixed; /* Fixed positioning to stay visible when keyboard appears */
-        top: env(safe-area-inset-top, 0px); /* Use safe area to avoid browser UI */
-        left: env(safe-area-inset-left, 0px); /* Use safe area to avoid browser UI */
-        right: env(safe-area-inset-right, 0px); /* Use safe area to avoid browser UI */
-        z-index: 10000; /* Extremely high z-index to stay above everything including browser UI */
-        margin: 0; /* Reset margins */
-        padding: 0.75rem; /* Slightly more padding on mobile */
-        flex-direction: row; /* Keep horizontal layout - no wrapping to new lines */
-        gap: 0.5rem; /* Reduced gap to fit everything on one line */
-        flex-wrap: nowrap; /* Prevent wrapping to new lines */
-        overflow-x: auto; /* Allow horizontal scrolling if needed */
-        scrollbar-width: thin; /* Thin scrollbar for Firefox */
-        scrollbar-color: #cbd5e1 #f1f5f9; /* Custom scrollbar colors */
+        position: fixed !important; /* Force fixed positioning */
+        top: env(safe-area-inset-top, 0px) !important; /* Use safe area to avoid browser UI */
+        left: env(safe-area-inset-left, 0px) !important; /* Use safe area to avoid browser UI */
+        right: env(safe-area-inset-right, 0px) !important; /* Use safe area to avoid browser UI */
+        z-index: 100000 !important; /* Maximum possible z-index */
+        margin: 0 !important; /* Reset margins */
+        padding: 0.75rem !important; /* Slightly more padding on mobile */
+        flex-direction: row !important; /* Keep horizontal layout */
+        gap: 0.5rem !important; /* Reduced gap to fit everything on one line */
+        flex-wrap: nowrap !important; /* Prevent wrapping to new lines */
+        overflow-x: auto !important; /* Allow horizontal scrolling if needed */
+        scrollbar-width: thin !important; /* Thin scrollbar for Firefox */
+        scrollbar-color: #cbd5e1 #f1f5f9 !important; /* Custom scrollbar colors */
         /* Ensure visibility with strong background */
-        background: linear-gradient(to right, rgba(249, 250, 251, 0.99), rgba(243, 244, 246, 0.99));
-        backdrop-filter: blur(15px);
-        border-bottom: 3px solid rgba(229, 231, 235, 0.9);
-        box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.2);
+        background: linear-gradient(to right, rgba(255, 255, 255, 1), rgba(249, 250, 251, 1)) !important;
+        backdrop-filter: blur(20px) !important;
+        border-bottom: 4px solid rgba(229, 231, 235, 1) !important;
+        box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.3) !important;
         /* Force visibility above browser UI */
-        -webkit-transform: translateZ(0);
-        transform: translateZ(0);
+        -webkit-transform: translate3d(0, 0, 0) !important;
+        transform: translate3d(0, 0, 0) !important;
         /* Ensure proper stacking context */
-        isolation: isolate;
+        isolation: isolate !important;
+        /* Prevent any scrolling interference */
+        will-change: transform !important;
     }
     
     #button-bar > div:first-child {
