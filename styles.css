@@ -412,7 +412,7 @@ body {
     }
 }
     
-    /* Ultra-small screen frozen columns - compact positioning */
+    /* Ultra-small screen frozen columns - only first column (No) frozen */
     #data-table th:first-child,
     #data-table td:first-child {
         left: 0;
@@ -430,21 +430,26 @@ body {
         box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.25);
     }
     
+    /* Column "Effacer" - NO FREEZE on ultra-small screens */
     #data-table th:nth-child(2),
     #data-table td:nth-child(2) {
-        left: 40px; /* Compact offset for ultra-small screens */
-        z-index: 400;
-        background-color: white !important;
-        background-image: linear-gradient(to right, white, white) !important;
-        box-shadow: 1px 0 3px rgba(0, 0, 0, 0.2);
+        position: static;
+        left: auto;
+        z-index: auto;
+        background-color: transparent !important;
+        background-image: none !important;
+        box-shadow: none;
     }
     
+    /* Header "Effacer" - only sticky top on ultra-small screens */
     #data-table thead th:nth-child(2) {
-        left: 40px; /* Compact offset for ultra-small screens */
-        z-index: 700;
+        position: sticky;
+        top: 0;
+        left: auto; /* No left freeze */
+        z-index: 400; /* Same as first column cells */
         background-color: var(--primary-color) !important;
-        background-image: linear-gradient(to bottom right, var(--primary-color), var(--primary-color)) !important;
-        box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.25);
+        background-image: linear-gradient(to bottom, var(--primary-color), var(--primary-color)) !important;
+        box-shadow: none;
     }
 }
 
@@ -509,7 +514,7 @@ body {
     }
 }
     
-    /* Ultra-compact frozen columns for very small screens */
+    /* Ultra-compact frozen columns for very small screens - only first column (No) frozen */
     #data-table th:first-child,
     #data-table td:first-child {
         left: 0;
@@ -527,21 +532,26 @@ body {
         box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
     }
     
+    /* Column "Effacer" - NO FREEZE on ultra-small screens */
     #data-table th:nth-child(2),
     #data-table td:nth-child(2) {
-        left: 35px; /* Ultra-compact offset */
-        z-index: 500;
-        background-color: white !important;
-        background-image: linear-gradient(to right, white, white) !important;
-        box-shadow: 1px 0 2px rgba(0, 0, 0, 0.3);
+        position: static;
+        left: auto;
+        z-index: auto;
+        background-color: transparent !important;
+        background-image: none !important;
+        box-shadow: none;
     }
     
+    /* Header "Effacer" - only sticky top on ultra-small screens */
     #data-table thead th:nth-child(2) {
-        left: 35px; /* Ultra-compact offset */
-        z-index: 800;
+        position: sticky;
+        top: 0;
+        left: auto; /* No left freeze */
+        z-index: 500; /* Same as first column cells */
         background-color: var(--primary-color) !important;
-        background-image: linear-gradient(to bottom right, var(--primary-color), var(--primary-color)) !important;
-        box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        background-image: linear-gradient(to bottom, var(--primary-color), var(--primary-color)) !important;
+        box-shadow: none;
     }
 }
 
@@ -641,7 +651,7 @@ body {
         background-image: linear-gradient(to bottom, var(--primary-color), var(--primary-color)) !important;
     }
     
-    /* Mobile-specific frozen columns - adjust positioning for smaller screens */
+    /* Mobile-specific frozen columns - only first column (No) frozen */
     #data-table th:first-child,
     #data-table td:first-child {
         left: 0;
@@ -659,21 +669,26 @@ body {
         box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
     }
     
+    /* Column "Effacer" - NO FREEZE on mobile */
     #data-table th:nth-child(2),
     #data-table td:nth-child(2) {
-        left: 50px; /* Smaller offset for mobile */
-        z-index: 200;
-        background-color: white !important;
-        background-image: linear-gradient(to right, white, white) !important;
-        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.15);
+        position: static;
+        left: auto;
+        z-index: auto;
+        background-color: transparent !important;
+        background-image: none !important;
+        box-shadow: none;
     }
     
+    /* Header "Effacer" - only sticky top on mobile */
     #data-table thead th:nth-child(2) {
-        left: 50px; /* Smaller offset for mobile */
-        z-index: 600;
+        position: sticky;
+        top: 0;
+        left: auto; /* No left freeze */
+        z-index: 500; /* Same as other headers on mobile */
         background-color: var(--primary-color) !important;
-        background-image: linear-gradient(to bottom right, var(--primary-color), var(--primary-color)) !important;
-        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+        background-image: linear-gradient(to bottom, var(--primary-color), var(--primary-color)) !important;
+        box-shadow: none;
     }
 }
 
@@ -694,7 +709,7 @@ body {
     background-image: linear-gradient(to bottom, var(--primary-color), var(--primary-color)) !important;
 }
 
-/* Freeze first column (No) - horizontal freeze */
+/* Freeze first column (No) - horizontal freeze only */
 #data-table th:first-child,
 #data-table td:first-child {
     position: sticky;
@@ -707,7 +722,7 @@ body {
     background-image: linear-gradient(to right, white, white) !important;
 }
 
-/* Special handling for first column header (No) - both frozen */
+/* Special handling for first column header (No) - both frozen (header row + column No) */
 #data-table thead th:first-child {
     position: sticky;
     top: 0;
@@ -719,29 +734,30 @@ body {
     box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);
 }
 
-/* Freeze second column (Effacer) - horizontal freeze */
+/* Column "Effacer" - NO FREEZE, normal positioning */
 #data-table th:nth-child(2),
 #data-table td:nth-child(2) {
-    position: sticky;
-    left: 60px; /* Adjust based on first column width */
-    z-index: 50;
-    background-color: white !important;
-    background-image: linear-gradient(to right, white, white) !important;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    /* Remove sticky positioning - let it scroll normally */
+    position: static;
+    left: auto;
+    z-index: auto;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none;
 }
 
-/* Special handling for second column header (Effacer) - both frozen */
+/* Header "Effacer" - only sticky top, no left freeze */
 #data-table thead th:nth-child(2) {
     position: sticky;
     top: 0;
-    left: 60px; /* Adjust based on first column width */
-    z-index: 150;
+    left: auto; /* No left freeze */
+    z-index: 100; /* Same as other headers */
     background-color: var(--primary-color) !important;
-    background-image: linear-gradient(to bottom right, var(--primary-color), var(--primary-color)) !important;
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);
+    background-image: linear-gradient(to bottom, var(--primary-color), var(--primary-color)) !important;
+    box-shadow: none; /* No special shadow needed */
 }
 
-/* Desktop and large screen frozen columns - ensure proper positioning */
+/* Desktop and large screen frozen columns - only first column (No) frozen */
 @media (min-width: 1024px) {
     #data-table th:first-child,
     #data-table td:first-child {
@@ -760,21 +776,26 @@ body {
         box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.15);
     }
     
+    /* Column "Effacer" - NO FREEZE on desktop */
     #data-table th:nth-child(2),
     #data-table td:nth-child(2) {
-        left: 80px; /* Larger offset for desktop */
-        z-index: 50;
-        background-color: white !important;
-        background-image: linear-gradient(to right, white, white) !important;
-        box-shadow: 3px 0 8px rgba(0, 0, 0, 0.1);
+        position: static;
+        left: auto;
+        z-index: auto;
+        background-color: transparent !important;
+        background-image: none !important;
+        box-shadow: none;
     }
     
+    /* Header "Effacer" - only sticky top on desktop */
     #data-table thead th:nth-child(2) {
-        left: 80px; /* Larger offset for desktop */
-        z-index: 150;
+        position: sticky;
+        top: 0;
+        left: auto; /* No left freeze */
+        z-index: 100; /* Same as other headers */
         background-color: var(--primary-color) !important;
-        background-image: linear-gradient(to bottom right, var(--primary-color), var(--primary-color)) !important;
-        box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.15);
+        background-image: linear-gradient(to bottom, var(--primary-color), var(--primary-color)) !important;
+        box-shadow: none;
     }
 }
 
