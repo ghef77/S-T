@@ -758,11 +758,29 @@ function addRow() {
             rowPaintAction = getPaintActionForRow(row);
             applyRowPaint(row);
         }
+        // Toujours arrêter le drag après un clic
+        endRowPaint();
+    });
+    
+    numCell.addEventListener('mouseup', () => {
+        // Arrêter le drag quand on relâche la souris
+        endRowPaint();
+    });
+    
+    numCell.addEventListener('mouseleave', () => {
+        // Arrêter le drag si on quitte la cellule
+        endRowPaint();
     });
     
     numCell.addEventListener('touchstart', (e) => { 
         startRowPaint(row); 
         e.preventDefault(); 
+    }, { passive: false });
+    
+    numCell.addEventListener('touchend', (e) => {
+        // Arrêter le drag à la fin du touch
+        endRowPaint();
+        e.preventDefault();
     }, { passive: false });
     
     numCell.addEventListener('touchmove', (e) => { 
@@ -1068,13 +1086,13 @@ function getPaintActionForRow(row) {
 }
 
 function applyRowPaint(row) {
-    if (!row) return;
+    if (!row || !rowPaintAction) return; // Ne rien faire si pas d'action définie
     
     const key = keyForRow(row);
     if (rowPaintAction === 'color') {
         setRowColor(row, currentRowColor);
         rowColorMap[key] = currentRowColor;
-    } else {
+    } else if (rowPaintAction === 'clear') {
         setRowColor(row, null);
         delete rowColorMap[key];
     }
@@ -1082,6 +1100,11 @@ function applyRowPaint(row) {
 }
 
 function startRowPaint(row) {
+    // Arrêter tout drag précédent
+    if (isRowPaintDragging) {
+        endRowPaint();
+    }
+    
     if (paintMode === 'color') {
         rowPaintAction = 'color';
     } else if (paintMode === 'clear') {
@@ -1095,7 +1118,20 @@ function startRowPaint(row) {
 
 function endRowPaint() { 
     isRowPaintDragging = false; 
+    rowPaintAction = null; // Reset l'action de peinture
 }
+
+// Ajouter un gestionnaire global pour arrêter le drag
+document.addEventListener('mouseup', () => {
+    endRowPaint();
+});
+
+document.addEventListener('click', (e) => {
+    // Si on clique ailleurs que sur une cellule de numéro, arrêter le drag
+    if (!e.target.closest('#table-body td:first-child')) {
+        endRowPaint();
+    }
+});
 
 
 
