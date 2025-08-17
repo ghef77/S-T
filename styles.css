@@ -760,6 +760,48 @@ button:hover::before {
     transition: all 0.3s ease; /* Smooth transitions for button resizing */
 }
 
+/* Enhanced hover effects for specific buttons */
+#button-bar button[id="filter-colored-toggle"]:hover,
+#button-bar button[id="paint-mode-toggle"]:hover,
+#button-bar button[onclick*="clearAllRowColors"]:hover {
+    transform: scale(1.05); /* Slight scale up on hover */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Enhanced shadow on hover */
+    transition: all 0.2s ease; /* Smooth hover transitions */
+}
+
+/* Paint mode button specific hover effects */
+#button-bar button[id="paint-mode-toggle"]:hover {
+    background-color: #fbbf24 !important; /* Yellow background on hover */
+    color: #1f2937 !important; /* Dark text on hover */
+}
+
+/* Filter colored button specific hover effects */
+#button-bar button[id="filter-colored-toggle"]:hover {
+    background-color: #10b981 !important; /* Green background on hover */
+    color: white !important; /* White text on hover */
+}
+
+/* Clear all colors button specific hover effects */
+#button-bar button[onclick*="clearAllRowColors"]:hover {
+    background-color: #ef4444 !important; /* Red background on hover */
+    color: white !important; /* White text on hover */
+}
+
+/* General enhanced hover effects for all buttons */
+#button-bar button:hover {
+    transform: translateY(-1px); /* Slight lift effect */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15); /* Subtle shadow on hover */
+    transition: all 0.2s ease; /* Smooth hover transitions */
+}
+
+/* Override specific hover effects for the three special buttons */
+#button-bar button[id="filter-colored-toggle"]:hover,
+#button-bar button[id="paint-mode-toggle"]:hover,
+#button-bar button[onclick*="clearAllRowColors"]:hover {
+    transform: scale(1.05) translateY(-1px); /* Combined scale and lift effect */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Enhanced shadow on hover */
+}
+
 /* Responsive button sizing for very small screens */
 @media (max-width: 480px) {
     #button-bar button {
