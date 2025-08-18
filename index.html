@@ -865,7 +865,7 @@
                     class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-8 h-8">
                 <i class="fa-solid fa-filter w-4 h-4"></i>
             </button>
-            <button id="paint-mode-toggle"
+                        <button id="paint-mode-toggle"
                     onclick="cyclePaintMode()"
                     title="Mode de peinture: Auto/Colorer/Effacer (appuyez sur P pour changer)"
                     aria-label="Basculer le mode de peinture"
@@ -999,7 +999,7 @@
         let rowPaintAction = 'color';
         let paintMode = localStorage.getItem('rowPaintMode') || 'auto';
         let showOnlyColored = false;
-        let isViewMode = false; // Mode visualisation (lecture seule)
+        let isViewMode = localStorage.getItem('viewMode') === 'true'; // Mode visualisation (lecture seule) - restauré depuis localStorage
         
         // Initialize from localStorage
         try { 
@@ -1367,6 +1367,10 @@
         // Fonction pour basculer le mode visualisation
         function toggleViewMode() {
             isViewMode = !isViewMode;
+            
+            // Sauvegarder immédiatement l'état dans localStorage
+            localStorage.setItem('viewMode', isViewMode.toString());
+            
             updateViewModeButton();
             applyViewMode();
         }
@@ -1416,6 +1420,26 @@
             // Sauvegarder l'état dans localStorage
             localStorage.setItem('viewMode', isViewMode);
         }
+        
+        // Détecter automatiquement l'état du bouton œil et agir en conséquence
+        function detectAndApplyViewMode() {
+            const btn = document.getElementById('view-mode-toggle');
+            if (!btn) return;
+            
+            // Restaurer l'état depuis localStorage
+            const savedViewMode = localStorage.getItem('viewMode') === 'true';
+            if (savedViewMode !== isViewMode) {
+                isViewMode = savedViewMode;
+            }
+            
+            // Mettre à jour l'apparence du bouton selon l'état sauvegardé
+            updateViewModeButton();
+            
+            // Appliquer le mode sauvegardé
+            applyViewMode();
+        }
+        
+
 
         // Row color utilities
         function clearAllRowColors() {
@@ -3431,18 +3455,13 @@
                 });
             }
             
-            // Initialize UI state
+                        // Initialize UI state
             updatePaintModeButton();
             maybeShowFirstUseHint();
             updateFilterColoredButton();
             
-            // Initialiser le mode visualisation depuis localStorage
-            const savedViewMode = localStorage.getItem('viewMode') === 'true';
-            if (savedViewMode) {
-                isViewMode = true;
-                updateViewModeButton();
-                applyViewMode();
-            }
+            // Détecter automatiquement l'état du bouton œil et agir en conséquence
+            detectAndApplyViewMode();
             
             // Adapter l'affichage du statut selon la taille d'écran
             adaptStatusDisplay();
