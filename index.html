@@ -937,7 +937,10 @@
         <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
 
         <!-- Toggle button for history bar (always visible) -->
-        <div class="flex justify-end mb-0.5">
+        <div class="flex justify-end mb-0.5 gap-2">
+            <button id="test-cell-lock" onclick="testCellLocking()" title="Test du système de verrouillage" aria-label="Test verrouillage" class="bg-blue-400 text-white px-0.5 py-0 rounded hover:bg-blue-500 transition-colors text-xs">
+                🔒 Test
+            </button>
             <button id="history-toggle" onclick="toggleHistoryBar()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white px-0.5 py-0 rounded hover:bg-gray-500 transition-colors text-xs">
                 <i id="history-toggle-icon" class="fa-solid fa-chevron-up w-2 h-2"></i>
             </button>
@@ -5303,6 +5306,30 @@
             return null;
         }
         
+        // Test function for cell locking system
+        function testCellLocking() {
+            console.log('🧪 Testing cell locking system...');
+            
+            // Check if system is initialized
+            console.log('🔍 Current state:', {
+                lockedCells: lockedCells.size,
+                currentUser: currentUser,
+                isViewMode: isViewMode,
+                supabaseClient: !!supabase
+            });
+            
+            // Try to find a cell to test with
+            const testCell = document.querySelector('#table-body td.editable-cell');
+            if (testCell) {
+                console.log('✅ Found test cell, attempting to lock...');
+                testCell.focus();
+            } else {
+                console.log('❌ No editable cells found for testing');
+                console.log('🔍 Available cells:', document.querySelectorAll('#table-body td').length);
+                console.log('🔍 Cells with editable-cell class:', document.querySelectorAll('#table-body td.editable-cell').length);
+            }
+        }
+        
         // ===== END CELL LOCKING SYSTEM FUNCTIONS =====
         
         // ===== END SNAPSHOT SYSTEM FUNCTIONS =====
@@ -5396,6 +5423,12 @@
                 // Apply saved history bar visibility preference
                 updateHistoryBarVisibility();
                 
+                // Initialize cell locking system after data is loaded
+                setTimeout(() => {
+                    console.log('🎯 Initializing cell locking system...');
+                    enableTableEditing();
+                }, 200);
+                
                 // Appliquer le mode visualisation APRÈS la restauration des données
                 setTimeout(() => {
                     console.log('🎯 Applying view mode after data restoration...');
@@ -5421,6 +5454,12 @@
                 setTimeout(showImageSyncStatus, 600);
             } else {
                 document.getElementById('login-container').classList.remove('hidden');
+                
+                // Even if not logged in, initialize cell locking for demo purposes
+                setTimeout(() => {
+                    console.log('🎯 Initializing cell locking system (demo mode)...');
+                    enableTableEditing();
+                }, 500);
             }
             
 
