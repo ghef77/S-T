@@ -926,10 +926,7 @@
                 Aujourd'hui
             </button>
             
-            <button id="history-restore" onclick="showRestoreModal()" disabled title="Restaurer ce snapshot" aria-label="Restaurer snapshot" class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed hidden md:flex">
-                <i class="fa-solid fa-rotate-left ml-2 w-4 h-4"></i>
-                Restaurer
-            </button>
+
         </div>
 
         <!-- Snapshot Banner -->
@@ -1053,40 +1050,7 @@
             </div>
         </div>
 
-        <!-- Restore Confirmation Modal -->
-        <div id="restore-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-            <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="bg-orange-100 p-2 rounded-full">
-                        <i class="fa-solid fa-triangle-exclamation text-orange-600 w-6 h-6"></i>
-                    </div>
-                    <h3 class="text-lg font-semibold text-gray-900">Confirmer la restauration</h3>
-                </div>
-                
-                <div class="mb-6">
-                    <p class="text-gray-700 mb-3">
-                        Vous êtes sur le point de restaurer le snapshot du <span id="restore-date" class="font-semibold"></span>.
-                    </p>
-                    <div class="bg-gray-50 p-3 rounded-lg">
-                        <p class="text-sm text-gray-600">
-                            <strong>Attention :</strong> Cette action remplacera complètement les données actuelles du tableau.
-                        </p>
-                        <p class="text-sm text-gray-600 mt-2">
-                            <strong>Lignes dans le snapshot :</strong> <span id="restore-row-count" class="font-mono"></span>
-                        </p>
-                    </div>
-                </div>
-                
-                <div class="flex gap-3 justify-end">
-                    <button id="restore-cancel" onclick="hideRestoreModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
-                        Annuler
-                    </button>
-                    <button id="restore-confirm" onclick="confirmRestore()" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
-                        Restaurer
-                    </button>
-                </div>
-            </div>
-        </div>
+
     </div>
 
     <!-- FontAwesome -->
@@ -1177,7 +1141,7 @@
         let currentSnapshotDate = null;
         let availableSnapshots = [];
         let currentSnapshotIndex = -1;
-        let isRestoring = false; // Prevent multiple restore operations
+
         
         // Row color management
         let currentRowColor = localStorage.getItem('rowColor') || '#FFF59D';
@@ -4532,19 +4496,12 @@
         function updateHistoryNavigation() {
             const backBtn = document.getElementById('history-back');
             const nextBtn = document.getElementById('history-next');
-            const restoreBtn = document.getElementById('history-restore');
             
             if (snapshotMode === 'live') {
-                // In live mode, disable restore button
-                if (restoreBtn) restoreBtn.disabled = true;
-                
                 // Enable back/next if snapshots exist
                 if (backBtn) backBtn.disabled = availableSnapshots.length === 0;
                 if (nextBtn) nextBtn.disabled = availableSnapshots.length === 0;
             } else {
-                // In snapshot mode, enable restore button
-                if (restoreBtn) restoreBtn.disabled = false;
-                
                 // Update back/next button states
                 if (backBtn) backBtn.disabled = currentSnapshotIndex <= 0;
                 if (nextBtn) nextBtn.disabled = currentSnapshotIndex >= availableSnapshots.length - 1;
@@ -4683,107 +4640,6 @@
             enterSnapshotMode(nextDate);
         }
         
-        // Show restore confirmation modal
-        function showRestoreModal() {
-            if (snapshotMode !== 'snapshot' || !currentSnapshotDate) {
-                return;
-            }
-            
-            const snapshotInfo = availableSnapshots.find(s => s.snapshot_date === currentSnapshotDate);
-            if (!snapshotInfo) {
-                showMessage('Informations du snapshot non trouvées', 'error');
-                return;
-            }
-            
-            // Update modal content
-            document.getElementById('restore-date').textContent = formatDateForDisplay(currentSnapshotDate);
-            document.getElementById('restore-row-count').textContent = snapshotInfo.row_count;
-            
-            // Show modal
-            document.getElementById('restore-modal').classList.remove('hidden');
-        }
-        
-        // Hide restore confirmation modal
-        function hideRestoreModal() {
-            document.getElementById('restore-modal').classList.add('hidden');
-        }
-        
-        // Confirm and execute restore
-        async function confirmRestore() {
-            if (isRestoring) {
-                showMessage('Restauration déjà en cours...', 'warning');
-                return;
-            }
-            
-            try {
-                isRestoring = true;
-                hideRestoreModal();
-                
-                const snapshotInfo = availableSnapshots.find(s => s.snapshot_date === currentSnapshotDate);
-                if (!snapshotInfo) {
-                    throw new Error('Snapshot info not found');
-                }
-                
-                showMessage('Restauration en cours...', 'info');
-                
-                // Get snapshot data
-                const { data: snapshotData, error } = await supabase.storage
-                    .from('table-snapshots')
-                    .download(snapshotInfo.object_path);
-                
-                if (error) {
-                    throw new Error(`Failed to download snapshot: ${error.message}`);
-                }
-                
-                const snapshot = JSON.parse(await snapshotData.text());
-                
-                // Truncate current table and insert snapshot data
-                const { error: deleteError } = await supabase
-                    .from(supabaseConfig.tableName)
-                    .delete()
-                    .neq(supabaseConfig.primaryKeyColumn, 0); // Delete all rows
-                
-                if (deleteError) {
-                    throw new Error(`Failed to clear table: ${deleteError.message}`);
-                }
-                
-                // Insert snapshot data
-                const { error: insertError } = await supabase
-                    .from(supabaseConfig.tableName)
-                    .insert(snapshot.data);
-                
-                if (insertError) {
-                    throw new Error(`Failed to insert snapshot data: ${insertError.message}`);
-                }
-                
-                // Log the restore operation
-                const { error: logError } = await supabase
-                    .from('snapshot_restore_log')
-                    .insert({
-                        snapshot_date: currentSnapshotDate,
-                        restored_by: 'user', // Could be enhanced with actual user ID
-                        notes: 'Full table restore from snapshot',
-                        row_count: snapshot.data.length,
-                        restore_strategy: 'replace-all'
-                    });
-                
-                if (logError) {
-                    console.warn('⚠️ Failed to log restore operation:', logError);
-                }
-                
-                // Return to today mode
-                await returnToToday();
-                
-                showMessage(`Table restaurée avec succès du snapshot du ${formatDateForDisplay(currentSnapshotDate)}`, 'success');
-                
-            } catch (error) {
-                console.error('❌ Error during restore:', error);
-                showMessage(`Erreur lors de la restauration: ${error.message}`, 'error');
-            } finally {
-                isRestoring = false;
-            }
-        }
-        
         // Update snapshot banner
         function updateSnapshotBanner() {
             const banner = document.getElementById('snapshot-banner');
@@ -4820,12 +4676,10 @@
                 cell.classList.add('snapshot-readonly');
             });
             
-            // Disable function buttons
+            // Disable all function buttons in snapshot mode
             const functionButtons = document.querySelectorAll('#button-bar button');
             functionButtons.forEach(btn => {
-                if (btn.id !== 'view-mode-toggle') { // Keep view mode toggle
-                    btn.disabled = true;
-                }
+                btn.disabled = true;
             });
             
             // Disable FAB add button
