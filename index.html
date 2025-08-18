@@ -236,18 +236,7 @@
                 transform: scale(0.8);
             }
             
-            /* Style du bouton d'ajout mobile */
-            #mobile-add-button {
-                margin-bottom: 1rem;
-            }
-            
-            #mobile-add-button button {
-                min-width: 200px;
-                padding: 0.75rem 1.5rem;
-                font-size: 0.875rem;
-                border-radius: 0.5rem;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            }
+
         }
         
 
@@ -855,18 +844,7 @@
           </svg>
         </button>
         
-        <!-- Bouton d'ajout mobile - ligne séparée au-dessus des boutons de fonction -->
-        <div id="mobile-add-button" class="md:hidden mb-3 flex justify-center">
-            <button onclick="addRow()" 
-                    class="bg-green-500 text-white font-bold p-3 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 shadow-lg"
-                    title="Ajouter une nouvelle ligne" 
-                    aria-label="Ajouter une nouvelle ligne">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/>
-                </svg>
-                <span class="text-sm font-medium">Ajouter une ligne</span>
-            </button>
-        </div>
+
         <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-2 p-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
             <div class="flex-grow">
                 <div class="flex flex-wrap items-center gap-2 mb-1">
@@ -1526,12 +1504,9 @@
                 isViewModeProtected = false;
             }
             
-            // Masquer/afficher les boutons d'ajout
+            // Masquer/afficher le bouton d'ajout FAB
             if (fabAdd) {
                 fabAdd.style.display = isViewMode ? 'none' : 'flex';
-            }
-            if (mobileAddButton) {
-                mobileAddButton.style.display = isViewMode ? 'none' : 'flex';
             }
             
             // Sauvegarder l'état dans localStorage
@@ -2061,11 +2036,9 @@
                                 // Mettre à jour l'apparence du bouton
                                 updateViewModeButton();
                                 
-                                // Masquer les boutons d'ajout
+                                // Masquer le bouton d'ajout FAB
                                 const fabAdd = document.getElementById('fab-add');
-                                const mobileAddButton = document.getElementById('mobile-add-button');
                                 if (fabAdd) fabAdd.style.display = 'none';
-                                if (mobileAddButton) mobileAddButton.style.display = 'none';
                                 
                                 console.log('✅ View mode applied, functions will be restored in', restoreDelay, 'ms');
                                 
