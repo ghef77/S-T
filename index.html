@@ -5203,15 +5203,6 @@
                             }
                         }
                     })
-                    .on('presence', { event: 'sync' }, () => {
-                        console.log('🔍 Presence sync for cell locks');
-                    })
-                    .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-                        console.log('🔍 User joined cell locks channel:', key);
-                    })
-                    .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-                        console.log('🔍 User left cell locks channel:', key);
-                    })
                     .subscribe((status) => {
                         console.log('🔍 Cell locks subscription status:', status);
                         
@@ -5279,19 +5270,8 @@
                     }
                 }
                 
-                // Check if realtime subscription is still active
-                if (cellLocksSubscription && cellLocksSubscription.subscribe) {
-                    try {
-                        const status = await cellLocksSubscription.subscribe();
-                        if (status !== 'SUBSCRIBED') {
-                            console.log('🔄 Realtime subscription inactive, reconnecting...');
-                            setupCellLocksRealtime();
-                        }
-                    } catch (e) {
-                        console.log('🔄 Realtime subscription check failed, reconnecting...');
-                        setupCellLocksRealtime();
-                    }
-                }
+                // Realtime subscription health check removed to prevent reconnection loops
+                // Supabase handles reconnection automatically
                 
             } catch (error) {
                 console.error('❌ Error cleaning up expired locks:', error);
