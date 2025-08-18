@@ -912,6 +912,13 @@
 
         <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
 
+        <!-- Toggle button for history bar (always visible) -->
+        <div class="flex justify-end mb-2">
+            <button id="history-toggle" onclick="toggleHistoryBar()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-500 text-white p-2 rounded-lg hover:bg-gray-600 transition-colors">
+                <i id="history-toggle-icon" class="fa-solid fa-chevron-up w-4 h-4"></i>
+            </button>
+        </div>
+
         <!-- History Bar for Snapshot System -->
         <div id="history-bar" class="hidden lg:flex flex-wrap items-center gap-2 mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <button id="history-back" onclick="goToPreviousSnapshot()" disabled title="Snapshot précédent" aria-label="Snapshot précédent" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
@@ -930,11 +937,6 @@
             <button id="history-today" onclick="returnToToday()" title="Retour à aujourd'hui (données en direct)" aria-label="Retour à aujourd'hui" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium">
                 <i class="fa-solid fa-clock ml-2 w-4 h-4"></i>
                 Aujourd'hui
-            </button>
-            
-            <!-- Toggle button for history bar -->
-            <button id="history-toggle" onclick="toggleHistoryBar()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-500 text-white p-2 rounded-lg hover:bg-gray-600 transition-colors ml-auto">
-                <i id="history-toggle-icon" class="fa-solid fa-chevron-up w-4 h-4"></i>
             </button>
         </div>
 
@@ -4759,13 +4761,13 @@
             console.log('🔄 Elements found:', { historyBar: !!historyBar, toggleIcon: !!toggleIcon });
             
             if (isHistoryBarVisible) {
-                historyBar.style.display = 'flex';
                 historyBar.classList.remove('hidden');
+                historyBar.classList.add('lg:flex');
                 toggleIcon.className = 'fa-solid fa-chevron-up w-4 h-4';
                 console.log('✅ History bar shown, icon set to up');
             } else {
-                historyBar.style.display = 'none';
                 historyBar.classList.add('hidden');
+                historyBar.classList.remove('lg:flex');
                 toggleIcon.className = 'fa-solid fa-chevron-down w-4 h-4';
                 console.log('✅ History bar hidden, icon set to down');
             }
