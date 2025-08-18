@@ -4936,7 +4936,7 @@
             try {
                 // Try to lock cell in Supabase first
                 const { data, error } = await supabase
-                    .from('cellLocks')
+                    .from('celllocks')
                     .upsert({
                         cell_id: cellId,
                         user_id: currentUser,
@@ -4985,7 +4985,7 @@
                 try {
                     // Remove lock from Supabase
                     const { error } = await supabase
-                        .from('cellLocks')
+                        .from('celllocks')
                         .delete()
                         .eq('cell_id', cellId)
                         .eq('user_id', currentUser);
@@ -5030,7 +5030,7 @@
             try {
                 console.log('🔍 Attempting to query cellLocks table...');
                 const { data: locks, error } = await supabase
-                    .from('cellLocks')
+                    .from('celllocks')
                     .select('*')
                     .gte('expires_at', new Date().toISOString());
                 
@@ -5108,11 +5108,11 @@
                 console.log('🔍 Setting up realtime subscription for cellLocks table...');
                 cellLocksSubscription = supabase
                     .channel('cell-locks')
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'cellLocks'
-                    }, (payload) => {
+                                    .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'celllocks'
+                }, (payload) => {
                         console.log('🔔 Cell lock change:', payload);
                         
                         if (payload.eventType === 'INSERT') {
@@ -5157,7 +5157,7 @@
             try {
                 // Clean up expired locks in Supabase
                 const { error } = await supabase
-                    .from('cellLocks')
+                    .from('celllocks')
                     .delete()
                     .lt('expires_at', new Date().toISOString());
                 
@@ -5335,8 +5335,12 @@
                 
                 // Check if event listeners are attached
                 console.log('🔍 Checking event listeners...');
-                const events = getEventListeners(firstCell);
-                console.log('🔍 Event listeners on first cell:', events);
+                try {
+                    const events = getEventListeners(firstCell);
+                    console.log('🔍 Event listeners on first cell:', events);
+                } catch (error) {
+                    console.log('🔍 Event listener check failed:', error.message);
+                }
                 
                 console.log('✅ Found test cell, attempting to lock...');
                 
@@ -5352,6 +5356,16 @@
                 // Test focus event
                 console.log('🔍 Testing focus event...');
                 firstCell.focus();
+                
+                // Try to manually attach event listeners if they're missing
+                if (!firstCell.onfocus) {
+                    console.log('🔧 Manually attaching event listeners to test cell...');
+                    firstCell.addEventListener('focus', handleCellFocus);
+                    firstCell.addEventListener('blur', handleCellBlur);
+                    firstCell.addEventListener('input', handleCellInput);
+                    firstCell.addEventListener('keydown', handleCellKeydown);
+                    console.log('✅ Event listeners manually attached');
+                }
             } else {
                 console.log('❌ No editable cells found for testing');
                 console.log('🔍 Available cells:', document.querySelectorAll('#table-body td').length);
@@ -6031,6 +6045,9 @@
         
         // Expose cell locking test function
         window.testCellLocking = testCellLocking;
+        
+        // Expose manual initialization function
+        window.initCellLocking = enableTableEditing;
 
         window.viewImage = viewImage;
         window.closeImageViewer = closeImageViewer;
