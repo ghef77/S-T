@@ -1870,6 +1870,35 @@
             cell.style.fontSize = '';
           }
           
+          // Sélection automatique du contenu lors du double-clic/double-tap
+          cell.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            // Sélectionner tout le contenu de la cellule
+            const range = document.createRange();
+            range.selectNodeContents(cell);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+          });
+          
+          // Gestion du double-tap sur mobile
+          let lastTap = 0;
+          cell.addEventListener('touchstart', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            if (tapLength < 500 && tapLength > 0) {
+              // Double-tap détecté
+              e.preventDefault();
+              // Sélectionner tout le contenu de la cellule
+              const range = document.createRange();
+              range.selectNodeContents(cell);
+              const selection = window.getSelection();
+              selection.removeAllRanges();
+              selection.addRange(range);
+            }
+            lastTap = currentTime;
+          });
+          
           // Stocker la valeur initiale pour détecter les vraies modifications
           let initialValue = value || '';
           let hasBeenModified = false;
