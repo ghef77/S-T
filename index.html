@@ -382,6 +382,38 @@
             font-weight: normal; 
         }
         
+        /* Texte noir foncé pour toutes les cellules éditables du tableau */
+        td.editable-cell {
+            color: #1a1a1a !important;
+        }
+        
+        /* Styles spécifiques pour les colonnes importantes avec police plus grande */
+        td.editable-cell[data-label="Date de saisie"],
+        td.editable-cell[data-label="PEC finale"],
+        td.editable-cell[data-label="PEC initiale"],
+        td.editable-cell[data-label="Diagnostic_initial"],
+        td.editable-cell[data-label="Numero_tel"] {
+            color: #1a1a1a !important; /* Noir foncé */
+            font-size: 1.1rem !important; /* Police plus grande */
+            font-weight: 500 !important; /* Légèrement plus gras */
+        }
+        
+        /* Nom_Prénom et DDN en gras pour les cellules éditables */
+        td.editable-cell[data-label="Nom_Prénom"],
+        td.editable-cell[data-label="DDN"] {
+            color: #1a1a1a !important; /* Noir foncé */
+            font-size: 1.1rem !important; /* Police plus grande */
+            font-weight: 700 !important; /* Gras (bold) */
+        }
+        
+        /* Information complementaire en rouge pour les cellules éditables */
+        td.editable-cell[data-label="Information complementaire"],
+        td.editable-cell[data-label="information complementaire"] {
+            color: #dc2626 !important; /* Rouge */
+            font-size: 1.1rem !important; /* Police plus grande */
+            font-weight: 500 !important; /* Légèrement plus gras */
+        }
+        
         /* Patient name formatting - support line breaks */
         td.editable-cell[data-label="Nom_Prénom"],
         td.editable-cell[data-label="nom prenom"],
@@ -410,13 +442,31 @@
             background-color: #FEF3C7; 
         }
 
-        /* Column text colors */
+        /* Column text colors and font sizes for specific columns */
         #data-table td[data-label="Date de saisie"],
+        #data-table td[data-label="PEC finale"],
         #data-table td[data-label="PEC initiale"],
-        #data-table td[data-label="DDN"],
-        #data-table td[data-label="Information complementaire"],
+        #data-table td[data-label="Diagnostic_initial"],
         #data-table td[data-label="Numero_tel"] {
-            color: #222;
+            color: #1a1a1a !important; /* Noir foncé */
+            font-size: 1.1rem !important; /* Police plus grande */
+            font-weight: 500 !important; /* Légèrement plus gras */
+        }
+        
+        /* Nom_Prénom et DDN en gras */
+        #data-table td[data-label="Nom_Prénom"],
+        #data-table td[data-label="DDN"] {
+            color: #1a1a1a !important; /* Noir foncé */
+            font-size: 1.1rem !important; /* Police plus grande */
+            font-weight: 700 !important; /* Gras (bold) */
+        }
+        
+        /* Information complementaire en rouge */
+        #data-table td[data-label="Information complementaire"],
+        #data-table td[data-label="information complementaire"] {
+            color: #dc2626 !important; /* Rouge */
+            font-size: 1.1rem !important; /* Police plus grande */
+            font-weight: 500 !important; /* Légèrement plus gras */
         }
 
         /* Column selection visuals */
@@ -531,6 +581,43 @@
             outline-offset: -2px;
             background-color: var(--bg-secondary);
             box-shadow: inset 0 0 0 1px var(--border-focus);
+            color: #1a1a1a !important; /* Texte noir foncé quand on écrit */
+        }
+        
+        /* Styles de focus spécifiques pour les colonnes importantes */
+        .editable-cell[data-label="Date de saisie"]:focus,
+        .editable-cell[data-label="PEC finale"]:focus,
+        .editable-cell[data-label="PEC initiale"]:focus,
+        .editable-cell[data-label="Diagnostic_initial"]:focus,
+        .editable-cell[data-label="Numero_tel"]:focus {
+            color: #1a1a1a !important; /* Noir foncé maintenu en focus */
+            font-size: 1.1rem !important; /* Police plus grande maintenue */
+            font-weight: 500 !important; /* Gras maintenu */
+        }
+        
+        /* Nom_Prénom et DDN en gras même en focus */
+        .editable-cell[data-label="Nom_Prénom"]:focus,
+        .editable-cell[data-label="DDN"]:focus {
+            color: #1a1a1a !important; /* Noir foncé maintenu en focus */
+            font-size: 1.1rem !important; /* Police plus grande maintenue */
+            font-weight: 700 !important; /* Gras (bold) maintenu */
+        }
+        
+        /* Information complementaire en rouge même en focus */
+        .editable-cell[data-label="Information complementaire"]:focus {
+            color: #dc2626 !important; /* Rouge maintenu en focus */
+            font-size: 1.1rem !important; /* Police plus grande maintenue */
+            font-weight: 500 !important; /* Gras maintenu */
+        }
+        
+        /* Texte noir foncé pour toutes les cellules éditables (sauf Information complementaire) */
+        .editable-cell:not([data-label="Information complementaire"]) {
+            color: #1a1a1a !important;
+        }
+        
+        /* S'assurer que le texte reste noir foncé même après avoir écrit (sauf Information complementaire) */
+        .editable-cell:not(:empty):not([data-label="Information complementaire"]) {
+            color: #1a1a1a !important;
         }
         
         /* Loading states */
@@ -1751,6 +1838,11 @@
           cell.className='py-2 px-2 md:px-4 editable-cell';
           cell.setAttribute('data-label',header);
           cell.setAttribute('data-dbkey',dbKey);
+          
+          // Force inline red color for Information complementaire to override any cascade
+          if (header === 'Information complementaire' || header === 'information complementaire') {
+            cell.style.color = '#dc2626';
+          }
           
           // Stocker la valeur initiale pour détecter les vraies modifications
           let initialValue = value || '';
