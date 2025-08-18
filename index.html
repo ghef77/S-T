@@ -4764,16 +4764,31 @@
         
         // Enable table editing
         function enableTableEditing() {
+            console.log('🚀 enableTableEditing called');
+            console.log('🔍 isViewMode:', isViewMode);
+            
             const cells = document.querySelectorAll('#table-body td.editable-cell');
-            cells.forEach(cell => {
+            console.log('🔍 Found editable cells:', cells.length);
+            
+            cells.forEach((cell, index) => {
+                console.log(`🔍 Cell ${index}:`, {
+                    tagName: cell.tagName,
+                    classList: cell.classList.toString(),
+                    contentEditable: cell.contentEditable
+                });
+                
                 if (!isViewMode) { // Only enable if not in view mode
                     cell.contentEditable = true;
+                    console.log(`✅ Cell ${index} made editable`);
                     
                     // Add cell locking event listeners
                     cell.addEventListener('focus', handleCellFocus);
                     cell.addEventListener('blur', handleCellBlur);
                     cell.addEventListener('input', handleCellInput);
                     cell.addEventListener('keydown', handleCellKeydown);
+                    console.log(`✅ Cell ${index} event listeners added`);
+                } else {
+                    console.log(`❌ Cell ${index} not made editable (view mode)`);
                 }
                 cell.classList.remove('snapshot-readonly');
             });
@@ -4790,6 +4805,7 @@
             
             // Start cleanup timer for expired locks
             setInterval(cleanupExpiredLocks, 10000); // Check every 10 seconds
+            console.log('✅ Cleanup timer started');
         }
         
         // Format date for display
@@ -4852,9 +4868,21 @@
         
         // Lock a cell for editing (Excel-like)
         function lockCell(cell) {
-            if (!cell || cell.classList.contains('cell-locked')) return false;
+            console.log('🔒 lockCell called for:', cell);
+            
+            if (!cell) {
+                console.log('❌ No cell provided');
+                return false;
+            }
+            
+            if (cell.classList.contains('cell-locked')) {
+                console.log('❌ Cell already locked');
+                return false;
+            }
             
             const cellId = getCellIdentifier(cell);
+            console.log('🔍 Cell ID:', cellId);
+            
             const now = Date.now();
             
             // Check if cell is already locked by another user
@@ -4877,6 +4905,9 @@
             cell.setAttribute('data-locked-by', currentUser);
             
             console.log(`🔒 Cell ${cellId} locked by ${currentUser}`);
+            console.log('🔍 Cell classes after lock:', cell.classList.toString());
+            console.log('🔍 Cell data attributes:', cell.getAttribute('data-locked-by'));
+            
             return true;
         }
         
@@ -4933,8 +4964,23 @@
         
         // Cell event handlers
         function handleCellFocus(e) {
+            console.log('🎯 handleCellFocus called', e.target);
             const cell = e.target;
-            if (!cell || isViewMode) return;
+            if (!cell) {
+                console.log('❌ No cell target');
+                return;
+            }
+            if (isViewMode) {
+                console.log('❌ View mode active, ignoring focus');
+                return;
+            }
+            
+            console.log('🔍 Cell info:', {
+                tagName: cell.tagName,
+                classList: cell.classList.toString(),
+                contentEditable: cell.contentEditable,
+                isViewMode: isViewMode
+            });
             
             // Try to lock the cell
             if (lockCell(cell)) {
