@@ -5318,15 +5318,58 @@
                 supabaseClient: !!supabase
             });
             
-            // Try to find a cell to test with
-            const testCell = document.querySelector('#table-body td.editable-cell');
-            if (testCell) {
+            // Check if enableTableEditing was called
+            console.log('🔍 Checking if enableTableEditing was called...');
+            const cells = document.querySelectorAll('#table-body td.editable-cell');
+            console.log('🔍 Found editable cells:', cells.length);
+            
+            if (cells.length > 0) {
+                const firstCell = cells[0];
+                console.log('🔍 First cell details:', {
+                    tagName: firstCell.tagName,
+                    classList: firstCell.classList.toString(),
+                    contentEditable: firstCell.contentEditable,
+                    hasFocusListener: firstCell.onfocus !== null,
+                    hasBlurListener: firstCell.onblur !== null
+                });
+                
+                // Check if event listeners are attached
+                console.log('🔍 Checking event listeners...');
+                const events = getEventListeners(firstCell);
+                console.log('🔍 Event listeners on first cell:', events);
+                
                 console.log('✅ Found test cell, attempting to lock...');
-                testCell.focus();
+                
+                // Test direct function calls
+                console.log('🔍 Testing direct lockCell function...');
+                try {
+                    const lockResult = lockCell(firstCell);
+                    console.log('🔒 Direct lock result:', lockResult);
+                } catch (error) {
+                    console.error('❌ Error calling lockCell directly:', error);
+                }
+                
+                // Test focus event
+                console.log('🔍 Testing focus event...');
+                firstCell.focus();
             } else {
                 console.log('❌ No editable cells found for testing');
                 console.log('🔍 Available cells:', document.querySelectorAll('#table-body td').length);
                 console.log('🔍 Cells with editable-cell class:', document.querySelectorAll('#table-body td.editable-cell').length);
+            }
+        }
+        
+        // Helper function to check event listeners (if available)
+        function getEventListeners(element) {
+            try {
+                // This is a Chrome DevTools function, may not be available
+                if (typeof getEventListeners === 'function') {
+                    return getEventListeners(element);
+                } else {
+                    return 'getEventListeners not available (Chrome DevTools only)';
+                }
+            } catch (e) {
+                return 'Cannot check event listeners: ' + e.message;
             }
         }
         
