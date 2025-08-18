@@ -4763,13 +4763,38 @@
             if (fabAdd) fabAdd.style.pointerEvents = 'none';
         }
         
-        // Enable table editing
+                // Enable table editing
         function enableTableEditing() {
             console.log('🚀 enableTableEditing called');
             console.log('🔍 isViewMode:', isViewMode);
             
+            // Check if table-body exists
+            const tableBody = document.getElementById('table-body');
+            if (!tableBody) {
+                console.error('❌ table-body not found!');
+                return;
+            }
+            console.log('✅ table-body found');
+            
+            // Check for editable cells
             const cells = document.querySelectorAll('#table-body td.editable-cell');
             console.log('🔍 Found editable cells:', cells.length);
+            
+            // If no editable cells found, try to find any td cells
+            if (cells.length === 0) {
+                console.log('🔍 No editable-cell class found, checking for any td cells...');
+                const allCells = document.querySelectorAll('#table-body td');
+                console.log('🔍 Total td cells found:', allCells.length);
+                
+                // Check first few cells to see their classes
+                allCells.slice(0, 5).forEach((cell, index) => {
+                    console.log(`🔍 Sample cell ${index}:`, {
+                        tagName: cell.tagName,
+                        classList: cell.classList.toString(),
+                        contentEditable: cell.contentEditable
+                    });
+                });
+            }
             
             cells.forEach((cell, index) => {
                 console.log(`🔍 Cell ${index}:`, {
@@ -4809,9 +4834,13 @@
             console.log('✅ Cleanup timer started');
             
             // Initialize collaborative cell locking system
+            console.log('🚀 Starting collaborative cell locking system initialization...');
             loadExistingLocks().then(() => {
+                console.log('✅ Existing locks loaded, setting up realtime...');
                 setupCellLocksRealtime();
                 console.log('✅ Collaborative cell locking system initialized');
+            }).catch(error => {
+                console.error('❌ Failed to initialize collaborative cell locking system:', error);
             });
         }
         
@@ -4992,7 +5021,11 @@
         
         // Load existing locks from Supabase
         async function loadExistingLocks() {
+            console.log('🔍 loadExistingLocks called');
+            console.log('🔍 supabase client:', !!supabase);
+            
             try {
+                console.log('🔍 Attempting to query cellLocks table...');
                 const { data: locks, error } = await supabase
                     .from('cellLocks')
                     .select('*')
@@ -5000,6 +5033,7 @@
                 
                 if (error) {
                     console.error('❌ Failed to load existing locks:', error);
+                    console.log('🔍 This might mean the cellLocks table does not exist yet');
                     return;
                 }
                 
@@ -5017,6 +5051,7 @@
                 
             } catch (error) {
                 console.error('❌ Error loading existing locks:', error);
+                console.log('🔍 This might mean the cellLocks table does not exist yet');
             }
         }
         
@@ -5058,38 +5093,48 @@
         
         // Setup realtime subscription for cell locks
         function setupCellLocksRealtime() {
+            console.log('🔍 setupCellLocksRealtime called');
+            console.log('🔍 supabase client:', !!supabase);
+            
             if (cellLocksSubscription) {
+                console.log('🔍 Unsubscribing from existing subscription');
                 cellLocksSubscription.unsubscribe();
             }
             
-            cellLocksSubscription = supabase
-                .channel('cell-locks')
-                .on('postgres_changes', {
-                    event: '*',
-                    schema: 'public',
-                    table: 'cellLocks'
-                }, (payload) => {
-                    console.log('🔔 Cell lock change:', payload);
-                    
-                    if (payload.eventType === 'INSERT') {
-                        const lock = payload.new;
-                        if (lock.user_id !== currentUser) {
+            try {
+                console.log('🔍 Setting up realtime subscription for cellLocks table...');
+                cellLocksSubscription = supabase
+                    .channel('cell-locks')
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'cellLocks'
+                    }, (payload) => {
+                        console.log('🔔 Cell lock change:', payload);
+                        
+                        if (payload.eventType === 'INSERT') {
+                            const lock = payload.new;
+                            if (lock.user_id !== currentUser) {
+                                const cell = findCellById(lock.cell_id);
+                                if (cell) {
+                                    applyLockToCell(cell, lock.user_id, lock.locked_at);
+                                }
+                            }
+                        } else if (payload.eventType === 'DELETE') {
+                            const lock = payload.old;
                             const cell = findCellById(lock.cell_id);
                             if (cell) {
-                                applyLockToCell(cell, lock.user_id, lock.locked_at);
+                                removeLockFromCell(cell);
                             }
                         }
-                    } else if (payload.eventType === 'DELETE') {
-                        const lock = payload.old;
-                        const cell = findCellById(lock.cell_id);
-                        if (cell) {
-                            removeLockFromCell(cell);
-                        }
-                    }
-                })
-                .subscribe();
-            
-            console.log('✅ Cell locks realtime subscription setup');
+                    })
+                    .subscribe();
+                
+                console.log('✅ Cell locks realtime subscription setup');
+                
+            } catch (error) {
+                console.error('❌ Error setting up realtime subscription:', error);
+            }
         }
         
         // Remove lock from cell
