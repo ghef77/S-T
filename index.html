@@ -5075,9 +5075,10 @@
         async function loadExistingLocks() {
             console.log('🔍 loadExistingLocks called');
             console.log('🔍 supabase client:', !!supabase);
+            console.log('🔍 currentUser:', currentUser);
             
             try {
-                console.log('🔍 Attempting to query cellLocks table...');
+                console.log('🔍 Attempting to query celllocks table...');
                 const { data: locks, error } = await supabase
                     .from('celllocks')
                     .select('*')
@@ -5085,25 +5086,33 @@
                 
                 if (error) {
                     console.error('❌ Failed to load existing locks:', error);
-                    console.log('🔍 This might mean the cellLocks table does not exist yet');
+                    console.log('🔍 This might mean the celllocks table does not exist yet');
                     return;
                 }
                 
                 console.log('🔍 Loaded existing locks:', locks);
+                console.log('🔍 Total locks found:', locks.length);
                 
                 // Apply locks to UI
                 locks.forEach(lock => {
+                    console.log('🔍 Processing lock:', lock);
                     if (lock.user_id !== currentUser) {
+                        console.log('🔍 Lock from other user, applying red border...');
                         const cell = findCellById(lock.cell_id);
                         if (cell) {
                             applyLockToCell(cell, lock.user_id, lock.locked_at);
+                            console.log('✅ Red border applied to cell:', lock.cell_id);
+                        } else {
+                            console.log('⚠️ Cell not found for lock:', lock.cell_id);
                         }
+                    } else {
+                        console.log('🔍 Lock from current user, skipping...');
                     }
                 });
                 
             } catch (error) {
                 console.error('❌ Error loading existing locks:', error);
-                console.log('🔍 This might mean the cellLocks table does not exist yet');
+                console.log('🔍 This might mean the celllocks table does not exist yet');
             }
         }
         
@@ -5148,6 +5157,7 @@
         function setupCellLocksRealtime() {
             console.log('🔍 setupCellLocksRealtime called');
             console.log('🔍 supabase client:', !!supabase);
+            console.log('🔍 currentUser:', currentUser);
             
             if (cellLocksSubscription) {
                 console.log('🔍 Unsubscribing from existing subscription');
@@ -5165,6 +5175,14 @@
                 const channelName = `cell-locks-${currentUser}-${Date.now()}`;
                 console.log('🔍 Using channel:', channelName);
                 
+                // Test if we can access the celllocks table
+                console.log('🔍 Testing celllocks table access...');
+                supabase.from('celllocks').select('count').limit(1).then(result => {
+                    console.log('🔍 celllocks table test result:', result);
+                }).catch(error => {
+                    console.error('❌ Cannot access celllocks table:', error);
+                });
+                
                 cellLocksSubscription = supabase
                     .channel(channelName)
                     .on('postgres_changes', {
@@ -5173,6 +5191,13 @@
                         table: 'celllocks'
                     }, (payload) => {
                         console.log('🔔 Cell lock change received:', payload);
+                        console.log('🔍 Payload details:', {
+                            eventType: payload.eventType,
+                            new: payload.new,
+                            old: payload.old,
+                            table: payload.table,
+                            schema: payload.schema
+                        });
                         
                         if (payload.eventType === 'INSERT') {
                             const lock = payload.new;
@@ -5205,15 +5230,19 @@
                     })
                     .subscribe((status) => {
                         console.log('🔍 Cell locks subscription status:', status);
+                        console.log('🔍 Channel name:', channelName);
                         
                         if (status === 'SUBSCRIBED') {
                             console.log('✅ Cell locks realtime subscription active');
+                            console.log('🔍 Listening for changes on table: celllocks');
                         } else if (status === 'CHANNEL_ERROR') {
                             console.error('❌ Cell locks channel error, retrying...');
                             setTimeout(setupCellLocksRealtime, 2000);
                         } else if (status === 'TIMED_OUT') {
                             console.warn('⏰ Cell locks channel timed out, retrying...');
                             setTimeout(setupCellLocksRealtime, 2000);
+                        } else {
+                            console.log('🔍 Other status:', status);
                         }
                     });
                 
@@ -5673,6 +5702,30 @@
             console.log('🔄 Manual refresh of cell locks requested...');
             loadExistingLocks();
             setupCellLocksRealtime();
+        };
+        
+        // Expose test function for real-time subscription
+        window.testRealtimeSubscription = function() {
+            console.log('🧪 Testing real-time subscription...');
+            console.log('🔍 Current subscription:', cellLocksSubscription);
+            console.log('🔍 Current user:', currentUser);
+            console.log('🔍 Supabase client:', !!supabase);
+            
+            // Test if we can access the celllocks table
+            supabase.from('celllocks').select('*').limit(5).then(result => {
+                console.log('🔍 celllocks table access test:', result);
+            }).catch(error => {
+                console.error('❌ celllocks table access failed:', error);
+            });
+            
+            // Test if subscription is active
+            if (cellLocksSubscription) {
+                console.log('🔍 Subscription object exists');
+                console.log('🔍 Subscription state:', cellLocksSubscription.state);
+                console.log('🔍 Subscription channel:', cellLocksSubscription.channel);
+            } else {
+                console.log('❌ No subscription object found');
+            }
         };
 
         // Image functions removed - not needed for staff table
