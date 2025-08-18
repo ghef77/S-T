@@ -217,6 +217,30 @@
             display: none !important;
         }
         
+        /* Cell locking system - Excel-like cell editing */
+        .cell-locked {
+            border: 2px solid #dc2626 !important; /* Red border */
+            box-shadow: 0 0 8px rgba(220, 38, 38, 0.3) !important; /* Red glow */
+            position: relative;
+        }
+        
+        .cell-locked::before {
+            content: "🔒";
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #dc2626;
+            color: white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            z-index: 10;
+        }
+        
         /* Animation classes */
         .sync-pending-animation { 
             animation: pulse 1.5s infinite; 
@@ -913,9 +937,9 @@
         <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
 
         <!-- Toggle button for history bar (always visible) -->
-        <div class="flex justify-end mb-2">
-            <button id="history-toggle" onclick="toggleHistoryBar()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-500 text-white p-2 rounded-lg hover:bg-gray-600 transition-colors">
-                <i id="history-toggle-icon" class="fa-solid fa-chevron-up w-4 h-4"></i>
+        <div class="flex justify-end mb-0.5">
+            <button id="history-toggle" onclick="toggleHistoryBar()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white px-0.5 py-0 rounded hover:bg-gray-500 transition-colors text-xs">
+                <i id="history-toggle-icon" class="fa-solid fa-chevron-up w-2 h-2"></i>
             </button>
         </div>
 
@@ -1155,6 +1179,11 @@
         
         // History bar visibility state (saved in localStorage)
         let isHistoryBarVisible = localStorage.getItem('historyBarVisible') !== 'false'; // Default to true
+        
+        // Cell locking system - Excel-like cell editing
+        let lockedCells = new Map(); // Map of cell identifiers to user info
+        let currentUser = 'user_' + Math.random().toString(36).substr(2, 9); // Unique user identifier
+        let cellLockTimeout = 30000; // 30 seconds timeout for cell locks
 
         
         // Row color management
@@ -2158,10 +2187,23 @@
                     cell.contentEditable = 'false';
                     cell.style.backgroundColor = '#f8f9fa';
                     cell.style.cursor = 'default';
+                    
+                    // Remove cell locking event listeners and unlock in view mode
+                    cell.removeEventListener('focus', handleCellFocus);
+                    cell.removeEventListener('blur', handleCellBlur);
+                    cell.removeEventListener('input', handleCellInput);
+                    cell.removeEventListener('keydown', handleCellKeydown);
+                    unlockCell(cell);
                 } else {
                     cell.contentEditable = 'true';
                     cell.style.backgroundColor = '';
                     cell.style.cursor = 'text';
+                    
+                    // Add cell locking event listeners when editing is enabled
+                    cell.addEventListener('focus', handleCellFocus);
+                    cell.addEventListener('blur', handleCellBlur);
+                    cell.addEventListener('input', handleCellInput);
+                    cell.addEventListener('keydown', handleCellKeydown);
                 }
             });
             
@@ -2205,6 +2247,13 @@
                     cell.contentEditable = 'false';
                     cell.style.backgroundColor = '#f8f9fa';
                     cell.style.cursor = 'default';
+                    
+                    // Remove cell locking event listeners and unlock in view mode
+                    cell.removeEventListener('focus', handleCellFocus);
+                    cell.removeEventListener('blur', handleCellBlur);
+                    cell.removeEventListener('input', handleCellInput);
+                    cell.removeEventListener('keydown', handleCellKeydown);
+                    unlockCell(cell);
                 });
             }
         }
@@ -4691,6 +4740,15 @@
             cells.forEach(cell => {
                 cell.contentEditable = false;
                 cell.classList.add('snapshot-readonly');
+                
+                // Remove cell locking event listeners
+                cell.removeEventListener('focus', handleCellFocus);
+                cell.removeEventListener('blur', handleCellBlur);
+                cell.removeEventListener('input', handleCellInput);
+                cell.removeEventListener('keydown', handleCellKeydown);
+                
+                // Unlock cell if it was locked
+                unlockCell(cell);
             });
             
             // Disable all function buttons in snapshot mode
@@ -4710,6 +4768,12 @@
             cells.forEach(cell => {
                 if (!isViewMode) { // Only enable if not in view mode
                     cell.contentEditable = true;
+                    
+                    // Add cell locking event listeners
+                    cell.addEventListener('focus', handleCellFocus);
+                    cell.addEventListener('blur', handleCellBlur);
+                    cell.addEventListener('input', handleCellInput);
+                    cell.addEventListener('keydown', handleCellKeydown);
                 }
                 cell.classList.remove('snapshot-readonly');
             });
@@ -4723,6 +4787,9 @@
             // Re-enable FAB add button
             const fabAdd = document.getElementById('fab-add');
             if (fabAdd) fabAdd.style.pointerEvents = 'auto';
+            
+            // Start cleanup timer for expired locks
+            setInterval(cleanupExpiredLocks, 10000); // Check every 10 seconds
         }
         
         // Format date for display
@@ -4772,6 +4839,203 @@
                 console.log('✅ History bar hidden, icon set to down');
             }
         }
+        
+        // ===== CELL LOCKING SYSTEM FUNCTIONS =====
+        
+        // Generate unique cell identifier
+        function getCellIdentifier(cell) {
+            const row = cell.closest('tr');
+            const rowIndex = row ? Array.from(row.parentNode.children).indexOf(row) : -1;
+            const cellIndex = Array.from(row.children).indexOf(cell);
+            return `${rowIndex}_${cellIndex}`;
+        }
+        
+        // Lock a cell for editing (Excel-like)
+        function lockCell(cell) {
+            if (!cell || cell.classList.contains('cell-locked')) return false;
+            
+            const cellId = getCellIdentifier(cell);
+            const now = Date.now();
+            
+            // Check if cell is already locked by another user
+            if (lockedCells.has(cellId)) {
+                const lockInfo = lockedCells.get(cellId);
+                if (lockInfo.user !== currentUser && (now - lockInfo.timestamp) < cellLockTimeout) {
+                    console.log(`🔒 Cell ${cellId} is locked by ${lockInfo.user}`);
+                    return false;
+                }
+            }
+            
+            // Lock the cell
+            lockedCells.set(cellId, {
+                user: currentUser,
+                timestamp: now
+            });
+            
+            // Apply visual lock
+            cell.classList.add('cell-locked');
+            cell.setAttribute('data-locked-by', currentUser);
+            
+            console.log(`🔒 Cell ${cellId} locked by ${currentUser}`);
+            return true;
+        }
+        
+        // Unlock a cell
+        function unlockCell(cell) {
+            if (!cell) return;
+            
+            const cellId = getCellIdentifier(cell);
+            const lockInfo = lockedCells.get(cellId);
+            
+            // Only unlock if we own the lock
+            if (lockInfo && lockInfo.user === currentUser) {
+                lockedCells.delete(cellId);
+                cell.classList.remove('cell-locked');
+                cell.removeAttribute('data-locked-by');
+                console.log(`🔓 Cell ${cellId} unlocked by ${currentUser}`);
+            }
+        }
+        
+        // Check if cell is locked by current user
+        function isCellLockedByMe(cell) {
+            if (!cell) return false;
+            const cellId = getCellIdentifier(cell);
+            const lockInfo = lockedCells.get(cellId);
+            return lockInfo && lockInfo.user === currentUser;
+        }
+        
+        // Check if cell is locked by another user
+        function isCellLockedByOther(cell) {
+            if (!cell) return false;
+            const cellId = getCellIdentifier(cell);
+            const lockInfo = lockedCells.get(cellId);
+            return lockInfo && lockInfo.user !== currentUser;
+        }
+        
+        // Clean up expired locks
+        function cleanupExpiredLocks() {
+            const now = Date.now();
+            for (const [cellId, lockInfo] of lockedCells.entries()) {
+                if ((now - lockInfo.timestamp) > cellLockTimeout) {
+                    lockedCells.delete(cellId);
+                    
+                    // Remove visual lock from DOM
+                    const cell = document.querySelector(`[data-locked-by="${lockInfo.user}"]`);
+                    if (cell) {
+                        cell.classList.remove('cell-locked');
+                        cell.removeAttribute('data-locked-by');
+                    }
+                    
+                    console.log(`🧹 Expired lock removed for cell ${cellId}`);
+                }
+            }
+        }
+        
+        // Cell event handlers
+        function handleCellFocus(e) {
+            const cell = e.target;
+            if (!cell || isViewMode) return;
+            
+            // Try to lock the cell
+            if (lockCell(cell)) {
+                console.log(`🔒 Cell focused and locked: ${getCellIdentifier(cell)}`);
+            } else {
+                // Cell is locked by another user, prevent editing
+                cell.blur();
+                alert(`Cette cellule est en cours d'édition par un autre utilisateur. Veuillez attendre.`);
+                console.log(`🚫 Cell access denied: ${getCellIdentifier(cell)}`);
+            }
+        }
+        
+        function handleCellBlur(e) {
+            const cell = e.target;
+            if (!cell) return;
+            
+            // Unlock the cell after a short delay to allow for save operations
+            setTimeout(() => {
+                if (!cell.matches(':focus')) {
+                    unlockCell(cell);
+                }
+            }, 1000);
+        }
+        
+        function handleCellInput(e) {
+            const cell = e.target;
+            if (!cell) return;
+            
+            // Ensure cell remains locked during editing
+            if (!isCellLockedByMe(cell)) {
+                lockCell(cell);
+            }
+        }
+        
+        function handleCellKeydown(e) {
+            const cell = e.target;
+            if (!cell) return;
+            
+            // Handle Enter key to move to next cell
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const nextCell = getNextEditableCell(cell);
+                if (nextCell) {
+                    unlockCell(cell);
+                    nextCell.focus();
+                }
+            }
+            
+            // Handle Tab key
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const nextCell = e.shiftKey ? getPreviousEditableCell(cell) : getNextEditableCell(cell);
+                if (nextCell) {
+                    unlockCell(cell);
+                    nextCell.focus();
+                }
+            }
+        }
+        
+        // Navigation helper functions
+        function getNextEditableCell(currentCell) {
+            const row = currentCell.closest('tr');
+            const nextRow = row.nextElementSibling;
+            
+            if (nextRow) {
+                const nextCell = nextRow.children[currentCell.cellIndex];
+                if (nextCell && nextCell.classList.contains('editable-cell') && !isViewMode) {
+                    return nextCell;
+                }
+            }
+            
+            // Try next cell in same row
+            const nextCell = currentCell.nextElementSibling;
+            if (nextCell && nextCell.classList.contains('editable-cell') && !isViewMode) {
+                return nextCell;
+            }
+            
+            return null;
+        }
+        
+        function getPreviousEditableCell(currentCell) {
+            const row = currentCell.closest('tr');
+            const prevRow = row.previousElementSibling;
+            
+            if (prevRow) {
+                const prevCell = prevRow.children[currentCell.cellIndex];
+                if (prevCell && prevCell.classList.contains('editable-cell') && !isViewMode) {
+                    return prevCell;
+                }
+            }
+            
+            // Try previous cell in same row
+            const prevCell = currentCell.previousElementSibling;
+            if (prevCell && prevCell.classList.contains('editable-cell') && !isViewMode) {
+                return prevCell;
+            }
+            
+            return null;
+        }
+        
+        // ===== END CELL LOCKING SYSTEM FUNCTIONS =====
         
         // ===== END SNAPSHOT SYSTEM FUNCTIONS =====
 
