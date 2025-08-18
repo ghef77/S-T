@@ -391,10 +391,17 @@
         td.editable-cell[data-label="Date de saisie"],
         td.editable-cell[data-label="PEC finale"],
         td.editable-cell[data-label="PEC initiale"],
-        td.editable-cell[data-label="Diagnostic_initial"],
-        td.editable-cell[data-label="Numero_tel"] {
+        td.editable-cell[data-label="Diagnostic_initial"] {
             color: #1a1a1a !important; /* Noir foncé */
             font-size: 1.1rem !important; /* Police plus grande */
+            font-weight: 500 !important; /* Légèrement plus gras */
+        }
+        
+        /* Numero_tel avec police standard (1.1rem) */
+        td.editable-cell[data-label="Numero_tel"],
+        td.editable-cell[data-label="numero_tel"] {
+            color: #1a1a1a !important; /* Noir foncé */
+            font-size: 1.1rem !important; /* Police standard */
             font-weight: 500 !important; /* Légèrement plus gras */
         }
         
@@ -446,10 +453,17 @@
         #data-table td[data-label="Date de saisie"],
         #data-table td[data-label="PEC finale"],
         #data-table td[data-label="PEC initiale"],
-        #data-table td[data-label="Diagnostic_initial"],
-        #data-table td[data-label="Numero_tel"] {
+        #data-table td[data-label="Diagnostic_initial"] {
             color: #1a1a1a !important; /* Noir foncé */
             font-size: 1.1rem !important; /* Police plus grande */
+            font-weight: 500 !important; /* Légèrement plus gras */
+        }
+        
+        /* Numero_tel avec police standard (1.1rem) */
+        #data-table td[data-label="Numero_tel"],
+        #data-table td[data-label="numero_tel"] {
+            color: #1a1a1a !important; /* Noir foncé */
+            font-size: 1.1rem !important; /* Police standard */
             font-weight: 500 !important; /* Légèrement plus gras */
         }
         
@@ -588,10 +602,17 @@
         .editable-cell[data-label="Date de saisie"]:focus,
         .editable-cell[data-label="PEC finale"]:focus,
         .editable-cell[data-label="PEC initiale"]:focus,
-        .editable-cell[data-label="Diagnostic_initial"]:focus,
-        .editable-cell[data-label="Numero_tel"]:focus {
+        .editable-cell[data-label="Diagnostic_initial"]:focus {
             color: #1a1a1a !important; /* Noir foncé maintenu en focus */
             font-size: 1.1rem !important; /* Police plus grande maintenue */
+            font-weight: 500 !important; /* Gras maintenu */
+        }
+        
+        /* Numero_tel avec police standard (1.1rem) même en focus */
+        .editable-cell[data-label="Numero_tel"]:focus,
+        .editable-cell[data-label="numero_tel"]:focus {
+            color: #1a1a1a !important; /* Noir foncé maintenu en focus */
+            font-size: 1.1rem !important; /* Police standard maintenue */
             font-weight: 500 !important; /* Gras maintenu */
         }
         
@@ -867,7 +888,7 @@
                         <th scope="col" class="py-2 px-2 md:px-4">DDN</th>
                         <th scope="col" class="py-2 px-2 md:px-4">Diagnostic_initial</th>
                         <th scope="col" class="py-2 px-2 md:px-4">information complementaire</th>
-                        <th scope="col" class="py-2 px-2 md:px-4 rounded-tr-lg">numero_tel</th>
+                        <th scope="col" class="py-2 px-2 md:px-4 rounded-tr-lg">Numero_tel</th>
                     </tr>
                 </thead>
                 <tbody id="table-body"></tbody>
@@ -1842,6 +1863,11 @@
           // Force inline red color for Information complementaire to override any cascade
           if (header === 'Information complementaire' || header === 'information complementaire') {
             cell.style.color = '#dc2626';
+          }
+          
+          // Remove any previous inline font size for numero_tel to keep 1.1rem via CSS
+          if (header === 'Numero_tel' || header === 'numero_tel') {
+            cell.style.fontSize = '';
           }
           
           // Stocker la valeur initiale pour détecter les vraies modifications
