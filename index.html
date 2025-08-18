@@ -872,6 +872,15 @@
                     class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-8 h-8">
                 <i class="fa-solid fa-palette w-4 h-4"></i>
             </button>
+            
+            <!-- Bouton Mode Visualisation -->
+            <button id="view-mode-toggle"
+                    onclick="toggleViewMode()"
+                    title="Basculer le mode visualisation (lecture seule)"
+                    aria-label="Basculer le mode visualisation"
+                    class="bg-blue-200 text-blue-800 p-2 rounded-lg hover:bg-blue-300 transition-colors flex items-center justify-center w-8 h-8">
+                <i class="fa-solid fa-eye w-4 h-4"></i>
+            </button>
 
         </div>
 
@@ -990,6 +999,7 @@
         let rowPaintAction = 'color';
         let paintMode = localStorage.getItem('rowPaintMode') || 'auto';
         let showOnlyColored = false;
+        let isViewMode = false; // Mode visualisation (lecture seule)
         
         // Initialize from localStorage
         try { 
@@ -1352,6 +1362,59 @@
             showOnlyColored = !showOnlyColored;
             applyColoredFilter();
             updateFilterColoredButton();
+        }
+        
+        // Fonction pour basculer le mode visualisation
+        function toggleViewMode() {
+            isViewMode = !isViewMode;
+            updateViewModeButton();
+            applyViewMode();
+        }
+        
+        // Mettre à jour l'apparence du bouton de mode visualisation
+        function updateViewModeButton() {
+            const btn = document.getElementById('view-mode-toggle');
+            if (!btn) return;
+            
+            if (isViewMode) {
+                btn.className = 'bg-green-200 text-green-800 p-2 rounded-lg hover:bg-green-300 transition-colors flex items-center justify-center w-8 h-8';
+                btn.title = 'Désactiver le mode visualisation (lecture seule)';
+                btn.innerHTML = '<i class="fa-solid fa-eye-slash w-4 h-4"></i>';
+            } else {
+                btn.className = 'bg-blue-200 text-blue-800 p-2 rounded-lg hover:bg-blue-300 transition-colors flex items-center justify-center w-8 h-8';
+                btn.title = 'Activer le mode visualisation (lecture seule)';
+                btn.innerHTML = '<i class="fa-solid fa-eye w-4 h-4"></i>';
+            }
+        }
+        
+        // Appliquer le mode visualisation
+        function applyViewMode() {
+            const editableCells = document.querySelectorAll('.editable-cell');
+            const fabAdd = document.getElementById('fab-add');
+            const mobileAddButton = document.getElementById('mobile-add-button');
+            
+            editableCells.forEach(cell => {
+                if (isViewMode) {
+                    cell.contentEditable = 'false';
+                    cell.style.backgroundColor = '#f8f9fa';
+                    cell.style.cursor = 'default';
+                } else {
+                    cell.contentEditable = 'true';
+                    cell.style.backgroundColor = '';
+                    cell.style.cursor = 'text';
+                }
+            });
+            
+            // Masquer/afficher les boutons d'ajout
+            if (fabAdd) {
+                fabAdd.style.display = isViewMode ? 'none' : 'flex';
+            }
+            if (mobileAddButton) {
+                mobileAddButton.style.display = isViewMode ? 'none' : 'flex';
+            }
+            
+            // Sauvegarder l'état dans localStorage
+            localStorage.setItem('viewMode', isViewMode);
         }
 
         // Row color utilities
@@ -3373,6 +3436,14 @@
             maybeShowFirstUseHint();
             updateFilterColoredButton();
             
+            // Initialiser le mode visualisation depuis localStorage
+            const savedViewMode = localStorage.getItem('viewMode') === 'true';
+            if (savedViewMode) {
+                isViewMode = true;
+                updateViewModeButton();
+                applyViewMode();
+            }
+            
             // Adapter l'affichage du statut selon la taille d'écran
             adaptStatusDisplay();
             window.addEventListener('resize', adaptStatusDisplay);
@@ -3946,6 +4017,7 @@
         window.clearAllRowColors = clearAllRowColors;
         window.cyclePaintMode = cyclePaintMode;
         window.toggleColoredFilter = toggleColoredFilter;
+        window.toggleViewMode = toggleViewMode;
 
         window.viewImage = viewImage;
         window.closeImageViewer = closeImageViewer;
