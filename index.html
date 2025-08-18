@@ -164,6 +164,54 @@
         /* Hide the old add-row button area to remove the white bar */
         #data-table tfoot td { padding: 0 !important; height: 0 !important; }
         #data-table tfoot button { display: none !important; }
+
+        /* Snapshot System Styles */
+        .snapshot-readonly {
+            background-color: #fef3c7 !important;
+            color: #92400e !important;
+            cursor: not-allowed !important;
+        }
+        
+        .snapshot-readonly:hover {
+            background-color: #fde68a !important;
+        }
+        
+        #history-bar {
+            transition: all 0.3s ease;
+        }
+        
+        #history-bar button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        #snapshot-banner {
+            animation: slideInDown 0.3s ease-out;
+        }
+        
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* History bar responsive design */
+        @media (max-width: 768px) {
+            #history-bar {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            #history-bar button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
         
         /* Animation classes */
         .sync-pending-animation { 
@@ -860,12 +908,49 @@
 
         <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
 
+        <!-- History Bar for Snapshot System -->
+        <div id="history-bar" class="flex flex-wrap items-center gap-2 mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <button id="history-back" onclick="goToPreviousSnapshot()" disabled title="Snapshot précédent" aria-label="Snapshot précédent" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                <i class="fa-solid fa-chevron-left w-4 h-4"></i>
+            </button>
+            
+            <button id="history-date" onclick="openDatePicker()" title="Choisir une date de snapshot" aria-label="Choisir une date" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                <span id="current-date-text">Aujourd'hui</span>
+                <i class="fa-solid fa-calendar ml-2 w-4 h-4"></i>
+            </button>
+            
+            <button id="history-next" onclick="goToNextSnapshot()" disabled title="Snapshot suivant" aria-label="Snapshot suivant" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                <i class="fa-solid fa-chevron-right w-4 h-4"></i>
+            </button>
+            
+            <button id="history-today" onclick="returnToToday()" title="Retour à aujourd'hui (données en direct)" aria-label="Retour à aujourd'hui" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                <i class="fa-solid fa-clock ml-2 w-4 h-4"></i>
+                Aujourd'hui
+            </button>
+            
+            <button id="history-restore" onclick="showRestoreModal()" disabled title="Restaurer ce snapshot" aria-label="Restaurer snapshot" class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa-solid fa-rotate-left ml-2 w-4 h-4"></i>
+                Restaurer
+            </button>
+        </div>
+
+        <!-- Snapshot Banner -->
+        <div id="snapshot-banner" class="hidden mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div class="flex items-center gap-2 text-yellow-800">
+                <i class="fa-solid fa-eye w-5 h-5"></i>
+                <span id="snapshot-banner-text">Visualisation d'un snapshot (lecture seule)</span>
+            </div>
+        </div>
+
         <div id="button-bar" class="flex flex-nowrap items-center gap-1 mb-3 p-1 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto">
             <button onclick='saveManually()' title="Sauvegarder" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
                 <i class="fa-solid fa-save w-3.5 h-3.5"></i>
             </button>
             <button id="undo-button" onclick="undo()" disabled title="Annuler" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
-                <i class="fa-solid fa-undo w-3.5 h-3.5"></i>
+                <i class="fa-solid fa-rotate-left w-3.5 h-3.5"></i>
+            </button>
+            <button id="redo-button" onclick="redo()" disabled title="Rétablir" aria-label="Rétablir" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
+                <i class="fa-solid fa-rotate-right w-3.5 h-3.5"></i>
             </button>
             <button onclick="downloadExcel()" title="Exporter en Excel" aria-label="Exporter en Excel" class="bg-green-600 text-white p-1.5 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center w-7 h-7">
                 <i class="fa-solid fa-file-excel w-3.5 h-3.5"></i>
@@ -971,6 +1056,41 @@
                 </div>
             </div>
         </div>
+
+        <!-- Restore Confirmation Modal -->
+        <div id="restore-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-orange-100 p-2 rounded-full">
+                        <i class="fa-solid fa-triangle-exclamation text-orange-600 w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900">Confirmer la restauration</h3>
+                </div>
+                
+                <div class="mb-6">
+                    <p class="text-gray-700 mb-3">
+                        Vous êtes sur le point de restaurer le snapshot du <span id="restore-date" class="font-semibold"></span>.
+                    </p>
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <p class="text-sm text-gray-600">
+                            <strong>Attention :</strong> Cette action remplacera complètement les données actuelles du tableau.
+                        </p>
+                        <p class="text-sm text-gray-600 mt-2">
+                            <strong>Lignes dans le snapshot :</strong> <span id="restore-row-count" class="font-mono"></span>
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 justify-end">
+                    <button id="restore-cancel" onclick="hideRestoreModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+                        Annuler
+                    </button>
+                    <button id="restore-confirm" onclick="confirmRestore()" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+                        Restaurer
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- FontAwesome -->
@@ -1015,6 +1135,14 @@
         let saveTimeout = null;
         let history = [];
         let historyDebounceTimeout = null;
+        
+        // Persistent undo/redo stacks (per session)
+        let operationHistory = []; // already-declared enhanced history (kept for clarity)
+        let redoHistory = [];
+        let isPerformingUndoRedo = false;
+        let suppressRealtimeUntil = 0; // timestamp until which realtime updates are ignored
+        let suppressAutosaveUntil = 0;  // timestamp until which autosave is paused
+        let undoRedoSyncTimeout = null; // Timeout for automatic sync after undo/redo
         let isTyping = false;
         let lastEditAt = 0;
         let typingTimer = null;
@@ -1022,6 +1150,21 @@
         let realtimeSubscription = null;
         let lastSaveTime = 0; // Timestamp de la dernière sauvegarde
         const REALTIME_COOLDOWN_MS = 2000; // 2 secondes de cooldown après sauvegarde
+        
+        // Enhanced undo system
+        // operationHistory is declared above in the persistent stacks section
+        let currentOperation = null; // Current operation being built
+        let operationTimeout = null; // Timeout for operation completion
+        
+        // Operation types for better undo tracking
+        const OPERATION_TYPES = {
+            CELL_EDIT: 'cell_edit',
+            ROW_ADD: 'row_add',
+            ROW_DELETE: 'row_delete',
+            MULTIPLE_ROWS_DELETE: 'multiple_rows_delete',
+            ROW_COLOR: 'row_color',
+            BULK_EDIT: 'bulk_edit'
+        };
         
         // Autosave configuration
         const AUTOSAVE_DELAY_MS = 3000; // 3 seconds after last edit when idle
@@ -1032,6 +1175,13 @@
         
         // Zoom functionality
         let zoomFactor = parseFloat(localStorage.getItem('zoomFactor') || '1');
+
+        // Snapshot System State
+        let snapshotMode = 'live'; // 'live' or 'snapshot'
+        let currentSnapshotDate = null;
+        let availableSnapshots = [];
+        let currentSnapshotIndex = -1;
+        let isRestoring = false; // Prevent multiple restore operations
         
         // Row color management
         let currentRowColor = localStorage.getItem('rowColor') || '#FFF59D';
@@ -1071,6 +1221,498 @@
             rowColorMap = {}; 
         }
 
+        // Enhanced undo system functions
+        function startOperation(type, data = {}) {
+            // Clear any pending operations first
+            if (currentOperation) {
+                console.log(`🔄 Completing previous operation: ${currentOperation.type}`);
+                completeOperation();
+            }
+            
+            // Clear any operation timeout
+            clearOperationTimeout();
+            
+            // Reset undo/redo sync timeout when starting new operations
+            clearUndoRedoSyncTimeout();
+            
+            // For row operations, check if there are conflicting operations in history
+            if (type === OPERATION_TYPES.ROW_ADD || 
+                type === OPERATION_TYPES.ROW_DELETE || 
+                type === OPERATION_TYPES.MULTIPLE_ROWS_DELETE) {
+                
+                // Clean up any conflicting row operations in history
+                const conflictingOps = operationHistory.filter(op => 
+                    op.type === OPERATION_TYPES.ROW_ADD || 
+                    op.type === OPERATION_TYPES.ROW_DELETE || 
+                    op.type === OPERATION_TYPES.MULTIPLE_ROWS_DELETE
+                );
+                
+                if (conflictingOps.length > 0) {
+                    console.log(`🧹 Cleaning up ${conflictingOps.length} conflicting row operations`);
+                    operationHistory = operationHistory.filter(op => 
+                        op.type !== OPERATION_TYPES.ROW_ADD && 
+                        op.type !== OPERATION_TYPES.ROW_DELETE && 
+                        op.type !== OPERATION_TYPES.MULTIPLE_ROWS_DELETE
+                    );
+                }
+            }
+            
+            currentOperation = {
+                type: type,
+                data: data,
+                timestamp: Date.now(),
+                tableState: collectTableData(),
+                rowColors: { ...rowColorMap }
+            };
+            
+            console.log(`🚀 Started operation: ${type}`, currentOperation);
+        }
+        
+        function addToOperation(data) {
+            if (currentOperation) {
+                Object.assign(currentOperation.data, data);
+                console.log(`📝 Added to operation:`, currentOperation);
+            }
+            // Only clear redo stack for structural changes, not for cell edits
+            if (currentOperation && (currentOperation.type === OPERATION_TYPES.ROW_ADD || 
+                                   currentOperation.type === OPERATION_TYPES.ROW_DELETE || 
+                                   currentOperation.type === OPERATION_TYPES.MULTIPLE_ROWS_DELETE)) {
+                redoHistory = [];
+                console.log('🧹 Cleared redo stack for structural change in addToOperation');
+            }
+            persistHistoryStacks();
+        }
+        
+        function completeOperation() {
+            if (currentOperation) {
+                // Add final table state
+                currentOperation.finalState = collectTableData();
+                currentOperation.finalRowColors = { ...rowColorMap };
+                
+                // Add to operation history
+                operationHistory.push(currentOperation);
+                
+                // Only clear redo stack for operations that change table structure
+                // Keep redo stack for cell edits and color changes
+                if (currentOperation.type === OPERATION_TYPES.ROW_ADD || 
+                    currentOperation.type === OPERATION_TYPES.ROW_DELETE || 
+                    currentOperation.type === OPERATION_TYPES.MULTIPLE_ROWS_DELETE) {
+                    redoHistory = [];
+                    console.log('🧹 Cleared redo stack for structural change');
+                }
+                
+                persistHistoryStacks();
+                
+                // Keep at least 10 operations, but allow up to 50 for better user experience
+                if (operationHistory.length > 50) {
+                    // Remove oldest operations while keeping at least 10
+                    const toRemove = operationHistory.length - 40; // Keep 40 operations
+                    for (let i = 0; i < toRemove; i++) {
+                        operationHistory.shift();
+                    }
+                    console.log(`🧹 Cleaned up ${toRemove} old operations, keeping ${operationHistory.length} operations`);
+                }
+                
+                console.log(`✅ Completed operation: ${currentOperation.type}`, currentOperation);
+                
+                // Also save to regular history for backward compatibility
+                saveStateToHistory();
+                
+                currentOperation = null;
+                updateUndoButtonState();
+            }
+        }
+        
+        function cancelOperation() {
+            if (currentOperation) {
+                console.log(`❌ Cancelled operation: ${currentOperation.type}`);
+                currentOperation = null;
+            }
+        }
+
+        // Persist/restore undo/redo stacks in sessionStorage
+        function persistHistoryStacks() {
+            try {
+                sessionStorage.setItem('operationHistory', JSON.stringify(operationHistory));
+                sessionStorage.setItem('redoHistory', JSON.stringify(redoHistory));
+            } catch(_) {}
+        }
+        function restoreHistoryStacks() {
+            try {
+                const ops = JSON.parse(sessionStorage.getItem('operationHistory') || '[]');
+                const red = JSON.parse(sessionStorage.getItem('redoHistory') || '[]');
+                if (Array.isArray(ops)) operationHistory = ops; else operationHistory = [];
+                if (Array.isArray(red)) redoHistory = red; else redoHistory = [];
+            } catch(_) {
+                operationHistory = [];
+                redoHistory = [];
+            }
+            updateUndoButtonState();
+        }
+        
+        // Enhanced undo function (with redo support)
+        function undo() {
+            if (operationHistory.length === 0) {
+                log('Aucune opération à annuler.', 'info');
+                return;
+            }
+            
+            const lastOperation = operationHistory.pop();
+            console.log(`🔄 Undoing operation: ${lastOperation.type}`, lastOperation);
+            
+            try {
+                isPerformingUndoRedo = true;
+                // Clear any pending operations before undoing
+                if (currentOperation) {
+                    console.log('⚠️ Clearing pending operation before undo');
+                    currentOperation = null;
+                }
+                clearOperationTimeout();
+                
+                // Restore table state
+                if (lastOperation.tableState) {
+                    loadTableData(lastOperation.tableState.rows);
+                }
+                
+                // Special handling for cell edits - restore specific cell values
+                if (lastOperation.type === OPERATION_TYPES.CELL_EDIT && lastOperation.data) {
+                    const { rowIndex, columnLabel, initialValue } = lastOperation.data;
+                    if (rowIndex !== undefined && columnLabel) {
+                        const tbody = document.getElementById('table-body');
+                        const rows = Array.from(tbody.children);
+                        if (rows[rowIndex]) {
+                            const cells = Array.from(rows[rowIndex].querySelectorAll('td')).slice(2); // Skip No and Delete columns
+                            const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
+                            const columnIndex = headers.indexOf(columnLabel);
+                            if (columnIndex >= 0 && cells[columnIndex]) {
+                                cells[columnIndex].textContent = initialValue;
+                                console.log(`🔄 Restored cell [${rowIndex}, ${columnLabel}] to: "${initialValue}"`);
+                            }
+                        }
+                    }
+                }
+                
+                // Special handling for bulk cell edits - restore multiple cell values
+                if (lastOperation.type === OPERATION_TYPES.BULK_EDIT && lastOperation.data && lastOperation.data.edits) {
+                    console.log(`🔄 Restoring ${lastOperation.data.edits.length} cell edits`);
+                    const tbody = document.getElementById('table-body');
+                    const rows = Array.from(tbody.children);
+                    const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
+                    
+                    lastOperation.data.edits.forEach(edit => {
+                        if (edit.rowIndex !== undefined && edit.columnLabel) {
+                            if (rows[edit.rowIndex]) {
+                                const cells = Array.from(rows[edit.rowIndex].querySelectorAll('td')).slice(2);
+                                const columnIndex = headers.indexOf(edit.columnLabel);
+                                if (columnIndex >= 0 && cells[columnIndex]) {
+                                    cells[columnIndex].textContent = edit.initialValue;
+                                    console.log(`🔄 Restored cell [${edit.rowIndex}, ${edit.columnLabel}] to: "${edit.initialValue}"`);
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // Restore row colors
+                if (lastOperation.rowColors) {
+                    rowColorMap = { ...lastOperation.rowColors };
+                    persistRowColors();
+                    
+                    // Apply colors to visible rows
+                    Array.from(document.querySelectorAll('#table-body tr')).forEach(tr => {
+                        const k = keyForRow(tr);
+                        const c = rowColorMap[k];
+                        if (c && c !== '') {
+                            setRowColor(tr, c);
+                        }
+                    });
+                }
+                
+                // Don't remove operations from history - just push to redo stack
+                // This allows proper undo/redo cycling
+                console.log(`📝 Keeping operation history intact for proper undo/redo cycling`);
+
+                // Push undone operation to redo stack
+                redoHistory.push(lastOperation);
+                
+                // Keep redo stack manageable but allow up to 30 operations
+                if (redoHistory.length > 30) {
+                    const toRemove = redoHistory.length - 20; // Keep 20 operations
+                    for (let i = 0; i < toRemove; i++) {
+                        redoHistory.shift();
+                    }
+                    console.log(`🧹 Cleaned up ${toRemove} old redo operations, keeping ${redoHistory.length} operations`);
+                }
+                
+                persistHistoryStacks();
+                
+                log(`Opération '${lastOperation.type}' annulée avec succès.`, 'success');
+                updateUndoButtonState();
+                
+                // Schedule automatic sync after undo operation with pruning
+                // Ensure server deletes rows that are missing locally and suppress realtime/autosave briefly
+                const SUPPRESSION_MS = 2000;
+                suppressRealtimeUntil = Date.now() + SUPPRESSION_MS;
+                suppressAutosaveUntil = Date.now() + SUPPRESSION_MS;
+                if (typeof scheduleUndoRedoSync === 'function') {
+                    clearUndoRedoSyncTimeout();
+                    undoRedoSyncTimeout = setTimeout(() => {
+                        if (!isPerformingUndoRedo) {
+                            log('🔄 Auto-sync (prune) after undo');
+                            syncToMaster(true, true);
+                            undoRedoSyncTimeout = null;
+                        }
+                    }, 500);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error during undo:', error);
+                log('Erreur lors de l\'annulation.', 'error');
+            } finally {
+                isPerformingUndoRedo = false;
+            }
+        }
+
+        // Redo function
+        function redo() {
+            if (redoHistory.length === 0) {
+                log('Aucune opération à rétablir.', 'info');
+                return;
+            }
+            
+            const op = redoHistory.pop();
+            console.log(`⏩ Redoing operation: ${op.type}`, op);
+            try {
+                isPerformingUndoRedo = true;
+                clearOperationTimeout();
+                
+                // Re-apply the final state of the operation
+                if (op.finalState) {
+                    loadTableData(op.finalState.rows);
+                }
+                
+                // Special handling for cell edits - restore final cell values
+                if (op.type === OPERATION_TYPES.CELL_EDIT && op.data) {
+                    const { rowIndex, columnLabel, currentValue } = op.data;
+                    if (rowIndex !== undefined && columnLabel && currentValue) {
+                        const tbody = document.getElementById('table-body');
+                        const rows = Array.from(tbody.children);
+                        if (rows[rowIndex]) {
+                            const cells = Array.from(rows[rowIndex].querySelectorAll('td')).slice(2); // Skip No and Delete columns
+                            const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
+                            const columnIndex = headers.indexOf(columnLabel);
+                            if (columnIndex >= 0 && cells[columnIndex]) {
+                                cells[columnIndex].textContent = currentValue;
+                                console.log(`⏩ Restored cell [${rowIndex}, ${columnLabel}] to: "${currentValue}"`);
+                            }
+                        }
+                    }
+                }
+                
+                // Special handling for bulk cell edits - restore multiple final cell values
+                if (op.type === OPERATION_TYPES.BULK_EDIT && op.data && op.data.edits) {
+                    console.log(`⏩ Restoring ${op.data.edits.length} cell edits`);
+                    const tbody = document.getElementById('table-body');
+                    const rows = Array.from(tbody.children);
+                    const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
+                    
+                    op.data.edits.forEach(edit => {
+                        if (edit.rowIndex !== undefined && edit.columnLabel) {
+                            if (rows[edit.rowIndex]) {
+                                const cells = Array.from(rows[edit.rowIndex].querySelectorAll('td')).slice(2);
+                                const columnIndex = headers.indexOf(edit.columnLabel);
+                                if (columnIndex >= 0 && cells[columnIndex]) {
+                                    cells[columnIndex].textContent = edit.currentValue;
+                                    console.log(`⏩ Restored cell [${edit.rowIndex}, ${edit.columnLabel}] to: "${edit.currentValue}"`);
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                if (op.finalRowColors) {
+                    rowColorMap = { ...op.finalRowColors };
+                    persistRowColors();
+                    Array.from(document.querySelectorAll('#table-body tr')).forEach(tr => {
+                        const k = keyForRow(tr);
+                        const c = rowColorMap[k];
+                        if (c && c !== '') setRowColor(tr, c);
+                    });
+                }
+                
+                // After redoing, push back to operation history
+                operationHistory.push(op);
+                persistHistoryStacks();
+                updateUndoButtonState();
+                log('Rétabli.', 'success');
+                
+                // Schedule automatic sync after redo operation with pruning and brief suppression
+                const SUPPRESSION_MS = 2000;
+                suppressRealtimeUntil = Date.now() + SUPPRESSION_MS;
+                suppressAutosaveUntil = Date.now() + SUPPRESSION_MS;
+                if (typeof scheduleUndoRedoSync === 'function') {
+                    clearUndoRedoSyncTimeout();
+                    undoRedoSyncTimeout = setTimeout(() => {
+                        if (!isPerformingUndoRedo) {
+                            log('🔄 Auto-sync (prune) after redo');
+                            syncToMaster(true, true);
+                            undoRedoSyncTimeout = null;
+                        }
+                    }, 500);
+                }
+                
+            } catch (e) {
+                console.error('❌ Error during redo:', e);
+                log('Erreur lors du rétablissement.', 'error');
+            } finally {
+                isPerformingUndoRedo = false;
+            }
+        }
+        
+        // Function to get operation description for display
+        function getOperationDescription(operation) {
+            switch (operation.type) {
+                case OPERATION_TYPES.CELL_EDIT:
+                    const cellInfo = operation.data.columnLabel || operation.data.cellLabel || 'cellule';
+                    const rowInfo = operation.data.rowIndex !== undefined ? `ligne ${operation.data.rowIndex + 1}` : '';
+                    return `Modification: ${cellInfo}${rowInfo ? ` (${rowInfo})` : ''}`;
+                case OPERATION_TYPES.ROW_ADD:
+                    return 'Ajout de ligne';
+                case OPERATION_TYPES.ROW_DELETE:
+                    return 'Suppression de ligne';
+                case OPERATION_TYPES.MULTIPLE_ROWS_DELETE:
+                    return `Suppression de ${operation.data.deletedRows} ligne(s)`;
+                case OPERATION_TYPES.ROW_COLOR:
+                    const action = operation.data.action === 'color' ? 'Coloriage' : 'Décoloriage';
+                    return `${action} de ligne(s)`;
+                case OPERATION_TYPES.BULK_EDIT:
+                    return 'Modifications en lot';
+                default:
+                    return 'Opération';
+            }
+        }
+        
+        // Debug function to show current undo/redo state
+        function debugUndoRedoState() {
+            console.log('🔍 Current Undo/Redo State:');
+            console.log('📚 Operation History:', operationHistory.length, 'operations');
+            operationHistory.forEach((op, idx) => {
+                console.log(`  ${idx + 1}. ${op.type} - ${op.timestamp}`);
+            });
+            console.log('⏩ Redo History:', redoHistory.length, 'operations');
+            redoHistory.forEach((op, idx) => {
+                console.log(`  ${idx + 1}. ${op.type} - ${op.timestamp}`);
+            });
+            console.log('🔄 Current Operation:', currentOperation ? currentOperation.type : 'none');
+            console.log('🚫 Is Performing Undo/Redo:', isPerformingUndoRedo);
+        }
+        
+        // Expose debug function globally
+        window.debugUndoRedoState = debugUndoRedoState;
+        
+        // Expose undo/redo functions globally so buttons can access them
+        window.undo = undo;
+        window.redo = redo;
+        
+        // Function to clear operation timeout
+        function clearOperationTimeout() {
+            if (operationTimeout) {
+                clearTimeout(operationTimeout);
+                operationTimeout = null;
+            }
+        }
+        
+        // Function to schedule automatic sync after undo/redo operations
+        function scheduleUndoRedoSync() {
+            // Clear any existing timeout
+            if (undoRedoSyncTimeout) {
+                clearTimeout(undoRedoSyncTimeout);
+            }
+            
+            // Schedule sync after 500ms of user inactivity
+            undoRedoSyncTimeout = setTimeout(() => {
+                if (!isPerformingUndoRedo) {
+                    log('🔄 Auto-sync after undo/redo operation (500ms inactivity)');
+                    syncToMaster(true);
+                    undoRedoSyncTimeout = null;
+                }
+            }, 500);
+        }
+        
+        // Function to group multiple cell edits into a single operation
+        function groupCellEdits() {
+            if (currentOperation && currentOperation.type === OPERATION_TYPES.CELL_EDIT) {
+                // If we have multiple cell edits, group them into a bulk edit
+                if (currentOperation.data.editCount > 1) {
+                    currentOperation.type = OPERATION_TYPES.BULK_EDIT;
+                    currentOperation.data.description = `${currentOperation.data.editCount} modifications de cellules`;
+                    console.log(`📝 Grouped ${currentOperation.data.editCount} cell edits into bulk operation`);
+                }
+            }
+        }
+        
+        // Function to clear undo/redo sync timeout
+        function clearUndoRedoSyncTimeout() {
+            if (undoRedoSyncTimeout) {
+                clearTimeout(undoRedoSyncTimeout);
+                undoRedoSyncTimeout = null;
+            }
+        }
+        
+        // Handle page unload to complete pending operations
+        window.addEventListener('beforeunload', () => {
+            if (currentOperation) {
+                completeOperation();
+            }
+            clearOperationTimeout();
+            clearUndoRedoSyncTimeout();
+        });
+        
+        // Handle page visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && currentOperation) {
+                completeOperation();
+            }
+            clearUndoRedoSyncTimeout();
+        });
+        
+        // Function to reset operation history (useful for testing)
+        function resetOperationHistory() {
+            operationHistory = [];
+            if (currentOperation) {
+                currentOperation = null;
+            }
+            clearOperationTimeout();
+            updateUndoButtonState();
+            console.log('🔄 Operation history reset');
+        }
+        
+        // Function to safely start new operations after undo
+        function safeStartOperation(type, data = {}) {
+            // Clear any pending operations
+            if (currentOperation) {
+                completeOperation();
+            }
+            
+            // Clean up conflicting operations
+            if (type === OPERATION_TYPES.ROW_ADD || 
+                type === OPERATION_TYPES.ROW_DELETE || 
+                type === OPERATION_TYPES.MULTIPLE_ROWS_DELETE) {
+                
+                operationHistory = operationHistory.filter(op => 
+                    op.type !== OPERATION_TYPES.ROW_ADD && 
+                    op.type !== OPERATION_TYPES.ROW_DELETE && 
+                    op.type !== OPERATION_TYPES.MULTIPLE_ROWS_DELETE
+                );
+            }
+            
+            startOperation(type, data);
+        }
+        
+        // Expose functions globally for debugging
+        window.resetOperationHistory = resetOperationHistory;
+        window.safeStartOperation = safeStartOperation;
+        
         // Utility functions
         function log(message, type = 'info') { 
             console.log(`[${new Date().toLocaleTimeString()}] ${type.toUpperCase()}: ${message}`); 
@@ -1236,8 +1878,43 @@
         
 
         
-        function updateUndoButtonState() { 
-            document.getElementById('undo-button').disabled = history.length <= 1; 
+                function updateUndoButtonState() { 
+            const undoButton = document.getElementById('undo-button');
+            const redoButton = document.getElementById('redo-button');
+            if (undoButton) {
+                const hasOperations = operationHistory.length > 0;
+                undoButton.disabled = !hasOperations;
+                
+                // Update button text to show operation count and description
+                if (hasOperations) {
+                    const lastOp = operationHistory[operationHistory.length - 1];
+                    const description = getOperationDescription(lastOp);
+                    undoButton.title = `Annuler: ${description} (${operationHistory.length} opération(s) disponible(s))`;
+                    
+                    // Update button text to show what will be undone
+                    const buttonText = undoButton.querySelector('span') || undoButton;
+                    if (buttonText.textContent !== '↶') {
+                        buttonText.textContent = `↶ (${operationHistory.length})`;
+                    }
+                } else {
+                    undoButton.title = 'Aucune opération à annuler';
+                    const buttonText = undoButton.querySelector('span') || undoButton;
+                    if (buttonText.textContent !== '↶') {
+                        buttonText.textContent = '↶';
+                    }
+                }
+            }
+            if (redoButton) {
+                const hasRedo = redoHistory.length > 0;
+                redoButton.disabled = !hasRedo;
+                if (hasRedo) {
+                    const lastRedo = redoHistory[redoHistory.length - 1];
+                    const descRedo = getOperationDescription(lastRedo);
+                    redoButton.title = `Rétablir: ${descRedo} (${redoHistory.length} opération(s) disponible(s))`;
+                } else {
+                    redoButton.title = 'Aucune opération à rétablir';
+                }
+            }
         }
         
         function getFormattedDate() { 
@@ -1340,6 +2017,21 @@
         function applyRowPaint(row) {
             if (!row) return;
             
+            // Start operation tracking for row color changes
+            if (!currentOperation || currentOperation.type !== OPERATION_TYPES.ROW_COLOR) {
+                startOperation(OPERATION_TYPES.ROW_COLOR, {
+                    rowKey: keyForRow(row),
+                    action: rowPaintAction,
+                    color: currentRowColor
+                });
+            } else {
+                addToOperation({
+                    rowKey: keyForRow(row),
+                    action: rowPaintAction,
+                    color: currentRowColor
+                });
+            }
+            
             const key = keyForRow(row);
             if (rowPaintAction === 'color') {
                 setRowColor(row, currentRowColor);
@@ -1349,6 +2041,12 @@
                 delete rowColorMap[key];
             }
             persistRowColors();
+            
+            // Complete operation after a short delay to batch multiple color changes
+            if (operationTimeout) clearTimeout(operationTimeout);
+            operationTimeout = setTimeout(() => {
+                completeOperation();
+            }, 500); // 500ms delay for color operations
         }
         
         function startRowPaint(row) {
@@ -1368,6 +2066,12 @@
         
         function endRowPaint() { 
             isRowPaintDragging = false; 
+            
+            // Complete any pending color operation
+            if (currentOperation && currentOperation.type === OPERATION_TYPES.ROW_COLOR) {
+                if (operationTimeout) clearTimeout(operationTimeout);
+                completeOperation();
+            }
         }
 
         // Paint mode management
@@ -1943,7 +2647,7 @@
             });
             
             // Protection renforcée : ne rien faire si on est en mode visualisation protégé
-            if (isViewModeProtected || (isViewMode && isMobile())) {
+            if (isViewModeProtected || (isViewMode && isMobile()) || isPerformingUndoRedo) {
                 console.log('🔒 saveStateToHistory BLOCKED by protection');
                 return;
             }
@@ -1957,6 +2661,23 @@
                 if (!last || generateDataHash(s) !== generateDataHash(last)) { 
                     history.push(s); 
                     if (history.length > 10) history.shift(); 
+                    // Pushing a new state clears redo stack
+                    redoHistory = [];
+                    // Also record as an operation if none in progress
+                    if (!currentOperation) {
+                        const op = {
+                            type: OPERATION_TYPES.BULK_EDIT,
+                            data: {},
+                            timestamp: Date.now(),
+                            tableState: s,
+                            rowColors: { ...rowColorMap },
+                            finalState: s,
+                            finalRowColors: { ...rowColorMap }
+                        };
+                        operationHistory.push(op);
+                        if (operationHistory.length > 50) operationHistory.shift();
+                    }
+                    persistHistoryStacks();
                     updateUndoButtonState(); 
                     log('État de l\'historique enregistré.'); 
                 } 
@@ -2135,7 +2856,18 @@
                 if (isSyncing) return;
                 if (!isDirty) return;
                 
+                // BLOCK autosave during undo/redo operations
+                if (isPerformingUndoRedo) {
+                    log('🚫 Autosave BLOCKED - undo/redo in progress');
+                    return;
+                }
+                
                 try {
+                    // During autosave suppression window, skip autosave
+                    if (Date.now() < suppressAutosaveUntil) {
+                        log('🚫 Autosave suppressed due to undo/redo sync window');
+                        return;
+                    }
                     isSyncing = true;
                     log('Auto-sync (500ms poll, 3s idle) vers Supabase…');
                     await syncToMaster(false);
@@ -2311,6 +3043,49 @@
           // Sauvegarder seulement lors de vraies modifications (input)
           cell.oninput=()=>{
             hasBeenModified = true;
+            
+            // Reset undo/redo sync timeout when user starts editing
+            clearUndoRedoSyncTimeout();
+            
+            // Start or continue operation tracking for cell edits
+            if (!currentOperation || currentOperation.type !== OPERATION_TYPES.CELL_EDIT) {
+                startOperation(OPERATION_TYPES.CELL_EDIT, {
+                    cellLabel: header,
+                    initialValue: initialValue,
+                    rowIndex: Array.from(cell.closest('tr').parentElement.children).indexOf(cell.closest('tr')),
+                    columnLabel: header,
+                    editCount: 1,
+                    edits: [{
+                        columnLabel: header,
+                        rowIndex: Array.from(cell.closest('tr').parentElement.children).indexOf(cell.closest('tr')),
+                        initialValue: initialValue,
+                        currentValue: cell.textContent
+                    }]
+                });
+            } else {
+                // Increment edit count and add to edits array
+                currentOperation.data.editCount = (currentOperation.data.editCount || 1) + 1;
+                currentOperation.data.edits.push({
+                    columnLabel: header,
+                    rowIndex: Array.from(cell.closest('tr').parentElement.children).indexOf(cell.closest('tr')),
+                    initialValue: initialValue,
+                    currentValue: cell.textContent
+                });
+                
+                addToOperation({
+                    cellLabel: header,
+                    currentValue: cell.textContent,
+                    rowIndex: Array.from(cell.closest('tr').parentElement.children).indexOf(cell.closest('tr')),
+                    columnLabel: header
+                });
+            }
+            
+            // Debounce operation completion for cell edits
+            if (operationTimeout) clearTimeout(operationTimeout);
+            operationTimeout = setTimeout(() => {
+                completeOperation();
+            }, 1000); // 1 second delay for cell edits
+            
             saveStateToHistory();
             saveLocalDraft();
             markEdited();
@@ -2745,6 +3520,11 @@
         }
 
         async function addRow() {
+            // Start operation tracking for row addition
+            startOperation(OPERATION_TYPES.ROW_ADD, {
+                newRowKey: Date.now() + Math.random()
+            });
+            
             const tbody = document.getElementById('table-body');
             const row = document.createElement('tr');
             row.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
@@ -2833,10 +3613,39 @@
                 if (col) setRowColor(row, col); 
             } catch(_) {}
             
+            // Complete the operation
+            completeOperation();
+            
             markEdited();
         }
 
         async function deleteRows(rows) { 
+            if (!rows || rows.length === 0) return;
+            
+            // Safety check: ensure we're not in the middle of an undo operation
+            if (currentOperation && currentOperation.type.includes('undo')) {
+                console.log('⚠️ Delete operation blocked: undo in progress');
+                return;
+            }
+            
+            // Start operation tracking for deletion
+            const operationType = rows.length === 1 ? OPERATION_TYPES.ROW_DELETE : OPERATION_TYPES.MULTIPLE_ROWS_DELETE;
+            startOperation(operationType, {
+                deletedRows: rows.length,
+                rowKeys: rows.map(r => r.dataset.key).filter(Boolean),
+                rowData: rows.map(r => {
+                    const rowData = {};
+                    const cells = Array.from(r.querySelectorAll('td')).slice(2); // Skip No and Delete columns
+                    const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
+                    cells.forEach((cell, i) => {
+                        if (headers[i]) {
+                            rowData[headers[i]] = cell.textContent;
+                        }
+                    });
+                    return rowData;
+                })
+            });
+            
             const keys = rows.map(r => r.dataset.key).filter(Boolean); 
             
             try { 
@@ -2850,6 +3659,15 @@
                     log(`Supprimé ${keys.length} ligne(s) côté serveur.`, 'success'); 
                 } 
                 
+                // Store row numbers before deletion for better undo tracking
+                const rowNumbers = rows.map(r => {
+                    const noCell = r.querySelector('td:first-child');
+                    return noCell ? parseInt(noCell.textContent) : null;
+                }).filter(n => !isNaN(n));
+                
+                addToOperation({ rowNumbers });
+                
+                // Remove rows from DOM
                 rows.forEach(r => r.remove()); 
                 
                 // Renumber rows
@@ -2868,12 +3686,19 @@
                 });
                 
                 persistRowColors();
-                saveStateToHistory(); 
+                
+                // Complete the operation
+                completeOperation();
+                
                 saveLocalDraft(); 
                 markEdited(); 
                 updateStatus('Ligne(s) supprimée(s)', 'success'); 
-                await pullFromMaster(); 
+                
+                // Immediately sync with prune to avoid server reintroducing deleted rows
+                await syncToMaster(true, true);
             } catch(err) { 
+                // Cancel operation on error
+                cancelOperation();
                 log('Erreur lors de la suppression: ' + err.message, 'error'); 
                 updateStatus('Erreur de suppression', 'error'); 
             } 
@@ -2885,6 +3710,8 @@
             updateStatus('Connexion...'); 
             
             try { 
+                // Restore undo/redo stacks for this session
+                restoreHistoryStacks();
                 const { data, error } = await supabase
                     .from(supabaseConfig.tableName)
                     .select('*')
@@ -2909,7 +3736,7 @@
             }
         }
 
-        async function syncToMaster(isManualSave = false) {
+        async function syncToMaster(isManualSave = false, pruneMissing = false) {
             try { 
                 if (autosaveTicker) clearInterval(autosaveTicker); 
             } catch(_) {}
@@ -2966,10 +3793,32 @@
                             onConflict: supabaseConfig.primaryKeyColumn,
                             ignoreDuplicates: false
                         });
-                    
                     if (upsertError) {
                         console.error('❌ Erreur upsert:', upsertError);
                         throw upsertError;
+                    }
+                }
+
+                // Optionally prune server rows that are missing locally (for undo/redo or explicit deletions)
+                if (pruneMissing) {
+                    try {
+                        const { data: serverKeysRows, error: fetchKeysErr } = await supabase
+                            .from(supabaseConfig.tableName)
+                            .select(supabaseConfig.primaryKeyColumn);
+                        if (fetchKeysErr) throw fetchKeysErr;
+                        const localKeys = new Set(current.rows.map(r => r[supabaseConfig.primaryKeyColumn]).filter(k => k != null));
+                        const serverKeys = (serverKeysRows || []).map(r => r[supabaseConfig.primaryKeyColumn]).filter(k => k != null);
+                        const keysToDelete = serverKeys.filter(k => !localKeys.has(k));
+                        if (keysToDelete.length > 0) {
+                            const { error: delErr } = await supabase
+                                .from(supabaseConfig.tableName)
+                                .delete()
+                                .in(supabaseConfig.primaryKeyColumn, keysToDelete);
+                            if (delErr) throw delErr;
+                            log(`🧹 Serveur nettoyé: ${keysToDelete.length} ligne(s) supprimée(s) absentes localement.`);
+                        }
+                    } catch (pruneErr) {
+                        console.error('❌ Erreur lors du prune des lignes manquantes:', pruneErr);
                     }
                 }
                 
@@ -3024,6 +3873,18 @@
         function handleRealtimeUpdate() {
             log('Mise à jour en temps réel reçue.');
             
+            // BLOCK realtime updates during undo/redo operations
+            if (isPerformingUndoRedo) {
+                log('🚫 Realtime update BLOCKED - undo/redo in progress');
+                return;
+            }
+            
+            // Supprimer les événements temps réel durant la fenêtre de suppression
+            if (Date.now() < suppressRealtimeUntil) {
+                log('🚫 Realtime update suppressed due to undo/redo sync window');
+                return;
+            }
+
             // Vérifier le cooldown pour éviter les conflits avec nos propres sauvegardes
             const timeSinceLastSave = Date.now() - lastSaveTime;
             if (timeSinceLastSave < REALTIME_COOLDOWN_MS) {
@@ -3075,16 +3936,7 @@
                 .subscribe(status => log('Realtime status: ' + status)); 
         }
 
-        // Undo functionality
-        function undo() { 
-            if (history.length > 1) { 
-                history.pop(); 
-                const prev = history[history.length - 1]; 
-                loadTableData(prev.rows); 
-                updateUndoButtonState(); 
-                log('Annulation effectuée.'); 
-            } 
-        }
+
 
         // Password authentication
         function checkPassword() { 
@@ -3667,6 +4519,363 @@
             document.addEventListener('keydown', handleKey, true);
         }
 
+        // ===== SNAPSHOT SYSTEM FUNCTIONS =====
+        
+        // Load available snapshots from the database
+        async function loadAvailableSnapshots() {
+            try {
+                const { data, error } = await supabase
+                    .from('table_snapshots_index')
+                    .select('snapshot_date, created_at, row_count')
+                    .order('snapshot_date', { ascending: false });
+                
+                if (error) {
+                    console.error('❌ Error loading snapshots:', error);
+                    return;
+                }
+                
+                availableSnapshots = data || [];
+                console.log(`📸 Loaded ${availableSnapshots.length} available snapshots`);
+                updateHistoryNavigation();
+            } catch (error) {
+                console.error('❌ Error in loadAvailableSnapshots:', error);
+            }
+        }
+        
+        // Update history navigation buttons state
+        function updateHistoryNavigation() {
+            const backBtn = document.getElementById('history-back');
+            const nextBtn = document.getElementById('history-next');
+            const restoreBtn = document.getElementById('history-restore');
+            
+            if (snapshotMode === 'live') {
+                // In live mode, disable restore button
+                if (restoreBtn) restoreBtn.disabled = true;
+                
+                // Enable back/next if snapshots exist
+                if (backBtn) backBtn.disabled = availableSnapshots.length === 0;
+                if (nextBtn) nextBtn.disabled = availableSnapshots.length === 0;
+            } else {
+                // In snapshot mode, enable restore button
+                if (restoreBtn) restoreBtn.disabled = false;
+                
+                // Update back/next button states
+                if (backBtn) backBtn.disabled = currentSnapshotIndex <= 0;
+                if (nextBtn) nextBtn.disabled = currentSnapshotIndex >= availableSnapshots.length - 1;
+            }
+        }
+        
+        // Enter snapshot mode for a specific date
+        async function enterSnapshotMode(date) {
+            if (snapshotMode === 'snapshot' && currentSnapshotDate === date) {
+                return; // Already in this snapshot
+            }
+            
+            try {
+                console.log(`🔄 Entering snapshot mode for date: ${date}`);
+                
+                // Find snapshot info
+                const snapshotInfo = availableSnapshots.find(s => s.snapshot_date === date);
+                if (!snapshotInfo) {
+                    showMessage(`Aucun snapshot trouvé pour le ${formatDateForDisplay(date)}`, 'error');
+                    return;
+                }
+                
+                // Get snapshot data from storage
+                const { data: snapshotData, error } = await supabase.storage
+                    .from('table-snapshots')
+                    .download(snapshotInfo.object_path);
+                
+                if (error) {
+                    throw new Error(`Failed to download snapshot: ${error.message}`);
+                }
+                
+                // Parse snapshot data
+                const snapshot = JSON.parse(await snapshotData.text());
+                
+                // Update state
+                snapshotMode = 'snapshot';
+                currentSnapshotDate = date;
+                currentSnapshotIndex = availableSnapshots.findIndex(s => s.snapshot_date === date);
+                
+                // Disable realtime updates
+                if (realtimeSubscription) {
+                    supabase.removeChannel(realtimeSubscription);
+                    realtimeSubscription = null;
+                }
+                
+                // Load snapshot data into table
+                loadTableData(snapshot.data);
+                
+                // Update UI
+                updateHistoryNavigation();
+                updateSnapshotBanner();
+                updateHistoryDateButton();
+                
+                // Disable editing
+                disableTableEditing();
+                
+                showMessage(`Snapshot chargé du ${formatDateForDisplay(date)} (${snapshot.data.length} lignes)`, 'success');
+                
+            } catch (error) {
+                console.error('❌ Error entering snapshot mode:', error);
+                showMessage(`Erreur lors du chargement du snapshot: ${error.message}`, 'error');
+            }
+        }
+        
+        // Return to today's live view
+        async function returnToToday() {
+            if (snapshotMode === 'live') {
+                return; // Already in live mode
+            }
+            
+            try {
+                console.log('🔄 Returning to today (live mode)');
+                
+                // Update state
+                snapshotMode = 'live';
+                currentSnapshotDate = null;
+                currentSnapshotIndex = -1;
+                
+                // Re-enable realtime updates
+                setupRealtimeSubscription();
+                
+                // Refresh data from Supabase (no cache)
+                await fetchInitialData();
+                
+                // Update UI
+                updateHistoryNavigation();
+                updateSnapshotBanner();
+                updateHistoryDateButton();
+                
+                // Re-enable editing
+                enableTableEditing();
+                
+                showMessage('Retour au mode en direct avec données actuelles', 'success');
+                
+            } catch (error) {
+                console.error('❌ Error returning to today:', error);
+                showMessage(`Erreur lors du retour au mode en direct: ${error.message}`, 'error');
+            }
+        }
+        
+        // Navigate to previous snapshot
+        function goToPreviousSnapshot() {
+            if (currentSnapshotIndex > 0) {
+                const prevSnapshot = availableSnapshots[currentSnapshotIndex - 1];
+                enterSnapshotMode(prevSnapshot.snapshot_date);
+            }
+        }
+        
+        // Navigate to next snapshot
+        function goToNextSnapshot() {
+            if (currentSnapshotIndex < availableSnapshots.length - 1) {
+                const nextSnapshot = availableSnapshots[currentSnapshotIndex + 1];
+                enterSnapshotMode(nextSnapshot.snapshot_date);
+            }
+        }
+        
+        // Open date picker for snapshot selection
+        function openDatePicker() {
+            if (availableSnapshots.length === 0) {
+                showMessage('Aucun snapshot disponible', 'info');
+                return;
+            }
+            
+            // Create a simple date picker
+            const dates = availableSnapshots.map(s => s.snapshot_date);
+            const currentDate = snapshotMode === 'snapshot' ? currentSnapshotDate : null;
+            
+            // Find current index
+            let currentIndex = currentDate ? dates.indexOf(currentDate) : -1;
+            if (currentIndex === -1) currentIndex = 0;
+            
+            // Show next available date
+            const nextIndex = (currentIndex + 1) % dates.length;
+            const nextDate = dates[nextIndex];
+            
+            enterSnapshotMode(nextDate);
+        }
+        
+        // Show restore confirmation modal
+        function showRestoreModal() {
+            if (snapshotMode !== 'snapshot' || !currentSnapshotDate) {
+                return;
+            }
+            
+            const snapshotInfo = availableSnapshots.find(s => s.snapshot_date === currentSnapshotDate);
+            if (!snapshotInfo) {
+                showMessage('Informations du snapshot non trouvées', 'error');
+                return;
+            }
+            
+            // Update modal content
+            document.getElementById('restore-date').textContent = formatDateForDisplay(currentSnapshotDate);
+            document.getElementById('restore-row-count').textContent = snapshotInfo.row_count;
+            
+            // Show modal
+            document.getElementById('restore-modal').classList.remove('hidden');
+        }
+        
+        // Hide restore confirmation modal
+        function hideRestoreModal() {
+            document.getElementById('restore-modal').classList.add('hidden');
+        }
+        
+        // Confirm and execute restore
+        async function confirmRestore() {
+            if (isRestoring) {
+                showMessage('Restauration déjà en cours...', 'warning');
+                return;
+            }
+            
+            try {
+                isRestoring = true;
+                hideRestoreModal();
+                
+                const snapshotInfo = availableSnapshots.find(s => s.snapshot_date === currentSnapshotDate);
+                if (!snapshotInfo) {
+                    throw new Error('Snapshot info not found');
+                }
+                
+                showMessage('Restauration en cours...', 'info');
+                
+                // Get snapshot data
+                const { data: snapshotData, error } = await supabase.storage
+                    .from('table-snapshots')
+                    .download(snapshotInfo.object_path);
+                
+                if (error) {
+                    throw new Error(`Failed to download snapshot: ${error.message}`);
+                }
+                
+                const snapshot = JSON.parse(await snapshotData.text());
+                
+                // Truncate current table and insert snapshot data
+                const { error: deleteError } = await supabase
+                    .from(supabaseConfig.tableName)
+                    .delete()
+                    .neq(supabaseConfig.primaryKeyColumn, 0); // Delete all rows
+                
+                if (deleteError) {
+                    throw new Error(`Failed to clear table: ${deleteError.message}`);
+                }
+                
+                // Insert snapshot data
+                const { error: insertError } = await supabase
+                    .from(supabaseConfig.tableName)
+                    .insert(snapshot.data);
+                
+                if (insertError) {
+                    throw new Error(`Failed to insert snapshot data: ${insertError.message}`);
+                }
+                
+                // Log the restore operation
+                const { error: logError } = await supabase
+                    .from('snapshot_restore_log')
+                    .insert({
+                        snapshot_date: currentSnapshotDate,
+                        restored_by: 'user', // Could be enhanced with actual user ID
+                        notes: 'Full table restore from snapshot',
+                        row_count: snapshot.data.length,
+                        restore_strategy: 'replace-all'
+                    });
+                
+                if (logError) {
+                    console.warn('⚠️ Failed to log restore operation:', logError);
+                }
+                
+                // Return to today mode
+                await returnToToday();
+                
+                showMessage(`Table restaurée avec succès du snapshot du ${formatDateForDisplay(currentSnapshotDate)}`, 'success');
+                
+            } catch (error) {
+                console.error('❌ Error during restore:', error);
+                showMessage(`Erreur lors de la restauration: ${error.message}`, 'error');
+            } finally {
+                isRestoring = false;
+            }
+        }
+        
+        // Update snapshot banner
+        function updateSnapshotBanner() {
+            const banner = document.getElementById('snapshot-banner');
+            const bannerText = document.getElementById('snapshot-banner-text');
+            
+            if (snapshotMode === 'snapshot' && currentSnapshotDate) {
+                banner.classList.remove('hidden');
+                bannerText.textContent = `Visualisation du snapshot du ${formatDateForDisplay(currentSnapshotDate)} (lecture seule)`;
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+        
+        // Update history date button
+        function updateHistoryDateButton() {
+            const dateText = document.getElementById('current-date-text');
+            
+            if (snapshotMode === 'snapshot' && currentSnapshotDate) {
+                dateText.textContent = formatDateForDisplay(currentSnapshotDate);
+            } else {
+                dateText.textContent = 'Aujourd\'hui';
+            }
+        }
+        
+        // Disable table editing
+        function disableTableEditing() {
+            const cells = document.querySelectorAll('#table-body td.editable-cell');
+            cells.forEach(cell => {
+                cell.contentEditable = false;
+                cell.classList.add('snapshot-readonly');
+            });
+            
+            // Disable function buttons
+            const functionButtons = document.querySelectorAll('#button-bar button');
+            functionButtons.forEach(btn => {
+                if (btn.id !== 'view-mode-toggle') { // Keep view mode toggle
+                    btn.disabled = true;
+                }
+            });
+            
+            // Disable FAB add button
+            const fabAdd = document.getElementById('fab-add');
+            if (fabAdd) fabAdd.style.pointerEvents = 'none';
+        }
+        
+        // Enable table editing
+        function enableTableEditing() {
+            const cells = document.querySelectorAll('#table-body td.editable-cell');
+            cells.forEach(cell => {
+                if (!isViewMode) { // Only enable if not in view mode
+                    cell.contentEditable = true;
+                }
+                cell.classList.remove('snapshot-readonly');
+            });
+            
+            // Re-enable function buttons
+            const functionButtons = document.querySelectorAll('#button-bar button');
+            functionButtons.forEach(btn => {
+                btn.disabled = false;
+            });
+            
+            // Re-enable FAB add button
+            const fabAdd = document.getElementById('fab-add');
+            if (fabAdd) fabAdd.style.pointerEvents = 'auto';
+        }
+        
+        // Format date for display
+        function formatDateForDisplay(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+        
+        // ===== END SNAPSHOT SYSTEM FUNCTIONS =====
+
         // Initialize application
         function initializeApp() {
             // Set up event listeners
@@ -3746,6 +4955,9 @@
                 setupRealtimeSubscription(); 
                 startPeriodicSync(); 
                 scheduleAutosaveCountdown();
+                
+                // Initialize snapshot system
+                loadAvailableSnapshots();
                 
                 // Appliquer le mode visualisation APRÈS la restauration des données
                 setTimeout(() => {
