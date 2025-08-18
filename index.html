@@ -187,6 +187,8 @@
         
         #snapshot-banner {
             animation: slideInDown 0.3s ease-out;
+            max-width: fit-content;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
         @keyframes slideInDown {
@@ -931,11 +933,9 @@
         </div>
 
         <!-- Snapshot Banner -->
-        <div id="snapshot-banner" class="hidden lg:block mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div class="flex items-center gap-2 text-yellow-800">
-                <i class="fa-solid fa-eye w-5 h-5"></i>
-                <span id="snapshot-banner-text">Visualisation d'un snapshot (lecture seule)</span>
-            </div>
+        <div id="snapshot-banner" class="hidden lg:flex items-center gap-2 mb-2 px-3 py-2 bg-yellow-100 border border-yellow-300 rounded-md text-yellow-800 text-sm font-medium">
+            <i class="fa-solid fa-clock w-4 h-4"></i>
+            <span id="snapshot-banner-text">Snapshot du</span>
         </div>
 
         <div id="button-bar" class="flex flex-nowrap items-center gap-1 mb-3 p-1 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto">
@@ -4790,8 +4790,14 @@
             const bannerText = document.getElementById('snapshot-banner-text');
             
             if (snapshotMode === 'snapshot' && currentSnapshotDate) {
-                banner.classList.remove('hidden');
-                bannerText.textContent = `Visualisation du snapshot du ${formatDateForDisplay(currentSnapshotDate)} (lecture seule)`;
+                // Only show banner if viewing an old snapshot (not today's)
+                const today = new Date().toISOString().split('T')[0];
+                if (currentSnapshotDate < today) {
+                    banner.classList.remove('hidden');
+                    bannerText.textContent = `Snapshot du ${formatDateForDisplay(currentSnapshotDate)}`;
+                } else {
+                    banner.classList.add('hidden');
+                }
             } else {
                 banner.classList.add('hidden');
             }
