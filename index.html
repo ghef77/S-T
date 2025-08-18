@@ -349,6 +349,15 @@
             #table-container { 
                 padding-top: 56px; 
             }
+            
+            /* Empêcher que le bouton de couleur s'écrase en largeur */
+            #row-color-picker {
+                min-width: 32px !important;
+                min-height: 32px !important;
+                width: 32px !important;
+                height: 32px !important;
+                flex-shrink: 0 !important;
+            }
         }
         
         /* Sticky first column */
@@ -763,6 +772,15 @@
             
             #data-table th, #data-table td {
                 padding: 0.25rem 0.5rem;
+            }
+            
+            /* Empêcher que le bouton de couleur s'écrase en largeur sur les écrans moyens */
+            #row-color-picker {
+                min-width: 32px !important;
+                min-height: 32px !important;
+                width: 32px !important;
+                height: 32px !important;
+                flex-shrink: 0 !important;
             }
         }
     </style>
@@ -1230,12 +1248,12 @@
         }
         
         function zoomIn() { 
-            zoomFactor += 0.1; 
+            zoomFactor += 0.05; 
             applyZoom(); 
         }
         
         function zoomOut() { 
-            zoomFactor -= 0.1; 
+            zoomFactor -= 0.05; 
             applyZoom(); 
         }
         
