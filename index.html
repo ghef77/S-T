@@ -5552,17 +5552,7 @@
                 // Adapter l'affichage après le chargement des données
                 setTimeout(adaptStatusDisplay, 100);
                 
-                // Mettre à jour les indicateurs d'images
-                setTimeout(updateImageIndicators, 200);
-                
-                // Charger les images depuis Supabase
-                setTimeout(loadImagesFromSupabase, 300);
-                
-                // Mettre à jour les icônes de la colonne Images après le chargement
-                setTimeout(updateAllImageColumnIcons, 500);
-                
-                // Afficher le statut de synchronisation des images
-                setTimeout(showImageSyncStatus, 600);
+                // Cell locking system already initialized above
             } else {
                 document.getElementById('login-container').classList.remove('hidden');
                 
@@ -5576,10 +5566,7 @@
 
         }
         
-        // Image management functions
-        let patientImages = JSON.parse(localStorage.getItem('patientImages') || '{}');
-        let currentImageIndex = 0;
-        let currentPatientImages = [];
+        // Image management functions removed - not needed for staff table
         
 
         
@@ -5587,105 +5574,7 @@
         
 
         
-        async function uploadImagesForPatient(patientName, files) {
-            if (!patientImages[patientName]) {
-                patientImages[patientName] = [];
-            }
-            
-            showMessage('Upload des images en cours...', 'saving');
-            
-            try {
-                for (const file of Array.from(files)) {
-                    // Vérifier la taille du fichier (max 5MB)
-                    if (file.size > 5 * 1024 * 1024) {
-                        showMessage(`Image ${file.name} trop volumineuse (max 5MB)`, 'error');
-                        continue;
-                    }
-                    
-                    const reader = new FileReader();
-                    reader.onload = async function(e) {
-                        const imageData = {
-                            id: Date.now() + Math.random(),
-                            name: file.name,
-                            data: e.target.result,
-                            type: file.type,
-                            size: file.size,
-                            uploadDate: new Date().toISOString(),
-                            patientName: patientName
-                        };
-                        
-                        // Sauvegarder localement
-                        patientImages[patientName].push(imageData);
-                        savePatientImages();
-                        
-                        // Synchroniser avec Supabase
-                        await syncImageToSupabase(imageData);
-                        
-                        displayPatientImages(patientName);
-                        updateAllImageColumnIcons(); // Mettre à jour les icônes de la colonne Images
-                        showMessage(`Image ${file.name} ajoutée pour ${patientName}`, 'success');
-                    };
-                    reader.readAsDataURL(file);
-                }
-            } catch (error) {
-                console.error('Erreur lors de l\'upload:', error);
-                showMessage('Erreur lors de l\'upload des images', 'error');
-            }
-        }
-        
-        function displayPatientImages(patientName) {
-            const gallery = document.getElementById('image-gallery');
-            const images = patientImages[patientName] || [];
-            
-            gallery.innerHTML = '';
-            
-            if (images.length === 0) {
-                gallery.innerHTML = '<p class="text-gray-500 text-center col-span-full">Aucune image pour ce patient</p>';
-                return;
-            }
-            
-            images.forEach((image, index) => {
-                const imageDiv = document.createElement('div');
-                imageDiv.className = 'relative group';
-                
-                imageDiv.innerHTML = `
-                    <img src="${image.data}" alt="${image.name}" class="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" 
-                         onclick="viewImage('${patientName}', ${index})" />
-                    <div class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs cursor-pointer hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                         onclick="deleteImage('${patientName}', ${index})">×</div>
-                    <p class="text-xs text-gray-600 mt-1 truncate">${image.name}</p>
-                `;
-                
-                gallery.appendChild(imageDiv);
-            });
-        }
-        
-        function viewImage(patientName, imageIndex) {
-            const images = patientImages[patientName] || [];
-            if (images.length === 0) return;
-            
-            currentPatientImages = images;
-            currentImageIndex = imageIndex;
-            
-            const modal = document.getElementById('image-viewer-modal');
-            const currentImage = document.getElementById('current-image');
-            const counter = document.getElementById('image-counter');
-            
-            currentImage.src = images[imageIndex].data;
-            counter.textContent = `${imageIndex + 1} / ${images.length}`;
-            
-            modal.classList.remove('hidden');
-        }
-        
-        function closeImageViewer() {
-            document.getElementById('image-viewer-modal').classList.add('hidden');
-        }
-        
-        function nextImage() {
-            if (currentPatientImages.length === 0) return;
-            currentImageIndex = (currentImageIndex + 1) % currentPatientImages.length;
-            updateImageViewer();
-        }
+
         
         function previousImage() {
             if (currentPatientImages.length === 0) return;
