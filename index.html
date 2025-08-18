@@ -3916,6 +3916,9 @@
             
             log('🔄 Synchronisation temps réel - Capture du focus et rechargement...');
             
+            // Set flag to prevent cell unlocking during realtime sync
+            window.isRealtimeSyncing = true;
+            
             // Try to preserve focus across realtime-driven reload as well
             captureFocusInfo();
             captureSimplePos();
@@ -3931,6 +3934,9 @@
                         const infoResult = focusCellFromInfo(lastFocusInfo);
                         log(`🔍 Focus restore temps réel - pos: ${posResult}, info: ${infoResult}`);
                     }
+                    
+                    // Clear the realtime sync flag after focus restore
+                    window.isRealtimeSyncing = false;
                 }, 100);
             };
             
@@ -4899,9 +4905,17 @@
         
         // Generate unique cell identifier
         function getCellIdentifier(cell) {
+            if (!cell) return null;
+            
             const row = cell.closest('tr');
-            const rowIndex = row ? Array.from(row.parentNode.children).indexOf(row) : -1;
+            if (!row || !row.parentNode) return null;
+            
+            const rowIndex = Array.from(row.parentNode.children).indexOf(row);
+            if (rowIndex === -1) return null;
+            
             const cellIndex = Array.from(row.children).indexOf(cell);
+            if (cellIndex === -1) return null;
+            
             return `${rowIndex}_${cellIndex}`;
         }
         
@@ -4977,7 +4991,18 @@
         async function unlockCell(cell) {
             if (!cell) return;
             
+            // Safety check: ensure cell is still in DOM
+            if (!document.contains(cell)) {
+                console.log('🔒 Cell no longer in DOM, skipping unlock');
+                return;
+            }
+            
             const cellId = getCellIdentifier(cell);
+            if (!cellId) {
+                console.log('🔒 Could not get cell ID, skipping unlock');
+                return;
+            }
+            
             const lockInfo = lockedCells.get(cellId);
             
             // Only unlock if we own the lock
