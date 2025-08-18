@@ -3935,30 +3935,39 @@
                 return; 
             }
             
-            log('🔄 Synchronisation temps réel - Capture du focus et rechargement...');
+            log('🔄 Synchronisation temps réel - Rechargement SANS restauration du focus...');
             
             // Set flag to prevent cell unlocking during realtime sync
             window.isRealtimeSyncing = true;
             
-            // Try to preserve focus across realtime-driven reload as well
-            captureFocusInfo();
-            captureSimplePos();
+            // ⚠️ NE PAS capturer le focus - laissons l'utilisateur choisir où cliquer
+            // captureFocusInfo();
+            // captureSimplePos();
             
             const onReload = () => {
-                log('realtime -> table:reloaded caught; attempting focus restore');
+                log('realtime -> table:reloaded caught; NO focus restore to avoid conflicts');
                 document.removeEventListener('table:reloaded', onReload);
                 
-                // Restauration du focus après rechargement temps réel
+                // ❌ PAS de restauration automatique du focus pour éviter les conflits
+                // setTimeout(() => {
+                //     const posResult = focusCellByPos(lastCellPos);
+                //     if (!posResult) {
+                //         const infoResult = focusCellFromInfo(lastFocusInfo);
+                //         log(`🔍 Focus restore temps réel - pos: ${posResult}, info: ${infoResult}`);
+                //     }
+                //     
+                //     // Clear the realtime sync flag after focus restore
+                //     window.isRealtimeSyncing = false;
+                // }, 100);
+                
+                // ✅ Juste nettoyer le flag et nettoyer les locks expirés
+                window.isRealtimeSyncing = false;
+                
+                // 🔧 Nettoyer les locks expirés pour éviter les conflits visuels
                 setTimeout(() => {
-                    const posResult = focusCellByPos(lastCellPos);
-                    if (!posResult) {
-                        const infoResult = focusCellFromInfo(lastFocusInfo);
-                        log(`🔍 Focus restore temps réel - pos: ${posResult}, info: ${infoResult}`);
-                    }
-                    
-                    // Clear the realtime sync flag after focus restore
-                    window.isRealtimeSyncing = false;
-                }, 100);
+                    cleanupExpiredLocks();
+                    log('🧹 Locks expirés nettoyés après rechargement temps réel');
+                }, 500);
             };
             
             document.addEventListener('table:reloaded', onReload, { once: true });
@@ -5298,6 +5307,16 @@
                         console.log(`🧹 Expired lock removed for cell ${cellId}`);
                     }
                 }
+                
+                // 🔧 Nettoyer aussi les locks visuels orphelins qui pourraient rester
+                const allLockedCells = document.querySelectorAll('.cell-locked');
+                allLockedCells.forEach(cell => {
+                    const cellId = getCellIdentifier(cell);
+                    if (cellId && !lockedCells.has(cellId)) {
+                        removeLockFromCell(cell);
+                        console.log(`🧹 Removed orphaned visual lock from cell: ${cellId}`);
+                    }
+                });
                 
                 // Realtime subscription health check removed to prevent reconnection loops
                 // Supabase handles reconnection automatically
