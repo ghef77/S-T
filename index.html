@@ -262,6 +262,7 @@
             justify-content: flex-start;
             overflow-x: auto;
             gap: 0.3rem; /* ensure spacing between buttons */
+            padding: 0 !important; /* Remove padding between buttons and container */
         }
         
         #button-bar button {
@@ -345,6 +346,7 @@
                 z-index: 20 !important;
                 margin: 0 !important;
                 margin-bottom: 0 !important;
+                padding: 0 !important; /* Remove padding between buttons and container */
             }
         }
 
@@ -1061,6 +1063,16 @@
         let paintMode = localStorage.getItem('rowPaintMode') || 'auto';
         let showOnlyColored = false;
         let isViewMode = localStorage.getItem('viewMode') === 'true'; // Mode visualisation (lecture seule) - restauré depuis localStorage
+        let isViewModeProtected = false; // Flag pour protection renforcée sur mobile
+        
+        // Protection globale: wrapper pour toutes les fonctions de sauvegarde
+        function protectedSaveStateToHistory() {
+            if (isViewMode && isMobile()) {
+                console.log('🔒 Global protection: saveStateToHistory BLOCKED');
+                return;
+            }
+            return saveStateToHistory();
+        }
         
         // Initialize from localStorage
         try { 
@@ -1458,14 +1470,18 @@
             const fabAdd = document.getElementById('fab-add');
             const mobileAddButton = document.getElementById('mobile-add-button');
             
-            // Désactiver temporairement les sauvegardes si on passe en mode visualisation
-            let originalMarkEdited = null;
+            // Désactiver TEMPORAIREMENT TOUTES les sauvegardes si on passe en mode visualisation
+            let originalFunctions = {};
             if (isViewMode) {
-                originalMarkEdited = window.markEdited;
-                window.markEdited = function() {
-                    // Ne rien faire si on est en mode visualisation
-                    return;
-                };
+                // Sauvegarder toutes les fonctions originales
+                originalFunctions.markEdited = window.markEdited;
+                originalFunctions.saveStateToHistory = window.saveStateToHistory;
+                originalFunctions.saveLocalDraft = window.saveLocalDraft;
+                
+                // Remplacer par des fonctions vides
+                window.markEdited = function() { return; };
+                window.saveStateToHistory = function() { return; };
+                window.saveLocalDraft = function() { return; };
             }
             
             editableCells.forEach(cell => {
@@ -1480,6 +1496,13 @@
                 }
             });
             
+            // Activer la protection renforcée sur mobile en mode visualisation
+            if (isViewMode && isMobile()) {
+                isViewModeProtected = true;
+            } else {
+                isViewModeProtected = false;
+            }
+            
             // Masquer/afficher les boutons d'ajout
             if (fabAdd) {
                 fabAdd.style.display = isViewMode ? 'none' : 'flex';
@@ -1492,10 +1515,18 @@
             localStorage.setItem('viewMode', isViewMode);
             
             // Réactiver les sauvegardes après un délai adaptatif selon l'appareil
-            if (isViewMode && originalMarkEdited) {
-                const restoreDelay = isMobile() ? 4000 : 2000;
+            if (isViewMode && Object.keys(originalFunctions).length > 0) {
+                const restoreDelay = isMobile() ? 6000 : 3000;
                 setTimeout(() => {
-                    window.markEdited = originalMarkEdited;
+                    if (originalFunctions.markEdited) {
+                        window.markEdited = originalFunctions.markEdited;
+                    }
+                    if (originalFunctions.saveStateToHistory) {
+                        window.saveStateToHistory = originalFunctions.saveStateToHistory;
+                    }
+                    if (originalFunctions.saveLocalDraft) {
+                        window.saveLocalDraft = originalFunctions.saveLocalDraft;
+                    }
                 }, restoreDelay);
             }
         }
@@ -1904,6 +1935,21 @@
         }
         
         function saveStateToHistory() { 
+            // Debug: voir exactement quand cette fonction est appelée
+            console.log('🚨 saveStateToHistory called!', {
+                isViewMode,
+                isViewModeProtected,
+                isMobile: isMobile(),
+                timestamp: new Date().toISOString(),
+                stack: new Error().stack
+            });
+            
+            // Protection renforcée : ne rien faire si on est en mode visualisation protégé
+            if (isViewModeProtected || (isViewMode && isMobile())) {
+                console.log('🔒 saveStateToHistory BLOCKED by protection');
+                return;
+            }
+            
             if (historyDebounceTimeout) clearTimeout(historyDebounceTimeout); 
             
             historyDebounceTimeout = setTimeout(() => { 
@@ -1920,6 +1966,11 @@
         }
         
         function saveLocalDraft() { 
+            // Protection renforcée : ne rien faire si on est en mode visualisation protégé
+            if (isViewModeProtected || (isViewMode && isMobile())) {
+                return;
+            }
+            
             try { 
                 localStorage.setItem('staffTableDraft', document.getElementById('data-table').outerHTML); 
             } catch(e) {} 
@@ -1934,14 +1985,31 @@
                         // Sauvegarder l'état du mode visualisation avant la restauration
                         const wasViewMode = isViewMode;
                         
-                        // Désactiver temporairement les sauvegardes si on est en mode visualisation
-                        let originalMarkEdited = null;
+                        // NUCLEAR OPTION: Désactiver TOUTES les sauvegardes si on est en mode visualisation
+                        let originalFunctions = {};
                         if (wasViewMode) {
-                            originalMarkEdited = window.markEdited;
-                            window.markEdited = function() {
-                                // Ne rien faire si on est en mode visualisation
-                                return;
+                            // Sauvegarder toutes les fonctions originales
+                            originalFunctions.markEdited = window.markEdited;
+                            originalFunctions.saveStateToHistory = window.saveStateToHistory;
+                            originalFunctions.saveLocalDraft = window.saveLocalDraft;
+                            
+                            // Remplacer par des fonctions vides avec debug
+                            window.markEdited = function() { 
+                                console.log('🔒 markEdited BLOCKED in view mode'); 
+                                return; 
                             };
+                            window.saveStateToHistory = function() { 
+                                console.log('🔒 saveStateToHistory BLOCKED in view mode'); 
+                                return; 
+                            };
+                            window.saveLocalDraft = function() { 
+                                console.log('🔒 saveLocalDraft BLOCKED in view mode'); 
+                                return; 
+                            };
+                            
+                            // Activer la protection renforcée
+                            isViewModeProtected = true;
+                            console.log('🛡️ View mode protection ACTIVATED');
                         }
                         
                         el.outerHTML = draft;
@@ -1952,11 +2020,14 @@
                             isViewMode = true;
                             
                             // Délai adaptatif selon l'appareil (plus long sur mobile)
-                            const delay = isMobile() ? 150 : 50;
-                            const restoreDelay = isMobile() ? 5000 : 3000;
+                            const delay = isMobile() ? 300 : 150;
+                            const restoreDelay = isMobile() ? 10000 : 6000;
+                            
+                            console.log(`⏱️ Applying view mode in ${delay}ms, restoring functions in ${restoreDelay}ms`);
                             
                             // Appliquer le mode visualisation aux nouvelles cellules
                             setTimeout(() => {
+                                console.log('🎯 Applying view mode to cells...');
                                 const editableCells = document.querySelectorAll('.editable-cell');
                                 editableCells.forEach(cell => {
                                     cell.contentEditable = 'false';
@@ -1973,11 +2044,24 @@
                                 if (fabAdd) fabAdd.style.display = 'none';
                                 if (mobileAddButton) mobileAddButton.style.display = 'none';
                                 
+                                console.log('✅ View mode applied, functions will be restored in', restoreDelay, 'ms');
+                                
                                 // Réactiver les sauvegardes après un délai adaptatif
                                 setTimeout(() => {
-                                    if (originalMarkEdited) {
-                                        window.markEdited = originalMarkEdited;
+                                    console.log('🔄 Restoring original functions...');
+                                    if (originalFunctions.markEdited) {
+                                        window.markEdited = originalFunctions.markEdited;
                                     }
+                                    if (originalFunctions.saveStateToHistory) {
+                                        window.saveStateToHistory = originalFunctions.saveStateToHistory;
+                                    }
+                                    if (originalFunctions.saveLocalDraft) {
+                                        window.saveLocalDraft = originalFunctions.saveLocalDraft;
+                                    }
+                                    
+                                    // Désactiver la protection renforcée
+                                    isViewModeProtected = false;
+                                    console.log('🛡️ View mode protection DEACTIVATED');
                                 }, restoreDelay);
                             }, delay);
                         }
