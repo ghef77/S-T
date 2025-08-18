@@ -261,11 +261,19 @@
             max-width: 100%;
             justify-content: flex-start;
             overflow-x: auto;
+            gap: 0.3rem; /* ensure spacing between buttons */
         }
         
         #button-bar button {
             margin: 0;
             flex-shrink: 0;
+            transform: scale(1.2); /* enlarge by ~20% */
+            transform-origin: center;
+        }
+
+        /* keep slight press effect while preserving 1.2 scale */
+        #button-bar button:active {
+            transform: scale(1.176);
         }
         
         /* Réduction des marges sur petits écrans */
@@ -1397,6 +1405,16 @@
             const fabAdd = document.getElementById('fab-add');
             const mobileAddButton = document.getElementById('mobile-add-button');
             
+            // Désactiver temporairement les sauvegardes si on passe en mode visualisation
+            let originalMarkEdited = null;
+            if (isViewMode) {
+                originalMarkEdited = window.markEdited;
+                window.markEdited = function() {
+                    // Ne rien faire si on est en mode visualisation
+                    return;
+                };
+            }
+            
             editableCells.forEach(cell => {
                 if (isViewMode) {
                     cell.contentEditable = 'false';
@@ -1419,6 +1437,25 @@
             
             // Sauvegarder l'état dans localStorage
             localStorage.setItem('viewMode', isViewMode);
+            
+            // Réactiver les sauvegardes après un délai si on était en mode visualisation
+            if (isViewMode && originalMarkEdited) {
+                setTimeout(() => {
+                    window.markEdited = originalMarkEdited;
+                }, 2000);
+            }
+        }
+        
+        // Appliquer le mode visualisation après restauration des données
+        function applyViewModeAfterRestore() {
+            if (isViewMode) {
+                const editableCells = document.querySelectorAll('.editable-cell');
+                editableCells.forEach(cell => {
+                    cell.contentEditable = 'false';
+                    cell.style.backgroundColor = '#f8f9fa';
+                    cell.style.cursor = 'default';
+                });
+            }
         }
         
         // Détecter automatiquement l'état du bouton œil et agir en conséquence
@@ -1437,6 +1474,26 @@
             
             // Appliquer le mode sauvegardé
             applyViewMode();
+        }
+        
+        // Fonction pour forcer le mode visualisation et empêcher les sauvegardes
+        function forceViewMode() {
+            if (isViewMode) {
+                // Désactiver temporairement les sauvegardes automatiques
+                const originalMarkEdited = window.markEdited;
+                window.markEdited = function() {
+                    // Ne rien faire si on est en mode visualisation
+                    return;
+                };
+                
+                // Appliquer le mode visualisation
+                applyViewMode();
+                
+                // Réactiver les sauvegardes après un délai
+                setTimeout(() => {
+                    window.markEdited = originalMarkEdited;
+                }, 2000);
+            }
         }
         
 
@@ -1819,8 +1876,52 @@
                 if (draft) {
                     const el = document.getElementById('data-table');
                     if (el) {
+                        // Sauvegarder l'état du mode visualisation avant la restauration
+                        const wasViewMode = isViewMode;
+                        
+                        // Désactiver temporairement les sauvegardes si on est en mode visualisation
+                        let originalMarkEdited = null;
+                        if (wasViewMode) {
+                            originalMarkEdited = window.markEdited;
+                            window.markEdited = function() {
+                                // Ne rien faire si on est en mode visualisation
+                                return;
+                            };
+                        }
+                        
                         el.outerHTML = draft;
                         log('Brouillon local restauré.');
+                        
+                        // Restaurer le mode visualisation immédiatement après la restauration
+                        if (wasViewMode) {
+                            isViewMode = true;
+                            
+                            // Appliquer le mode visualisation aux nouvelles cellules
+                            setTimeout(() => {
+                                const editableCells = document.querySelectorAll('.editable-cell');
+                                editableCells.forEach(cell => {
+                                    cell.contentEditable = 'false';
+                                    cell.style.backgroundColor = '#f8f9fa';
+                                    cell.style.cursor = 'default';
+                                });
+                                
+                                // Mettre à jour l'apparence du bouton
+                                updateViewModeButton();
+                                
+                                // Masquer les boutons d'ajout
+                                const fabAdd = document.getElementById('fab-add');
+                                const mobileAddButton = document.getElementById('mobile-add-button');
+                                if (fabAdd) fabAdd.style.display = 'none';
+                                if (mobileAddButton) mobileAddButton.style.display = 'none';
+                                
+                                // Réactiver les sauvegardes après un délai
+                                setTimeout(() => {
+                                    if (originalMarkEdited) {
+                                        window.markEdited = originalMarkEdited;
+                                    }
+                                }, 3000);
+                            }, 50);
+                        }
                         
                         rebindRowNumberCells();
                         
@@ -3475,6 +3576,10 @@
             if (already) {
                 document.getElementById('login-container').classList.add('hidden');
                 document.getElementById('table-container').classList.remove('hidden');
+                
+                // Détecter et appliquer le mode visualisation AVANT la restauration des données
+                detectAndApplyViewMode();
+                
                 restoreLocalDraft(); 
                 ensureDDNHeader();
                 
@@ -3499,6 +3604,11 @@
                 setupRealtimeSubscription(); 
                 startPeriodicSync(); 
                 scheduleAutosaveCountdown();
+                
+                // Réappliquer le mode visualisation après la restauration des données
+                setTimeout(() => {
+                    applyViewModeAfterRestore();
+                }, 100);
                 
                 // Adapter l'affichage après le chargement des données
                 setTimeout(adaptStatusDisplay, 100);
