@@ -335,6 +335,41 @@
             right: 8px; 
             z-index: 20; 
         }
+        
+        /* Forcer le positionnement sur tous les écrans non-mobiles */
+        @media (min-width: 641px) {
+            #button-bar {
+                position: absolute !important;
+                top: 8px !important;
+                right: 8px !important;
+                z-index: 20 !important;
+                margin: 0 !important;
+                margin-bottom: 0 !important;
+            }
+        }
+
+        /* Positionnement pour écrans moyens (tablettes) */
+        @media (min-width: 641px) and (max-width: 1024px) {
+            #button-bar {
+                position: absolute !important;
+                top: 8px !important;
+                right: 8px !important;
+                z-index: 20 !important;
+                margin: 0 !important;
+                margin-bottom: 0 !important;
+                transform: none !important;
+            }
+            
+            /* Annuler les marges qui peuvent causer le déplacement */
+            #button-bar.mb-3 {
+                margin-bottom: 0 !important;
+            }
+
+            /* Laisser un petit espace entre la barre et le tableau */
+            #button-bar + div {
+                margin-top: 6px !important; /* ~ quelques millimètres */
+            }
+        }
 
         /* Mobile-safe positioning for the top-right button bar */
         @media (max-width: 640px) {
@@ -1456,11 +1491,12 @@
             // Sauvegarder l'état dans localStorage
             localStorage.setItem('viewMode', isViewMode);
             
-            // Réactiver les sauvegardes après un délai si on était en mode visualisation
+            // Réactiver les sauvegardes après un délai adaptatif selon l'appareil
             if (isViewMode && originalMarkEdited) {
+                const restoreDelay = isMobile() ? 4000 : 2000;
                 setTimeout(() => {
                     window.markEdited = originalMarkEdited;
-                }, 2000);
+                }, restoreDelay);
             }
         }
         
@@ -1507,10 +1543,11 @@
                 // Appliquer le mode visualisation
                 applyViewMode();
                 
-                // Réactiver les sauvegardes après un délai
+                // Réactiver les sauvegardes après un délai adaptatif selon l'appareil
+                const restoreDelay = isMobile() ? 4000 : 2000;
                 setTimeout(() => {
                     window.markEdited = originalMarkEdited;
-                }, 2000);
+                }, restoreDelay);
             }
         }
         
@@ -1914,6 +1951,10 @@
                         if (wasViewMode) {
                             isViewMode = true;
                             
+                            // Délai adaptatif selon l'appareil (plus long sur mobile)
+                            const delay = isMobile() ? 150 : 50;
+                            const restoreDelay = isMobile() ? 5000 : 3000;
+                            
                             // Appliquer le mode visualisation aux nouvelles cellules
                             setTimeout(() => {
                                 const editableCells = document.querySelectorAll('.editable-cell');
@@ -1932,13 +1973,13 @@
                                 if (fabAdd) fabAdd.style.display = 'none';
                                 if (mobileAddButton) mobileAddButton.style.display = 'none';
                                 
-                                // Réactiver les sauvegardes après un délai
+                                // Réactiver les sauvegardes après un délai adaptatif
                                 setTimeout(() => {
                                     if (originalMarkEdited) {
                                         window.markEdited = originalMarkEdited;
                                     }
-                                }, 3000);
-                            }, 50);
+                                }, restoreDelay);
+                            }, delay);
                         }
                         
                         rebindRowNumberCells();
