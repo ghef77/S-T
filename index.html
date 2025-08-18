@@ -5151,42 +5151,87 @@
             
             if (cellLocksSubscription) {
                 console.log('🔍 Unsubscribing from existing subscription');
-                cellLocksSubscription.unsubscribe();
+                try {
+                    cellLocksSubscription.unsubscribe();
+                } catch (e) {
+                    console.log('🔍 Error unsubscribing:', e);
+                }
             }
             
             try {
                 console.log('🔍 Setting up realtime subscription for cellLocks table...');
+                
+                // Create a unique channel name to avoid conflicts
+                const channelName = `cell-locks-${currentUser}-${Date.now()}`;
+                console.log('🔍 Using channel:', channelName);
+                
                 cellLocksSubscription = supabase
-                    .channel('cell-locks')
-                                    .on('postgres_changes', {
-                    event: '*',
-                    schema: 'public',
-                    table: 'celllocks'
-                }, (payload) => {
-                        console.log('🔔 Cell lock change:', payload);
+                    .channel(channelName)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'celllocks'
+                    }, (payload) => {
+                        console.log('🔔 Cell lock change received:', payload);
                         
                         if (payload.eventType === 'INSERT') {
                             const lock = payload.new;
+                            console.log('🔒 New lock detected:', lock);
+                            
                             if (lock.user_id !== currentUser) {
+                                console.log('🔒 Lock from other user, applying red border...');
                                 const cell = findCellById(lock.cell_id);
                                 if (cell) {
                                     applyLockToCell(cell, lock.user_id, lock.locked_at);
+                                    console.log('✅ Red border applied to cell:', lock.cell_id);
+                                } else {
+                                    console.log('⚠️ Cell not found for lock:', lock.cell_id);
                                 }
+                            } else {
+                                console.log('🔒 Lock from current user, skipping...');
                             }
                         } else if (payload.eventType === 'DELETE') {
                             const lock = payload.old;
+                            console.log('🔓 Lock removed:', lock);
+                            
                             const cell = findCellById(lock.cell_id);
                             if (cell) {
                                 removeLockFromCell(cell);
+                                console.log('✅ Lock removed from cell:', lock.cell_id);
+                            } else {
+                                console.log('⚠️ Cell not found for lock removal:', lock.cell_id);
                             }
                         }
                     })
-                    .subscribe();
+                    .on('presence', { event: 'sync' }, () => {
+                        console.log('🔍 Presence sync for cell locks');
+                    })
+                    .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+                        console.log('🔍 User joined cell locks channel:', key);
+                    })
+                    .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+                        console.log('🔍 User left cell locks channel:', key);
+                    })
+                    .subscribe((status) => {
+                        console.log('🔍 Cell locks subscription status:', status);
+                        
+                        if (status === 'SUBSCRIBED') {
+                            console.log('✅ Cell locks realtime subscription active');
+                        } else if (status === 'CHANNEL_ERROR') {
+                            console.error('❌ Cell locks channel error, retrying...');
+                            setTimeout(setupCellLocksRealtime, 2000);
+                        } else if (status === 'TIMED_OUT') {
+                            console.warn('⏰ Cell locks channel timed out, retrying...');
+                            setTimeout(setupCellLocksRealtime, 2000);
+                        }
+                    });
                 
-                console.log('✅ Cell locks realtime subscription setup');
+                console.log('✅ Cell locks realtime subscription setup complete');
                 
             } catch (error) {
                 console.error('❌ Error setting up realtime subscription:', error);
+                // Retry after 2 seconds
+                setTimeout(setupCellLocksRealtime, 2000);
             }
         }
         
@@ -5231,6 +5276,20 @@
                         }
                         
                         console.log(`🧹 Expired lock removed for cell ${cellId}`);
+                    }
+                }
+                
+                // Check if realtime subscription is still active
+                if (cellLocksSubscription && cellLocksSubscription.subscribe) {
+                    try {
+                        const status = await cellLocksSubscription.subscribe();
+                        if (status !== 'SUBSCRIBED') {
+                            console.log('🔄 Realtime subscription inactive, reconnecting...');
+                            setupCellLocksRealtime();
+                        }
+                    } catch (e) {
+                        console.log('🔄 Realtime subscription check failed, reconnecting...');
+                        setupCellLocksRealtime();
                     }
                 }
                 
@@ -5628,6 +5687,13 @@
         
         // Expose manual initialization function
         window.initCellLocking = enableTableEditing;
+        
+        // Expose manual refresh function for testing
+        window.refreshCellLocks = function() {
+            console.log('🔄 Manual refresh of cell locks requested...');
+            loadExistingLocks();
+            setupCellLocksRealtime();
+        };
 
         // Image functions removed - not needed for staff table
 
