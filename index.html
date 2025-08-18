@@ -177,6 +177,7 @@
         }
         
         #history-bar {
+            display: flex;
             transition: all 0.3s ease;
         }
         
@@ -209,6 +210,11 @@
             #snapshot-banner {
                 display: none !important;
             }
+        }
+        
+        /* Utility classes */
+        .hidden {
+            display: none !important;
         }
         
         /* Animation classes */
@@ -4753,10 +4759,12 @@
             console.log('🔄 Elements found:', { historyBar: !!historyBar, toggleIcon: !!toggleIcon });
             
             if (isHistoryBarVisible) {
+                historyBar.style.display = 'flex';
                 historyBar.classList.remove('hidden');
                 toggleIcon.className = 'fa-solid fa-chevron-up w-4 h-4';
                 console.log('✅ History bar shown, icon set to up');
             } else {
+                historyBar.style.display = 'none';
                 historyBar.classList.add('hidden');
                 toggleIcon.className = 'fa-solid fa-chevron-down w-4 h-4';
                 console.log('✅ History bar hidden, icon set to down');
