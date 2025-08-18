@@ -1881,23 +1881,13 @@
                 const hasOperations = operationHistory.length > 0;
                 undoButton.disabled = !hasOperations;
                 
-                // Update button text to show operation count and description
+                // Update button title with operation info (keep icon unchanged)
                 if (hasOperations) {
                     const lastOp = operationHistory[operationHistory.length - 1];
                     const description = getOperationDescription(lastOp);
                     undoButton.title = `Annuler: ${description} (${operationHistory.length} opération(s) disponible(s))`;
-                    
-                    // Update button text to show what will be undone
-                    const buttonText = undoButton.querySelector('span') || undoButton;
-                    if (buttonText.textContent !== '↶') {
-                        buttonText.textContent = `↶ (${operationHistory.length})`;
-                    }
                 } else {
                     undoButton.title = 'Aucune opération à annuler';
-                    const buttonText = undoButton.querySelector('span') || undoButton;
-                    if (buttonText.textContent !== '↶') {
-                        buttonText.textContent = '↶';
-                    }
                 }
             }
             if (redoButton) {
