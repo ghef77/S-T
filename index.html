@@ -933,7 +933,7 @@
         </div>
 
         <!-- Snapshot Banner -->
-        <div id="snapshot-banner" class="hidden lg:flex items-center gap-2 mb-2 px-3 py-2 bg-yellow-100 border border-yellow-300 rounded-md text-yellow-800 text-sm font-medium">
+        <div id="snapshot-banner" class="hidden items-center gap-2 mb-2 px-3 py-2 bg-yellow-100 border border-yellow-300 rounded-md text-yellow-800 text-sm font-medium">
             <i class="fa-solid fa-clock w-4 h-4"></i>
             <span id="snapshot-banner-text">Snapshot du</span>
         </div>
@@ -4789,17 +4789,15 @@
             const banner = document.getElementById('snapshot-banner');
             const bannerText = document.getElementById('snapshot-banner-text');
             
+            // Only show banner when actively viewing history (snapshot mode)
             if (snapshotMode === 'snapshot' && currentSnapshotDate) {
-                // Only show banner if viewing an old snapshot (not today's)
-                const today = new Date().toISOString().split('T')[0];
-                if (currentSnapshotDate < today) {
-                    banner.classList.remove('hidden');
-                    bannerText.textContent = `Snapshot du ${formatDateForDisplay(currentSnapshotDate)}`;
-                } else {
-                    banner.classList.add('hidden');
-                }
+                banner.classList.remove('hidden');
+                banner.classList.add('flex');
+                bannerText.textContent = `Snapshot du ${formatDateForDisplay(currentSnapshotDate)}`;
             } else {
+                // Always hidden in live mode or when no snapshot is selected
                 banner.classList.add('hidden');
+                banner.classList.remove('flex');
             }
         }
         
@@ -4950,6 +4948,9 @@
                 
                 // Initialize snapshot system
                 loadAvailableSnapshots();
+                
+                // Ensure snapshot banner is hidden by default
+                updateSnapshotBanner();
                 
                 // Appliquer le mode visualisation APRÈS la restauration des données
                 setTimeout(() => {
