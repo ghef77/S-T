@@ -1184,6 +1184,7 @@
         let lockedCells = new Map(); // Map of cell identifiers to user info
         let currentUser = 'user_' + Math.random().toString(36).substr(2, 9); // Unique user identifier
         let cellLockTimeout = 30000; // 30 seconds timeout for cell locks
+        let cellLocksSubscription = null; // Supabase realtime subscription for cell locks
 
         
         // Row color management
@@ -4806,6 +4807,12 @@
             // Start cleanup timer for expired locks
             setInterval(cleanupExpiredLocks, 10000); // Check every 10 seconds
             console.log('✅ Cleanup timer started');
+            
+            // Initialize collaborative cell locking system
+            loadExistingLocks().then(() => {
+                setupCellLocksRealtime();
+                console.log('✅ Collaborative cell locking system initialized');
+            });
         }
         
         // Format date for display
@@ -4867,7 +4874,7 @@
         }
         
         // Lock a cell for editing (Excel-like)
-        function lockCell(cell) {
+        async function lockCell(cell) {
             console.log('🔒 lockCell called for:', cell);
             
             if (!cell) {
@@ -4894,25 +4901,48 @@
                 }
             }
             
-            // Lock the cell
-            lockedCells.set(cellId, {
-                user: currentUser,
-                timestamp: now
-            });
-            
-            // Apply visual lock
-            cell.classList.add('cell-locked');
-            cell.setAttribute('data-locked-by', currentUser);
-            
-            console.log(`🔒 Cell ${cellId} locked by ${currentUser}`);
-            console.log('🔍 Cell classes after lock:', cell.classList.toString());
-            console.log('🔍 Cell data attributes:', cell.getAttribute('data-locked-by'));
-            
-            return true;
+            try {
+                // Try to lock cell in Supabase first
+                const { data, error } = await supabase
+                    .from('cellLocks')
+                    .upsert({
+                        cell_id: cellId,
+                        user_id: currentUser,
+                        locked_at: new Date().toISOString(),
+                        expires_at: new Date(now + cellLockTimeout).toISOString()
+                    }, {
+                        onConflict: 'cell_id'
+                    });
+                
+                if (error) {
+                    console.error('❌ Failed to lock cell in Supabase:', error);
+                    return false;
+                }
+                
+                // Lock the cell locally
+                lockedCells.set(cellId, {
+                    user: currentUser,
+                    timestamp: now
+                });
+                
+                // Apply visual lock
+                cell.classList.add('cell-locked');
+                cell.setAttribute('data-locked-by', currentUser);
+                
+                console.log(`🔒 Cell ${cellId} locked by ${currentUser} in Supabase`);
+                console.log('🔍 Cell classes after lock:', cell.classList.toString());
+                console.log('🔍 Cell data attributes:', cell.getAttribute('data-locked-by'));
+                
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Error locking cell:', error);
+                return false;
+            }
         }
         
         // Unlock a cell
-        function unlockCell(cell) {
+        async function unlockCell(cell) {
             if (!cell) return;
             
             const cellId = getCellIdentifier(cell);
@@ -4920,10 +4950,27 @@
             
             // Only unlock if we own the lock
             if (lockInfo && lockInfo.user === currentUser) {
-                lockedCells.delete(cellId);
-                cell.classList.remove('cell-locked');
-                cell.removeAttribute('data-locked-by');
-                console.log(`🔓 Cell ${cellId} unlocked by ${currentUser}`);
+                try {
+                    // Remove lock from Supabase
+                    const { error } = await supabase
+                        .from('cellLocks')
+                        .delete()
+                        .eq('cell_id', cellId)
+                        .eq('user_id', currentUser);
+                    
+                    if (error) {
+                        console.error('❌ Failed to unlock cell in Supabase:', error);
+                    }
+                    
+                    // Unlock locally
+                    lockedCells.delete(cellId);
+                    cell.classList.remove('cell-locked');
+                    cell.removeAttribute('data-locked-by');
+                    console.log(`🔓 Cell ${cellId} unlocked by ${currentUser} in Supabase`);
+                    
+                } catch (error) {
+                    console.error('❌ Error unlocking cell:', error);
+                }
             }
         }
         
@@ -4943,22 +4990,152 @@
             return lockInfo && lockInfo.user !== currentUser;
         }
         
-        // Clean up expired locks
-        function cleanupExpiredLocks() {
-            const now = Date.now();
-            for (const [cellId, lockInfo] of lockedCells.entries()) {
-                if ((now - lockInfo.timestamp) > cellLockTimeout) {
-                    lockedCells.delete(cellId);
-                    
-                    // Remove visual lock from DOM
-                    const cell = document.querySelector(`[data-locked-by="${lockInfo.user}"]`);
-                    if (cell) {
-                        cell.classList.remove('cell-locked');
-                        cell.removeAttribute('data-locked-by');
-                    }
-                    
-                    console.log(`🧹 Expired lock removed for cell ${cellId}`);
+        // Load existing locks from Supabase
+        async function loadExistingLocks() {
+            try {
+                const { data: locks, error } = await supabase
+                    .from('cellLocks')
+                    .select('*')
+                    .gte('expires_at', new Date().toISOString());
+                
+                if (error) {
+                    console.error('❌ Failed to load existing locks:', error);
+                    return;
                 }
+                
+                console.log('🔍 Loaded existing locks:', locks);
+                
+                // Apply locks to UI
+                locks.forEach(lock => {
+                    if (lock.user_id !== currentUser) {
+                        const cell = findCellById(lock.cell_id);
+                        if (cell) {
+                            applyLockToCell(cell, lock.user_id, lock.locked_at);
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error('❌ Error loading existing locks:', error);
+            }
+        }
+        
+        // Find cell by ID
+        function findCellById(cellId) {
+            const [rowIndex, cellIndex] = cellId.split('_').map(Number);
+            const tableBody = document.getElementById('table-body');
+            if (!tableBody) return null;
+            
+            const rows = tableBody.querySelectorAll('tr');
+            if (rowIndex >= 0 && rowIndex < rows.length) {
+                const cells = rows[rowIndex].querySelectorAll('td');
+                if (cellIndex >= 0 && cellIndex < cells.length) {
+                    return cells[cellIndex];
+                }
+            }
+            return null;
+        }
+        
+        // Apply lock to cell (for other users' locks)
+        function applyLockToCell(cell, userId, lockedAt) {
+            if (!cell) return;
+            
+            const cellId = getCellIdentifier(cell);
+            const lockTimestamp = new Date(lockedAt).getTime();
+            
+            // Add to local locks map
+            lockedCells.set(cellId, {
+                user: userId,
+                timestamp: lockTimestamp
+            });
+            
+            // Apply visual lock
+            cell.classList.add('cell-locked');
+            cell.setAttribute('data-locked-by', userId);
+            
+            console.log(`🔒 Applied lock from other user: ${userId} on cell ${cellId}`);
+        }
+        
+        // Setup realtime subscription for cell locks
+        function setupCellLocksRealtime() {
+            if (cellLocksSubscription) {
+                cellLocksSubscription.unsubscribe();
+            }
+            
+            cellLocksSubscription = supabase
+                .channel('cell-locks')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'cellLocks'
+                }, (payload) => {
+                    console.log('🔔 Cell lock change:', payload);
+                    
+                    if (payload.eventType === 'INSERT') {
+                        const lock = payload.new;
+                        if (lock.user_id !== currentUser) {
+                            const cell = findCellById(lock.cell_id);
+                            if (cell) {
+                                applyLockToCell(cell, lock.user_id, lock.locked_at);
+                            }
+                        }
+                    } else if (payload.eventType === 'DELETE') {
+                        const lock = payload.old;
+                        const cell = findCellById(lock.cell_id);
+                        if (cell) {
+                            removeLockFromCell(cell);
+                        }
+                    }
+                })
+                .subscribe();
+            
+            console.log('✅ Cell locks realtime subscription setup');
+        }
+        
+        // Remove lock from cell
+        function removeLockFromCell(cell) {
+            if (!cell) return;
+            
+            const cellId = getCellIdentifier(cell);
+            lockedCells.delete(cellId);
+            cell.classList.remove('cell-locked');
+            cell.removeAttribute('data-locked-by');
+            
+            console.log(`🔓 Lock removed from cell ${cellId}`);
+        }
+        
+        // Clean up expired locks
+        async function cleanupExpiredLocks() {
+            try {
+                // Clean up expired locks in Supabase
+                const { error } = await supabase
+                    .from('cellLocks')
+                    .delete()
+                    .lt('expires_at', new Date().toISOString());
+                
+                if (error) {
+                    console.error('❌ Failed to cleanup expired locks in Supabase:', error);
+                }
+                
+                // Clean up local expired locks
+                const now = Date.now();
+                for (const [cellId, lockInfo] of lockedCells.entries()) {
+                    if ((now - lockInfo.timestamp) > cellLockTimeout) {
+                        lockedCells.delete(cellId);
+                        
+                        // Remove visual lock from DOM
+                        const cell = document.querySelector(`[data-locked-by="${lockInfo.user}"]`);
+                        if (cell) {
+                            cell.classList.remove('cell-locked');
+                            cell.removeAttribute('data-locked-by');
+                        }
+                        
+                        console.log(`🧹 Expired lock removed for cell ${cellId}`);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('❌ Error cleaning up expired locks:', error);
             }
         }
         
