@@ -1,7 +1,7 @@
--- Cell Locks Table Setup for Collaborative Editing
--- This table stores information about which cells are currently locked by which users
+-- Cell Locks Table Setup for Collaborative Editing (Simplified Version)
+-- This script only creates the essential elements needed for cell locking
 
--- Create the cellLocks table
+-- Create the cellLocks table if it doesn't exist
 CREATE TABLE IF NOT EXISTS cellLocks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cell_id TEXT NOT NULL UNIQUE, -- Format: "rowIndex_cellIndex"
@@ -11,48 +11,53 @@ CREATE TABLE IF NOT EXISTS cellLocks (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_cell_locks_cell_id ON cellLocks(cell_id);
-CREATE INDEX IF NOT EXISTS idx_cell_locks_user_id ON cellLocks(user_id);
-CREATE INDEX IF NOT EXISTS idx_cell_locks_expires_at ON cellLocks(expires_at);
-CREATE INDEX IF NOT EXISTS idx_cell_locks_locked_at ON cellLocks(locked_at);
+-- Create indexes for better performance (only if they don't exist)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_cell_locks_cell_id') THEN
+        CREATE INDEX idx_cell_locks_cell_id ON cellLocks(cell_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_cell_locks_user_id') THEN
+        CREATE INDEX idx_cell_locks_user_id ON cellLocks(user_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_cell_locks_expires_at') THEN
+        CREATE INDEX idx_cell_locks_expires_at ON cellLocks(expires_at);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_cell_locks_locked_at') THEN
+        CREATE INDEX idx_cell_locks_locked_at ON cellLocks(locked_at);
+    END IF;
+END $$;
 
 -- Enable Row Level Security
 ALTER TABLE cellLocks ENABLE ROW LEVEL SECURITY;
 
--- Create policies (with IF NOT EXISTS equivalent)
--- Allow authenticated users to read all locks (to see what's locked)
+-- Create policies only if they don't exist
 DO $$ 
 BEGIN
+    -- Allow authenticated users to read all locks (to see what's locked)
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'celllocks' AND policyname = 'Allow authenticated users to read cell locks') THEN
         CREATE POLICY "Allow authenticated users to read cell locks" ON cellLocks
             FOR SELECT USING (auth.role() = 'authenticated');
     END IF;
-END $$;
-
--- Allow authenticated users to insert locks (to lock cells)
-DO $$ 
-BEGIN
+    
+    -- Allow authenticated users to insert locks (to lock cells)
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'celllocks' AND policyname = 'Allow authenticated users to insert cell locks') THEN
         CREATE POLICY "Allow authenticated users to insert cell locks" ON cellLocks
             FOR INSERT WITH CHECK (auth.role() = 'authenticated');
     END IF;
-END $$;
-
--- Allow users to delete their own locks (to unlock cells)
-DO $$ 
-BEGIN
+    
+    -- Allow users to delete their own locks (to unlock cells)
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'celllocks' AND policyname = 'Allow users to delete their own locks') THEN
         CREATE POLICY "Allow users to delete their own locks" ON cellLocks
             FOR DELETE USING (auth.role() = 'authenticated' AND user_id = auth.uid()::text);
     END IF;
-END $$;
-
--- Allow users to update their own locks (to extend lock time)
-DO $$ 
-BEGIN
+    
+    -- Allow users to update their own locks (to extend lock time)
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'celllocks' AND policyname = 'Allow users to update their own locks') THEN
-        CREATE POLICY "Allow authenticated users to update their own locks" ON cellLocks
+        CREATE POLICY "Allow users to update their own locks" ON cellLocks
             FOR UPDATE USING (auth.role() = 'authenticated' AND user_id = auth.uid()::text);
     END IF;
 END $$;
@@ -60,7 +65,7 @@ END $$;
 -- Grant permissions
 GRANT SELECT, INSERT, UPDATE, DELETE ON cellLocks TO authenticated;
 
--- Create a function to automatically clean up expired locks
+-- Create cleanup function
 CREATE OR REPLACE FUNCTION cleanup_expired_cell_locks()
 RETURNS void
 LANGUAGE plpgsql
@@ -74,11 +79,7 @@ $$;
 -- Grant execute permission on the cleanup function
 GRANT EXECUTE ON FUNCTION cleanup_expired_cell_locks() TO authenticated;
 
--- Create a cron job to automatically clean up expired locks every minute
--- Note: This requires the pg_cron extension to be enabled
--- SELECT cron.schedule('cleanup-expired-cell-locks', '* * * * *', 'SELECT cleanup_expired_cell_locks();');
-
--- Alternative: Create a trigger to clean up expired locks on insert/update
+-- Create trigger function
 CREATE OR REPLACE FUNCTION trigger_cleanup_expired_locks()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -101,12 +102,7 @@ BEGIN
     END IF;
 END $$;
 
--- Insert some test data (optional, for testing)
--- INSERT INTO cellLocks (cell_id, user_id, expires_at) VALUES 
---     ('0_1', 'test_user_1', now() + interval '5 minutes'),
---     ('1_2', 'test_user_2', now() + interval '3 minutes');
-
--- View to see current active locks
+-- Create view for active locks
 CREATE OR REPLACE VIEW active_cell_locks AS
 SELECT 
     cl.cell_id,
@@ -120,3 +116,6 @@ ORDER BY cl.locked_at DESC;
 
 -- Grant access to the view
 GRANT SELECT ON active_cell_locks TO authenticated;
+
+-- Test the setup
+SELECT 'Cell Locks table setup completed successfully!' as status;
