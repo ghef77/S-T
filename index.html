@@ -926,7 +926,10 @@
                 Aujourd'hui
             </button>
             
-
+            <!-- Toggle button for history bar -->
+            <button id="history-toggle" onclick="toggleHistoryBar()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-500 text-white p-2 rounded-lg hover:bg-gray-600 transition-colors ml-auto">
+                <i id="history-toggle-icon" class="fa-solid fa-chevron-up w-4 h-4"></i>
+            </button>
         </div>
 
         <!-- Snapshot Banner -->
@@ -1141,6 +1144,9 @@
         let currentSnapshotDate = null;
         let availableSnapshots = [];
         let currentSnapshotIndex = -1;
+        
+        // History bar visibility state (saved in localStorage)
+        let isHistoryBarVisible = localStorage.getItem('historyBarVisible') !== 'false'; // Default to true
 
         
         // Row color management
@@ -4497,6 +4503,9 @@
             const backBtn = document.getElementById('history-back');
             const nextBtn = document.getElementById('history-next');
             
+            // Only update button states if history bar is visible
+            if (!isHistoryBarVisible) return;
+            
             if (snapshotMode === 'live') {
                 // Enable back/next if snapshots exist
                 if (backBtn) backBtn.disabled = availableSnapshots.length === 0;
@@ -4718,6 +4727,31 @@
             });
         }
         
+        // Toggle history bar visibility
+        function toggleHistoryBar() {
+            isHistoryBarVisible = !isHistoryBarVisible;
+            
+            // Save preference to localStorage
+            localStorage.setItem('historyBarVisible', isHistoryBarVisible);
+            
+            // Update UI
+            updateHistoryBarVisibility();
+        }
+        
+        // Update history bar visibility based on saved preference
+        function updateHistoryBarVisibility() {
+            const historyBar = document.getElementById('history-bar');
+            const toggleIcon = document.getElementById('history-toggle-icon');
+            
+            if (isHistoryBarVisible) {
+                historyBar.classList.remove('hidden');
+                toggleIcon.className = 'fa-solid fa-chevron-up w-4 h-4';
+            } else {
+                historyBar.classList.add('hidden');
+                toggleIcon.className = 'fa-solid fa-chevron-down w-4 h-4';
+            }
+        }
+        
         // ===== END SNAPSHOT SYSTEM FUNCTIONS =====
 
         // Initialize application
@@ -4805,6 +4839,9 @@
                 
                 // Ensure snapshot banner is hidden by default
                 updateSnapshotBanner();
+                
+                // Apply saved history bar visibility preference
+                updateHistoryBarVisibility();
                 
                 // Appliquer le mode visualisation APRÈS la restauration des données
                 setTimeout(() => {
