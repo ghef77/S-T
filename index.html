@@ -1334,13 +1334,27 @@
 
         function toggleRowColor(tr) {
             const key = keyForRow(tr);
-            if (tr.dataset.rowColored === '1') {
+            
+            // Respecter le mode de peinture actuel
+            if (paintMode === 'color') {
+                // Mode Colorer : toujours colorer
+                setRowColor(tr, currentRowColor);
+                rowColorMap[key] = currentRowColor;
+            } else if (paintMode === 'clear') {
+                // Mode Effacer : toujours effacer
                 setRowColor(tr, null);
                 delete rowColorMap[key];
             } else {
-                setRowColor(tr, currentRowColor);
-                rowColorMap[key] = currentRowColor;
+                // Mode Auto : basculer selon l'état actuel
+                if (tr.dataset.rowColored === '1') {
+                    setRowColor(tr, null);
+                    delete rowColorMap[key];
+                } else {
+                    setRowColor(tr, currentRowColor);
+                    rowColorMap[key] = currentRowColor;
+                }
             }
+            
             persistRowColors();
         }
 
@@ -1360,7 +1374,16 @@
         }
         
         function startRowPaint(row) {
-            rowPaintAction = (row && row.dataset.rowColored === '1') ? 'clear' : 'color';
+            // Respecter le mode de peinture actuel
+            if (paintMode === 'color') {
+                rowPaintAction = 'color';
+            } else if (paintMode === 'clear') {
+                rowPaintAction = 'clear';
+            } else {
+                // Mode Auto : basculer selon l'état actuel
+                rowPaintAction = (row && row.dataset.rowColored === '1') ? 'clear' : 'color';
+            }
+            
             isRowPaintDragging = true;
             applyRowPaint(row);
         }
@@ -3720,8 +3743,11 @@
                 document.getElementById('login-container').classList.add('hidden');
                 document.getElementById('table-container').classList.remove('hidden');
                 
-                // Détecter et appliquer le mode visualisation AVANT la restauration des données
-                detectAndApplyViewMode();
+                // Détecter l'état du mode visualisation MAIS ne pas l'appliquer encore
+                const savedViewMode = localStorage.getItem('viewMode') === 'true';
+                if (savedViewMode !== isViewMode) {
+                    isViewMode = savedViewMode;
+                }
                 
                 restoreLocalDraft(); 
                 ensureDDNHeader();
@@ -3748,10 +3774,14 @@
                 startPeriodicSync(); 
                 scheduleAutosaveCountdown();
                 
-                // Réappliquer le mode visualisation après la restauration des données
+                // Appliquer le mode visualisation APRÈS la restauration des données
                 setTimeout(() => {
-                    applyViewModeAfterRestore();
-                }, 100);
+                    console.log('🎯 Applying view mode after data restoration...');
+                    // Mettre à jour l'apparence du bouton
+                    updateViewModeButton();
+                    // Appliquer le mode
+                    applyViewMode();
+                }, 150);
                 
                 // Adapter l'affichage après le chargement des données
                 setTimeout(adaptStatusDisplay, 100);
