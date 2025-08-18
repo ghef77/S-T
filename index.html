@@ -217,11 +217,23 @@
             display: none !important;
         }
         
-        /* Cell locking system - Excel-like cell editing */
+        /* Cell locking system - Excel-like cell editing with dual colors */
         .cell-locked {
-            border: 2px solid #dc2626 !important; /* Red border */
-            box-shadow: 0 0 8px rgba(220, 38, 38, 0.3) !important; /* Red glow */
+            border: 2px solid !important;
+            box-shadow: 0 0 8px !important;
             position: relative;
+        }
+        
+        /* Green border for current user's cells */
+        .cell-locked-by-me {
+            border-color: #10b981 !important; /* Green */
+            box-shadow-color: rgba(16, 185, 129, 0.6) !important;
+        }
+        
+        /* Red border for other users' cells */
+        .cell-locked-by-other {
+            border-color: #dc2626 !important; /* Red */
+            box-shadow-color: rgba(220, 38, 38, 0.6) !important;
         }
         
         .cell-locked::before {
@@ -229,8 +241,6 @@
             position: absolute;
             top: -8px;
             right: -8px;
-            background: #dc2626;
-            color: white;
             border-radius: 50%;
             width: 16px;
             height: 16px;
@@ -239,6 +249,17 @@
             justify-content: center;
             font-size: 8px;
             z-index: 10;
+            color: white;
+        }
+        
+        /* Green lock icon for current user */
+        .cell-locked-by-me::before {
+            background: #10b981;
+        }
+        
+        /* Red lock icon for other users */
+        .cell-locked-by-other::before {
+            background: #dc2626;
         }
         
         /* Animation classes */
@@ -4971,9 +4992,10 @@
                     timestamp: now
                 });
                 
-                // Apply visual lock
-                cell.classList.add('cell-locked');
-                cell.setAttribute('data-locked-by', currentUser);
+                        // Apply visual lock - green for current user, red for others
+        cell.classList.add('cell-locked');
+        cell.classList.add('cell-locked-by-me'); // Green border for current user
+        cell.setAttribute('data-locked-by', currentUser);
                 
                 console.log(`🔒 Cell ${cellId} locked by ${currentUser} in Supabase`);
                 console.log('🔍 Cell classes after lock:', cell.classList.toString());
@@ -5022,6 +5044,8 @@
                     // Unlock locally
                     lockedCells.delete(cellId);
                     cell.classList.remove('cell-locked');
+                    cell.classList.remove('cell-locked-by-me'); // Remove green border
+                    cell.classList.remove('cell-locked-by-other'); // Remove red border
                     cell.removeAttribute('data-locked-by');
                     console.log(`🔓 Cell ${cellId} unlocked by ${currentUser} in Supabase`);
                     
@@ -5112,11 +5136,12 @@
                 timestamp: lockTimestamp
             });
             
-            // Apply visual lock
+            // Apply visual lock - red border for other users
             cell.classList.add('cell-locked');
+            cell.classList.add('cell-locked-by-other'); // Red border for other users
             cell.setAttribute('data-locked-by', userId);
             
-            console.log(`🔒 Applied lock from other user: ${userId} on cell ${cellId}`);
+            console.log(`🔒 Applied lock from other user: ${userId} on cell ${cellId} (red border)`);
         }
         
         // Setup realtime subscription for cell locks
@@ -5172,6 +5197,8 @@
             const cellId = getCellIdentifier(cell);
             lockedCells.delete(cellId);
             cell.classList.remove('cell-locked');
+            cell.classList.remove('cell-locked-by-me'); // Remove green border
+            cell.classList.remove('cell-locked-by-other'); // Remove red border
             cell.removeAttribute('data-locked-by');
             
             console.log(`🔓 Lock removed from cell ${cellId}`);
@@ -5355,7 +5382,9 @@
                     classList: firstCell.classList.toString(),
                     contentEditable: firstCell.contentEditable,
                     hasFocusListener: firstCell.onfocus !== null,
-                    hasBlurListener: firstCell.onblur !== null
+                    hasBlurListener: firstCell.onblur !== null,
+                    lockStatus: firstCell.classList.contains('cell-locked-by-me') ? '🔒 My cell (GREEN)' : 
+                               firstCell.classList.contains('cell-locked-by-other') ? '🔒 Other user (RED)' : '🔓 Unlocked'
                 });
                 
                 // Check if event listeners are attached
