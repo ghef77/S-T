@@ -1263,13 +1263,22 @@
         
         // Operation types for better undo tracking
         const OPERATION_TYPES = {
-            CELL_EDIT: 'cell_edit',
-            ROW_ADD: 'row_add',
-            ROW_DELETE: 'row_delete',
-            MULTIPLE_ROWS_DELETE: 'multiple_rows_delete',
-            ROW_COLOR: 'row_color',
-            BULK_EDIT: 'bulk_edit'
+            CELL_EDIT: 'cell_edit',           // Modification du contenu d'une cellule
+            ROW_ADD: 'row_add',               // Ajout d'une ligne
+            ROW_DELETE: 'row_delete',         // Suppression d'une ligne
+            MULTIPLE_ROWS_DELETE: 'multiple_rows_delete', // Suppression de plusieurs lignes
+            ROW_COLOR: 'row_color',           // Coloriage de ligne (NON traqué pour undo/redo)
+            BULK_EDIT: 'bulk_edit'            // Modifications en lot
         };
+        
+        // Types d'opérations qui modifient le contenu du tableau (traquées pour undo/redo)
+        const CONTENT_MODIFICATION_TYPES = [
+            OPERATION_TYPES.CELL_EDIT,
+            OPERATION_TYPES.ROW_ADD,
+            OPERATION_TYPES.ROW_DELETE,
+            OPERATION_TYPES.MULTIPLE_ROWS_DELETE,
+            OPERATION_TYPES.BULK_EDIT
+        ];
         
         // Autosave configuration
         const AUTOSAVE_DELAY_MS = 3000; // 3 seconds after last edit when idle
@@ -1433,8 +1442,14 @@
             rowColorMap = {}; 
         }
 
-        // Enhanced undo system functions
+        // Enhanced undo system functions - only track content modifications
         function startOperation(type, data = {}) {
+            // Only track operations that modify table content
+            if (!CONTENT_MODIFICATION_TYPES.includes(type)) {
+                console.log(`⚠️ Operation type '${type}' not tracked for undo/redo (content modification only)`);
+                return;
+            }
+            
             // Clear any pending operations first
             if (currentOperation) {
                 console.log(`🔄 Completing previous operation: ${currentOperation.type}`);
@@ -1477,13 +1492,13 @@
                 rowColors: { ...rowColorMap }
             };
             
-            console.log(`🚀 Started operation: ${type}`, currentOperation);
+            console.log(`🚀 Started content modification operation: ${type}`, currentOperation);
         }
         
         function addToOperation(data) {
-            if (currentOperation) {
+            if (currentOperation && CONTENT_MODIFICATION_TYPES.includes(currentOperation.type)) {
                 Object.assign(currentOperation.data, data);
-                console.log(`📝 Added to operation:`, currentOperation);
+                console.log(`📝 Added to content modification operation:`, currentOperation);
             }
             // Only clear redo stack for structural changes, not for cell edits
             if (currentOperation && (currentOperation.type === OPERATION_TYPES.ROW_ADD || 
@@ -1497,6 +1512,13 @@
         
         function completeOperation() {
             if (currentOperation) {
+                // Only complete operations that modify table content
+                if (!CONTENT_MODIFICATION_TYPES.includes(currentOperation.type)) {
+                    console.log(`⚠️ Not completing operation '${currentOperation.type}' - content modification only`);
+                    currentOperation = null;
+                    return;
+                }
+                
                 // Add final table state
                 currentOperation.finalState = collectTableData();
                 currentOperation.finalRowColors = { ...rowColorMap };
@@ -1521,10 +1543,10 @@
                     for (let i = 0; i < toRemove; i++) {
                         operationHistory.shift();
                     }
-                    console.log(`🧹 Cleaned up ${toRemove} old operations, keeping exactly 10 operations for circular navigation`);
+                    console.log(`🧹 Cleaned up ${toRemove} old operations, keeping exactly 10 content modifications for circular navigation`);
                 }
                 
-                console.log(`✅ Completed operation: ${currentOperation.type}`, currentOperation);
+                console.log(`✅ Completed content modification operation: ${currentOperation.type}`, currentOperation);
                 
                 // Also save to regular history for backward compatibility
                 saveStateToHistory();
@@ -2155,27 +2177,31 @@
             const undoButton = document.getElementById('undo-button');
             const redoButton = document.getElementById('redo-button');
             if (undoButton) {
-                const hasOperations = operationHistory.length > 0;
+                // Only count content modification operations
+                const contentOperations = operationHistory.filter(op => CONTENT_MODIFICATION_TYPES.includes(op.type));
+                const hasOperations = contentOperations.length > 0;
                 undoButton.disabled = !hasOperations;
                 
                 // Update button title with operation info (keep icon unchanged)
                 if (hasOperations) {
-                    const lastOp = operationHistory[operationHistory.length - 1];
+                    const lastOp = contentOperations[contentOperations.length - 1];
                     const description = getOperationDescription(lastOp);
-                    undoButton.title = `Annuler: ${description} (${operationHistory.length} opération(s) disponible(s))`;
+                    undoButton.title = `Annuler: ${description} (${contentOperations.length} modification(s) de contenu disponible(s))`;
                 } else {
-                    undoButton.title = 'Aucune opération à annuler';
+                    undoButton.title = 'Aucune modification de contenu à annuler';
                 }
             }
             if (redoButton) {
-                const hasRedo = redoHistory.length > 0;
+                // Only count content modification operations
+                const contentRedoOperations = redoHistory.filter(op => CONTENT_MODIFICATION_TYPES.includes(op.type));
+                const hasRedo = contentRedoOperations.length > 0;
                 redoButton.disabled = !hasRedo;
                 if (hasRedo) {
-                    const lastRedo = redoHistory[redoHistory.length - 1];
+                    const lastRedo = contentRedoOperations[contentRedoOperations.length - 1];
                     const descRedo = getOperationDescription(lastRedo);
-                    redoButton.title = `Rétablir: ${descRedo} (${redoHistory.length} opération(s) disponible(s))`;
+                    redoButton.title = `Rétablir: ${descRedo} (${contentRedoOperations.length} modification(s) de contenu disponible(s))`;
                 } else {
-                    redoButton.title = 'Aucune opération à rétablir';
+                    redoButton.title = 'Aucune modification de contenu à rétablir';
                 }
             }
         }
@@ -2306,20 +2332,8 @@
         function applyRowPaint(row) {
             if (!row) return;
             
-            // Start operation tracking for row color changes
-            if (!currentOperation || currentOperation.type !== OPERATION_TYPES.ROW_COLOR) {
-                startOperation(OPERATION_TYPES.ROW_COLOR, {
-                    rowKey: keyForRow(row),
-                    action: rowPaintAction,
-                    color: currentRowColor
-                });
-            } else {
-                addToOperation({
-                    rowKey: keyForRow(row),
-                    action: rowPaintAction,
-                    color: currentRowColor
-                });
-            }
+            // Row color operations are NOT tracked for undo/redo (content modification only)
+            // No need to start, track, or complete these operations
             
             const key = keyForRow(row);
             if (rowPaintAction === 'color') {
@@ -2331,11 +2345,7 @@
             }
             persistRowColors();
             
-            // Complete operation after a short delay to batch multiple color changes
-            if (operationTimeout) clearTimeout(operationTimeout);
-            operationTimeout = setTimeout(() => {
-                completeOperation();
-            }, 500); // 500ms delay for color operations
+            // No operation timeout needed for non-tracked operations
         }
         
         function startRowPaint(row) {
@@ -2351,16 +2361,15 @@
             
             isRowPaintDragging = true;
             applyRowPaint(row);
+            
+            // Note: Row color operations are NOT tracked for undo/redo (content modification only)
         }
         
         function endRowPaint() { 
             isRowPaintDragging = false; 
             
-            // Complete any pending color operation
-            if (currentOperation && currentOperation.type === OPERATION_TYPES.ROW_COLOR) {
-                if (operationTimeout) clearTimeout(operationTimeout);
-                completeOperation();
-            }
+            // Row color operations are NOT tracked for undo/redo (content modification only)
+            // No need to complete or track these operations
         }
 
         // Paint mode management
