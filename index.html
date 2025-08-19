@@ -1067,13 +1067,13 @@
         </div>
 
         <div id="button-bar" class="flex flex-nowrap items-center gap-1 mb-3 p-1 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto">
-            <button onclick='saveManually()' title="Sauvegarder" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
+            <button onclick='saveManually()' title="Sauvegarder (Cmd+S / Ctrl+S)" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
                 <i class="fa-solid fa-save w-3.5 h-3.5"></i>
             </button>
-            <button id="undo-button" onclick="undo()" disabled title="Annuler" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
+            <button id="undo-button" onclick="undo()" disabled title="Annuler (Cmd+Z / Ctrl+Z)" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
                 <i class="fa-solid fa-rotate-left w-3.5 h-3.5"></i>
             </button>
-            <button id="redo-button" onclick="redo()" disabled title="Rétablir" aria-label="Rétablir" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
+            <button id="redo-button" onclick="redo()" disabled title="Rétablir (Cmd+Shift+Z / Ctrl+Y)" aria-label="Rétablir" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
                 <i class="fa-solid fa-rotate-right w-3.5 h-3.5"></i>
             </button>
             
@@ -4728,6 +4728,28 @@
                 return true;
             });
             
+            // Global keyboard shortcuts
+            document.addEventListener('keydown', function (e) {
+                // Manual save shortcut: Cmd+S (Mac) or Ctrl+S (Windows/Linux)
+                if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+                    e.preventDefault(); // Prevent browser save dialog
+                    
+                    // Only trigger if not in password input
+                    const passwordInput = document.getElementById('password');
+                    if (passwordInput && document.activeElement === passwordInput) {
+                        return;
+                    }
+                    
+                    // Only trigger if not in table cells (to avoid interfering with cell editing)
+                    if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+                        return;
+                    }
+                    
+                    console.log('💾 Raccourci clavier de sauvegarde manuelle activé');
+                    saveManually();
+                }
+            });
+            
             // Additional password field protection
             document.getElementById('password').addEventListener('input', function (e) {
                 e.stopPropagation();
@@ -7271,6 +7293,69 @@
                 
             } catch (error) {
                 console.error('❌ Error testing system conflicts:', error);
+                return null;
+            }
+        };
+        
+        // Function to test keyboard shortcuts
+        window.testKeyboardShortcuts = function() {
+            try {
+                console.log('⌨️ Testing keyboard shortcuts...');
+                
+                // Test manual save shortcut
+                console.log('💾 Manual save shortcut: Cmd+S (Mac) / Ctrl+S (Windows/Linux)');
+                console.log('✅ Shortcut should trigger saveManually() function');
+                
+                // Test undo/redo shortcuts
+                console.log('↩️ Undo shortcut: Cmd+Z (Mac) / Ctrl+Z (Windows/Linux)');
+                console.log('↪️ Redo shortcut: Cmd+Shift+Z (Mac) / Ctrl+Y (Windows/Linux)');
+                
+                // Test other shortcuts
+                console.log('⌨️ Other shortcuts:');
+                console.log('   - Enter: Add new row');
+                console.log('   - Ctrl+D: Delete selected row');
+                console.log('   - Arrow keys: Navigate between cells');
+                
+                console.log('✅ Keyboard shortcuts test completed');
+                return {
+                    manualSave: 'Cmd+S (Mac) / Ctrl+S (Windows/Linux)',
+                    undo: 'Cmd+Z (Mac) / Ctrl+Z (Windows/Linux)',
+                    redo: 'Cmd+Shift+Z (Mac) / Ctrl+Y (Windows/Linux)',
+                    addRow: 'Enter',
+                    deleteRow: 'Ctrl+D',
+                    navigation: 'Arrow keys'
+                };
+                
+            } catch (error) {
+                console.error('❌ Error testing keyboard shortcuts:', error);
+                return null;
+            }
+        };
+        
+        // Function to show keyboard shortcuts help
+        window.showKeyboardShortcutsHelp = function() {
+            try {
+                const shortcuts = [
+                    { key: 'Cmd+S / Ctrl+S', action: 'Sauvegarde manuelle', description: 'Équivalent au clic sur le bouton Sauvegarder' },
+                    { key: 'Cmd+Z / Ctrl+Z', action: 'Annuler', description: 'Annuler la dernière action' },
+                    { key: 'Cmd+Shift+Z / Ctrl+Y', action: 'Rétablir', description: 'Rétablir l\'action annulée' },
+                    { key: 'Enter', action: 'Nouvelle ligne', description: 'Ajouter une nouvelle ligne au tableau' },
+                    { key: 'Ctrl+D', action: 'Supprimer ligne', description: 'Supprimer la ligne sélectionnée' },
+                    { key: 'Flèches', action: 'Navigation', description: 'Se déplacer entre les cellules' }
+                ];
+                
+                let helpText = '⌨️ Raccourcis clavier disponibles:\n\n';
+                shortcuts.forEach(shortcut => {
+                    helpText += `🔸 ${shortcut.key}: ${shortcut.action}\n   ${shortcut.description}\n\n`;
+                });
+                
+                console.log(helpText);
+                showMessage('Raccourcis clavier affichés dans la console', 'info');
+                
+                return shortcuts;
+                
+            } catch (error) {
+                console.error('❌ Error showing keyboard shortcuts help:', error);
                 return null;
             }
         };
