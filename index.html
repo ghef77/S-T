@@ -1010,9 +1010,9 @@
         <!-- History Controls Row - Toggle button and history buttons on same level -->
         <div class="flex justify-between items-center mb-3">
             <!-- Toggle button container -->
-            <div class="w-6 h-6">
-                <button id="history-toggle-btn" onclick="toggleHistoryBarSimple()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white p-0.5 rounded hover:bg-gray-500 transition-colors w-6 h-6 flex items-center justify-center">
-                    <i id="history-toggle-icon" class="fa-solid fa-chevron-down w-3 h-3"></i>
+            <div class="w-3 h-3">
+                <button id="history-toggle-btn" onclick="toggleHistoryBarSimple()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white p-0 rounded hover:bg-gray-500 transition-colors w-3 h-3 flex items-center justify-center">
+                    <i id="history-toggle-icon" class="fa-solid fa-chevron-down w-2 h-2"></i>
                 </button>
             </div>
             
@@ -5663,7 +5663,7 @@
                 // Update button icon only
                 const toggleIcon = toggleBtn.querySelector('i');
                 if (toggleIcon) {
-                    toggleIcon.className = 'fa-solid fa-chevron-up w-3 h-3';
+                    toggleIcon.className = 'fa-solid fa-chevron-up w-2 h-2';
                 }
                 
                 console.log('✅ History bar container hidden');
@@ -5675,7 +5675,7 @@
                 // Update button icon only
                 const toggleIcon = toggleBtn.querySelector('i');
                 if (toggleIcon) {
-                    toggleIcon.className = 'fa-solid fa-chevron-down w-3 h-3';
+                    toggleIcon.className = 'fa-solid fa-chevron-down w-2 h-2';
                 }
                 
                 console.log('✅ History bar container shown');
