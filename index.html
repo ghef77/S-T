@@ -1261,24 +1261,110 @@
         let currentOperation = null; // Current operation being built
         let operationTimeout = null; // Timeout for operation completion
         
-        // Operation types for better undo tracking
+        // Excel-style operation types for undo/redo tracking
         const OPERATION_TYPES = {
-            CELL_EDIT: 'cell_edit',           // Modification du contenu d'une cellule
-            ROW_ADD: 'row_add',               // Ajout d'une ligne
-            ROW_DELETE: 'row_delete',         // Suppression d'une ligne
-            MULTIPLE_ROWS_DELETE: 'multiple_rows_delete', // Suppression de plusieurs lignes
-            ROW_COLOR: 'row_color',           // Coloriage de ligne (NON traqué pour undo/redo)
-            BULK_EDIT: 'bulk_edit'            // Modifications en lot
+            CELL_EDIT: 'cell_edit',           // Cell content modification
+            ROW_INSERT: 'row_insert',         // Row insertion
+            ROW_DELETE: 'row_delete',         // Row deletion (single or multiple)
+            BULK_EDIT: 'bulk_edit'            // Multiple cell edits
         };
         
-        // Types d'opérations qui modifient le contenu du tableau (traquées pour undo/redo)
+        // Only track real data changes (no colors, selections, or UI changes)
         const CONTENT_MODIFICATION_TYPES = [
             OPERATION_TYPES.CELL_EDIT,
-            OPERATION_TYPES.ROW_ADD,
+            OPERATION_TYPES.ROW_INSERT,
             OPERATION_TYPES.ROW_DELETE,
-            OPERATION_TYPES.MULTIPLE_ROWS_DELETE,
             OPERATION_TYPES.BULK_EDIT
         ];
+        
+        // Cell edit grouping configuration
+        const CELL_EDIT_GROUPING_DELAY = 1300; // 1.3 seconds to group typing edits
+        let cellEditTimeout = null;
+        let pendingCellEdit = null;
+        
+        // Excel-style cell edit tracking with grouping
+        function trackCellEdit(cell, oldValue, newValue, columnLabel) {
+            // Check if undo/redo is disabled
+            if (snapshotMode === 'snapshot' || isViewMode) {
+                return;
+            }
+            
+            const row = cell.closest('tr');
+            const rowKey = keyForRow(row);
+            
+            // Create cell edit data with stable addressing
+            const cellEditData = {
+                rowKey: rowKey,
+                columnLabel: columnLabel,
+                oldValue: oldValue,
+                newValue: newValue,
+                timestamp: Date.now()
+            };
+            
+            // Clear existing timeout
+            if (cellEditTimeout) {
+                clearTimeout(cellEditTimeout);
+            }
+            
+            // If we have a pending edit for the same cell, group them
+            if (pendingCellEdit && 
+                pendingCellEdit.rowKey === rowKey && 
+                pendingCellEdit.columnLabel === columnLabel) {
+                
+                // Update the pending edit
+                pendingCellEdit.newValue = newValue;
+                pendingCellEdit.timestamp = Date.now();
+                
+                // Start operation if not already started
+                if (!currentOperation || currentOperation.type !== OPERATION_TYPES.CELL_EDIT) {
+                    startOperation(OPERATION_TYPES.CELL_EDIT, {
+                        rowKey: rowKey,
+                        columnLabel: columnLabel,
+                        initialValue: pendingCellEdit.oldValue,
+                        currentValue: newValue
+                    });
+                } else {
+                    // Update existing operation
+                    currentOperation.data.currentValue = newValue;
+                    currentOperation.data.timestamp = Date.now();
+                }
+                
+                console.log(`📝 Grouped cell edit: ${columnLabel} in row ${rowKey} -> "${newValue}"`);
+            } else {
+                // New cell edit - start fresh operation
+                pendingCellEdit = cellEditData;
+                
+                startOperation(OPERATION_TYPES.CELL_EDIT, {
+                    rowKey: rowKey,
+                    columnLabel: columnLabel,
+                    initialValue: oldValue,
+                    currentValue: newValue
+                });
+                
+                console.log(`🚀 Started new cell edit: ${columnLabel} in row ${rowKey} -> "${newValue}"`);
+            }
+            
+            // Set timeout to complete operation after grouping delay
+            cellEditTimeout = setTimeout(() => {
+                if (currentOperation && currentOperation.type === OPERATION_TYPES.CELL_EDIT) {
+                    completeOperation();
+                    pendingCellEdit = null;
+                }
+            }, CELL_EDIT_GROUPING_DELAY);
+        }
+        
+        // Helper function to get column label for a cell
+        function getColumnLabelForCell(cell) {
+            const cellIndex = Array.from(cell.parentElement.cells).indexOf(cell);
+            if (cellIndex >= 2) { // Skip No and Delete columns
+                const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2);
+                const headerIndex = cellIndex - 2;
+                if (headers[headerIndex]) {
+                    return headers[headerIndex].textContent;
+                }
+            }
+            return 'Unknown Column';
+        }
         
         // Autosave configuration
         const AUTOSAVE_DELAY_MS = 3000; // 3 seconds after last edit when idle
@@ -1442,8 +1528,14 @@
             rowColorMap = {}; 
         }
 
-        // Enhanced undo system functions - only track content modifications
+        // Excel-style operation tracking - only real data changes
         function startOperation(type, data = {}) {
+            // Check if undo/redo is disabled
+            if (snapshotMode === 'snapshot' || isViewMode) {
+                console.log(`⚠️ Undo/redo disabled in ${snapshotMode === 'snapshot' ? 'snapshot' : 'view'} mode`);
+                return;
+            }
+            
             // Only track operations that modify table content
             if (!CONTENT_MODIFICATION_TYPES.includes(type)) {
                 console.log(`⚠️ Operation type '${type}' not tracked for undo/redo (content modification only)`);
@@ -1463,23 +1555,20 @@
             clearUndoRedoSyncTimeout();
             
             // For row operations, check if there are conflicting operations in history
-            if (type === OPERATION_TYPES.ROW_ADD || 
-                type === OPERATION_TYPES.ROW_DELETE || 
-                type === OPERATION_TYPES.MULTIPLE_ROWS_DELETE) {
+            if (type === OPERATION_TYPES.ROW_INSERT || 
+                type === OPERATION_TYPES.ROW_DELETE) {
                 
                 // Clean up any conflicting row operations in history
                 const conflictingOps = operationHistory.filter(op => 
-                    op.type === OPERATION_TYPES.ROW_ADD || 
-                    op.type === OPERATION_TYPES.ROW_DELETE || 
-                    op.type === OPERATION_TYPES.MULTIPLE_ROWS_DELETE
+                    op.type === OPERATION_TYPES.ROW_INSERT || 
+                    op.type === OPERATION_TYPES.ROW_DELETE
                 );
                 
                 if (conflictingOps.length > 0) {
                     console.log(`🧹 Cleaning up ${conflictingOps.length} conflicting row operations`);
                     operationHistory = operationHistory.filter(op => 
-                        op.type !== OPERATION_TYPES.ROW_ADD && 
-                        op.type !== OPERATION_TYPES.ROW_DELETE && 
-                        op.type !== OPERATION_TYPES.MULTIPLE_ROWS_DELETE
+                        op.type !== OPERATION_TYPES.ROW_INSERT && 
+                        op.type !== OPERATION_TYPES.ROW_DELETE
                     );
                 }
             }
@@ -1492,20 +1581,17 @@
                 rowColors: { ...rowColorMap }
             };
             
-            console.log(`🚀 Started content modification operation: ${type}`, currentOperation);
+            console.log(`🚀 Started Excel-style operation: ${type}`, currentOperation);
         }
         
         function addToOperation(data) {
             if (currentOperation && CONTENT_MODIFICATION_TYPES.includes(currentOperation.type)) {
                 Object.assign(currentOperation.data, data);
-                console.log(`📝 Added to content modification operation:`, currentOperation);
-            }
-            // Only clear redo stack for structural changes, not for cell edits
-            if (currentOperation && (currentOperation.type === OPERATION_TYPES.ROW_ADD || 
-                                   currentOperation.type === OPERATION_TYPES.ROW_DELETE || 
-                                   currentOperation.type === OPERATION_TYPES.MULTIPLE_ROWS_DELETE)) {
+                console.log(`📝 Added to Excel-style operation:`, currentOperation);
+                
+                // Excel-style: Clear redo stack on ANY modification
                 redoHistory = [];
-                console.log('🧹 Cleared redo stack for structural change in addToOperation');
+                console.log('🧹 Cleared redo stack for modification in addToOperation (Excel-style)');
             }
             persistHistoryStacks();
         }
@@ -1526,14 +1612,9 @@
                 // Add to operation history
                 operationHistory.push(currentOperation);
                 
-                // Only clear redo stack for operations that change table structure
-                // Keep redo stack for cell edits and color changes
-                if (currentOperation.type === OPERATION_TYPES.ROW_ADD || 
-                    currentOperation.type === OPERATION_TYPES.ROW_DELETE || 
-                    currentOperation.type === OPERATION_TYPES.MULTIPLE_ROWS_DELETE) {
-                    redoHistory = [];
-                    console.log('🧹 Cleared redo stack for structural change');
-                }
+                // Excel-style: Clear redo stack on ANY new user modification
+                redoHistory = [];
+                console.log('🧹 Cleared redo stack for new user modification (Excel-style)');
                 
                 persistHistoryStacks();
                 
@@ -1612,21 +1693,78 @@
                     // Don't restore if data is invalid - this prevents table clearing
                 }
                 
-                // Special handling for cell edits - restore specific cell values
+                // Special handling for cell edits - restore specific cell values using stable addressing
                 if (lastOperation.type === OPERATION_TYPES.CELL_EDIT && lastOperation.data) {
-                    const { rowIndex, columnLabel, initialValue } = lastOperation.data;
-                    if (rowIndex !== undefined && columnLabel) {
+                    const { rowKey, columnLabel, initialValue } = lastOperation.data;
+                    if (rowKey && columnLabel) {
                         const tbody = document.getElementById('table-body');
-                        const rows = Array.from(tbody.children);
-                        if (rows[rowIndex]) {
-                            const cells = Array.from(rows[rowIndex].querySelectorAll('td')).slice(2); // Skip No and Delete columns
+                        const targetRow = Array.from(tbody.children).find(tr => keyForRow(tr) === rowKey);
+                        
+                        if (targetRow) {
                             const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
                             const columnIndex = headers.indexOf(columnLabel);
+                            const cells = Array.from(targetRow.querySelectorAll('td')).slice(2); // Skip No and Delete columns
+                            
                             if (columnIndex >= 0 && cells[columnIndex]) {
                                 cells[columnIndex].textContent = initialValue;
-                                console.log(`🔄 Restored cell [${rowIndex}, ${columnLabel}] to: "${initialValue}"`);
+                                console.log(`🔄 Restored cell [${rowKey}, ${columnLabel}] to: "${initialValue}" using stable addressing`);
                             }
+                        } else {
+                            console.warn(`⚠️ Row with key ${rowKey} not found for undo`);
                         }
+                    }
+                }
+                
+                // Special handling for row deletions - restore rows in place
+                if (lastOperation.type === OPERATION_TYPES.ROW_DELETE && lastOperation.data) {
+                    const { deletedRows, rowData, rowNumbers } = lastOperation.data;
+                    console.log(`🔄 Restoring ${deletedRows} deleted row(s) in place`);
+                    
+                    if (rowData && rowData.length > 0) {
+                        const tbody = document.getElementById('table-body');
+                        const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
+                        
+                        rowData.forEach((rowDataItem, index) => {
+                            const newRow = document.createElement('tr');
+                            newRow.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+                            
+                            // Create row number cell
+                            const numCell = document.createElement('td');
+                            numCell.textContent = rowNumbers ? rowNumbers[index] : (tbody.children.length + 1);
+                            numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap cursor-pointer frozen-column frozen-1';
+                            numCell.setAttribute('data-label', 'No');
+                            newRow.appendChild(numCell);
+                            
+                            // Create delete/selection cell
+                            newRow.appendChild(createDeleteCell(newRow));
+                            
+                            // Create data cells
+                            headers.forEach(header => {
+                                const value = rowDataItem[header] || '';
+                                newRow.appendChild(createEditableCell(header, value));
+                            });
+                            
+                            // Insert at original position if possible
+                            if (rowNumbers && rowNumbers[index]) {
+                                const targetPosition = Math.min(rowNumbers[index] - 1, tbody.children.length);
+                                if (targetPosition >= 0) {
+                                    tbody.insertBefore(newRow, tbody.children[targetPosition]);
+                                } else {
+                                    tbody.appendChild(newRow);
+                                }
+                            } else {
+                                tbody.appendChild(newRow);
+                            }
+                        });
+                        
+                        // Renumber rows after restoration
+                        Array.from(tbody.children).forEach((tr, idx) => {
+                            const noCell = tr.querySelector('td:first-child');
+                            if (noCell) noCell.textContent = idx + 1;
+                        });
+                        
+                        updateRowCount();
+                        console.log(`✅ Restored ${deletedRows} row(s) in place`);
                     }
                 }
                 
@@ -1640,13 +1778,14 @@
                         const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
                         
                         lastOperation.data.edits.forEach(edit => {
-                            if (edit.rowIndex !== undefined && edit.columnLabel) {
-                                if (rows[edit.rowIndex]) {
-                                    const cells = Array.from(rows[edit.rowIndex].querySelectorAll('td')).slice(2);
+                            if (edit.rowKey && edit.columnLabel) {
+                                const targetRow = Array.from(tbody.children).find(tr => keyForRow(tr) === edit.rowKey);
+                                if (targetRow) {
+                                    const cells = Array.from(targetRow.querySelectorAll('td')).slice(2);
                                     const columnIndex = headers.indexOf(edit.columnLabel);
                                     if (columnIndex >= 0 && cells[columnIndex]) {
                                         cells[columnIndex].textContent = edit.initialValue;
-                                        console.log(`🔄 Restored cell [${edit.rowIndex}, ${edit.columnLabel}] to: "${edit.initialValue}"`);
+                                        console.log(`🔄 Restored cell [${edit.rowKey}, ${edit.columnLabel}] to: "${edit.initialValue}"`);
                                     }
                                 }
                             }
@@ -1746,20 +1885,50 @@
                     // Don't restore if data is invalid - this prevents table clearing
                 }
                 
-                // Special handling for cell edits - restore final cell values
+                // Special handling for cell edits - restore final cell values using stable addressing
                 if (op.type === OPERATION_TYPES.CELL_EDIT && op.data) {
-                    const { rowIndex, columnLabel, currentValue } = op.data;
-                    if (rowIndex !== undefined && columnLabel && currentValue) {
+                    const { rowKey, columnLabel, currentValue } = op.data;
+                    if (rowKey && columnLabel && currentValue) {
                         const tbody = document.getElementById('table-body');
-                        const rows = Array.from(tbody.children);
-                        if (rows[rowIndex]) {
-                            const cells = Array.from(rows[rowIndex].querySelectorAll('td')).slice(2); // Skip No and Delete columns
+                        const targetRow = Array.from(tbody.children).find(tr => keyForRow(tr) === rowKey);
+                        
+                        if (targetRow) {
                             const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
                             const columnIndex = headers.indexOf(columnLabel);
+                            const cells = Array.from(targetRow.querySelectorAll('td')).slice(2); // Skip No and Delete columns
+                            
                             if (columnIndex >= 0 && cells[columnIndex]) {
                                 cells[columnIndex].textContent = currentValue;
-                                console.log(`⏩ Restored cell [${rowIndex}, ${columnLabel}] to: "${currentValue}"`);
+                                console.log(`⏩ Restored cell [${rowKey}, ${columnLabel}] to: "${currentValue}" using stable addressing`);
                             }
+                        } else {
+                            console.warn(`⚠️ Row with key ${rowKey} not found for redo`);
+                        }
+                    }
+                }
+                
+                // Special handling for row deletions - re-delete rows
+                if (op.type === OPERATION_TYPES.ROW_DELETE && op.data) {
+                    const { deletedRows, rowKeys } = op.data;
+                    console.log(`⏩ Re-deleting ${deletedRows} row(s)`);
+                    
+                    if (rowKeys && rowKeys.length > 0) {
+                        const tbody = document.getElementById('table-body');
+                        const rowsToDelete = Array.from(tbody.children).filter(tr => 
+                            rowKeys.includes(keyForRow(tr))
+                        );
+                        
+                        if (rowsToDelete.length > 0) {
+                            rowsToDelete.forEach(row => row.remove());
+                            
+                            // Renumber remaining rows
+                            Array.from(tbody.children).forEach((tr, idx) => {
+                                const noCell = tr.querySelector('td:first-child');
+                                if (noCell) noCell.textContent = idx + 1;
+                            });
+                            
+                            updateRowCount();
+                            console.log(`✅ Re-deleted ${rowsToDelete.length} row(s)`);
                         }
                     }
                 }
@@ -1774,13 +1943,14 @@
                         const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
                         
                         op.data.edits.forEach(edit => {
-                            if (edit.rowIndex !== undefined && edit.columnLabel) {
-                                if (rows[edit.rowIndex]) {
-                                    const cells = Array.from(rows[edit.rowIndex].querySelectorAll('td')).slice(2);
+                            if (edit.rowKey && edit.columnLabel) {
+                                const targetRow = Array.from(tbody.children).find(tr => keyForRow(tr) === edit.rowKey);
+                                if (targetRow) {
+                                    const cells = Array.from(targetRow.querySelectorAll('td')).slice(2);
                                     const columnIndex = headers.indexOf(edit.columnLabel);
                                     if (columnIndex >= 0 && cells[columnIndex]) {
                                         cells[columnIndex].textContent = edit.currentValue;
-                                        console.log(`⏩ Restored cell [${edit.rowIndex}, ${edit.columnLabel}] to: "${edit.currentValue}"`);
+                                        console.log(`⏩ Restored cell [${edit.rowKey}, ${edit.columnLabel}] to: "${edit.currentValue}"`);
                                     }
                                 }
                             }
@@ -1838,18 +2008,16 @@
         function getOperationDescription(operation) {
             switch (operation.type) {
                 case OPERATION_TYPES.CELL_EDIT:
-                    const cellInfo = operation.data.columnLabel || operation.data.cellLabel || 'cellule';
-                    const rowInfo = operation.data.rowIndex !== undefined ? `ligne ${operation.data.rowIndex + 1}` : '';
+                    const cellInfo = operation.data.columnLabel || 'cellule';
+                    const rowInfo = operation.data.rowKey ? `ligne ${operation.data.rowKey}` : '';
                     return `Modification: ${cellInfo}${rowInfo ? ` (${rowInfo})` : ''}`;
-                case OPERATION_TYPES.ROW_ADD:
-                    return 'Ajout de ligne';
+                case OPERATION_TYPES.ROW_INSERT:
+                    return 'Insertion de ligne';
                 case OPERATION_TYPES.ROW_DELETE:
+                    if (operation.data.deletedRows && operation.data.deletedRows > 1) {
+                        return `Suppression de ${operation.data.deletedRows} ligne(s)`;
+                    }
                     return 'Suppression de ligne';
-                case OPERATION_TYPES.MULTIPLE_ROWS_DELETE:
-                    return `Suppression de ${operation.data.deletedRows} ligne(s)`;
-                case OPERATION_TYPES.ROW_COLOR:
-                    const action = operation.data.action === 'color' ? 'Coloriage' : 'Décoloriage';
-                    return `${action} de ligne(s)`;
                 case OPERATION_TYPES.BULK_EDIT:
                     return 'Modifications en lot';
                 default:
@@ -3944,7 +4112,7 @@
             }
             
             // Start operation tracking for row addition
-            startOperation(OPERATION_TYPES.ROW_ADD, {
+            startOperation(OPERATION_TYPES.ROW_INSERT, {
                 newRowKey: Date.now() + Math.random()
             });
             
@@ -4066,9 +4234,8 @@
                 return;
             }
             
-            // Start operation tracking for deletion
-            const operationType = rows.length === 1 ? OPERATION_TYPES.ROW_DELETE : OPERATION_TYPES.MULTIPLE_ROWS_DELETE;
-            startOperation(operationType, {
+            // Start operation tracking for deletion (Excel-style: single operation for multiple rows)
+            startOperation(OPERATION_TYPES.ROW_DELETE, {
                 deletedRows: rows.length,
                 rowKeys: rows.map(r => r.dataset.key).filter(Boolean),
                 rowData: rows.map(r => {
@@ -4077,11 +4244,15 @@
                     const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
                     cells.forEach((cell, i) => {
                         if (headers[i]) {
-                            rowData[headers[i]] = cell.textContent;
+                            rowData[headers[i]] = rowData[headers[i]] = cell.textContent;
                         }
                     });
                     return rowData;
-                })
+                }),
+                rowNumbers: rows.map(r => {
+                    const noCell = r.querySelector('td:first-child');
+                    return noCell ? parseInt(noCell.textContent) : null;
+                }).filter(n => !isNaN(n))
             });
             
             const keys = rows.map(r => r.dataset.key).filter(Boolean); 
@@ -4097,13 +4268,7 @@
                     log(`Supprimé ${keys.length} ligne(s) côté serveur.`, 'success'); 
                 } 
                 
-                // Store row numbers before deletion for better undo tracking
-                const rowNumbers = rows.map(r => {
-                    const noCell = r.querySelector('td:first-child');
-                    return noCell ? parseInt(noCell.textContent) : null;
-                }).filter(n => !isNaN(n));
-                
-                addToOperation({ rowNumbers });
+
                 
                 // Remove rows from DOM
                 rows.forEach(r => r.remove()); 
@@ -4869,6 +5034,27 @@
                     return;
                 }
                 
+                // Excel-style Undo/Redo shortcuts
+                if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+                    e.preventDefault();
+                    if (operationHistory.length > 0) {
+                        undo();
+                    }
+                    return;
+                }
+                
+                // Excel-style Redo shortcuts: Ctrl+Shift+Z or Ctrl+Y
+                if ((e.ctrlKey || e.metaKey) && (
+                    (e.shiftKey && (e.key === 'z' || e.key === 'Z')) || 
+                    (e.key === 'y' || e.key === 'Y')
+                )) {
+                    e.preventDefault();
+                    if (redoHistory.length > 0) {
+                        redo();
+                    }
+                    return;
+                }
+                
                 // Ctrl+D: Duplicate row
                 if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D') && inCell) {
                     e.preventDefault();
@@ -4906,7 +5092,17 @@
                         
                         Array.from(clone.cells).forEach((c, i) => {
                             if (i <= 1) return;
-                            c.addEventListener('input', () => { 
+                            c.addEventListener('input', (e) => { 
+                                const oldValue = c.dataset.originalValue || '';
+                                const newValue = c.textContent;
+                                const columnLabel = getColumnLabelForCell(c);
+                                
+                                // Track cell edit for undo/redo
+                                trackCellEdit(c, oldValue, newValue, columnLabel);
+                                
+                                // Update original value for next edit
+                                c.dataset.originalValue = newValue;
+                                
                                 saveStateToHistory(); 
                                 saveLocalDraft(); 
                                 markEdited(); 
@@ -6598,6 +6794,8 @@
         window.saveManually = saveManually;
         window.undo = undo;
         window.redo = redo;
+        window.trackCellEdit = trackCellEdit;
+        window.getColumnLabelForCell = getColumnLabelForCell;
         window.downloadExcel = downloadExcel;
         window.downloadPDF = downloadPDF;
         window.downloadImage = downloadImage;
