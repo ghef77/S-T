@@ -3475,90 +3475,13 @@
 
         // Autosave functionality with enhanced undo/redo conflict prevention
         function scheduleAutosaveCountdown() {
-            try { 
-                if (autosaveTicker) clearInterval(autosaveTicker); 
-            } catch(_) {}
-            
-            lastShownCountdown = null;
-            autosaveTicker = setInterval(() => {
-                try {
-                    if (isSyncing) return;
-                    
-                    const modal = document.getElementById('confirmation-modal');
-                    if (modal && !modal.classList.contains('hidden')) return;
-                    
-                    if (isTyping) { 
-                        lastShownCountdown = null; 
-                        return; 
-                    }
-                    
-                    // ENHANCED: Block autosave during undo/redo operations
-                    if (isPerformingUndoRedo) {
-                        lastShownCountdown = null;
-                        return;
-                    }
-                    
-                    // ENHANCED: Block autosave during undo/redo sync windows
-                    if (Date.now() < suppressAutosaveUntil) {
-                        lastShownCountdown = null;
-                        return;
-                    }
-                    
-                    const remaining = AUTOSAVE_DELAY_MS - (Date.now() - lastEditAt);
-                    if (remaining > 0) {
-                        const secs = Math.ceil(remaining / 1000);
-                        if (secs !== lastShownCountdown) {
-                            showMessage(`Sauvegarde dans ${secs} s`, 'info');
-                            lastShownCountdown = secs;
-                        }
-                    } else {
-                        if (lastShownCountdown !== 0) {
-                            showMessage('Sauvegarde imminente…', 'info');
-                            lastShownCountdown = 0;
-                        }
-                    }
-                } catch(_) {}
-            }, 250);
+            // Use enhanced version for better conflict prevention
+            scheduleAutosaveCountdownEnhanced();
         }
         
         function startPeriodicSync() {
-            if (window._syncTimer) clearInterval(window._syncTimer);
-            
-            window._syncTimer = setInterval(async () => {
-                if (isTyping) return;
-                if (Date.now() - lastEditAt < AUTOSAVE_DELAY_MS) return;
-                
-                const modal = document.getElementById('confirmation-modal');
-                if (modal && !modal.classList.contains('hidden')) return;
-                if (isSyncing) return;
-                if (!isDirty) return;
-                
-                // ENHANCED: Block autosave during undo/redo operations
-                if (isPerformingUndoRedo) {
-                    log('🚫 Autosave BLOCKED - undo/redo in progress');
-                    return;
-                }
-                
-                // ENHANCED: Block autosave during undo/redo sync windows
-                if (Date.now() < suppressAutosaveUntil) {
-                    log('🚫 Autosave suppressed due to undo/redo sync window');
-                    return;
-                }
-                
-                // ENHANCED: Block autosave if there are pending undo/redo operations
-                if (currentOperation && currentOperation.type) {
-                    log('🚫 Autosave BLOCKED - pending undo/redo operation');
-                    return;
-                }
-                
-                try {
-                    isSyncing = true;
-                    log('Auto-sync (500ms poll, 3s idle) vers Supabase…');
-                    await syncToMaster(false);
-                } finally {
-                    isSyncing = false;
-                }
-            }, 500);
+            // Use enhanced version for better conflict prevention
+            startPeriodicSyncEnhanced();
         }
 
         // ===== Helpers & constants (DRY) =====
@@ -7121,8 +7044,236 @@
             }
         }
         
+        // Enhanced conflict detection and prevention system
+        function detectAndPreventConflicts() {
+            const conflicts = [];
+            
+            // Check for autosave conflicts
+            if (autosaveTicker && isPerformingUndoRedo) {
+                conflicts.push('AUTOSAVE_UNDO_REDO_CONFLICT');
+            }
+            
+            // Check for realtime conflicts
+            if (realtimeSubscription && isPerformingUndoRedo) {
+                conflicts.push('REALTIME_UNDO_REDO_CONFLICT');
+            }
+            
+            // Check for sync conflicts
+            if (window._syncTimer && isPerformingUndoRedo) {
+                conflicts.push('SYNC_UNDO_REDO_CONFLICT');
+            }
+            
+            // Check for timer conflicts
+            if (autosaveTicker && window._syncTimer) {
+                const autosaveInterval = 250; // 250ms from scheduleAutosaveCountdown
+                const syncInterval = 500; // 500ms from startPeriodicSync
+                
+                if (syncInterval % autosaveInterval === 0) {
+                    conflicts.push('TIMER_INTERVAL_CONFLICT');
+                }
+            }
+            
+            return conflicts;
+        }
+        
+        // Enhanced autosave with conflict prevention
+        function scheduleAutosaveCountdownEnhanced() {
+            try {
+                // Cleanup existing timer
+                if (autosaveTicker) {
+                    clearInterval(autosaveTicker);
+                    autosaveTicker = null;
+                }
+                
+                // Check for conflicts before starting
+                const conflicts = detectAndPreventConflicts();
+                if (conflicts.length > 0) {
+                    console.warn('⚠️ Autosave conflicts detected:', conflicts);
+                    return;
+                }
+                
+                lastShownCountdown = null;
+                autosaveTicker = setInterval(() => {
+                    try {
+                        // Enhanced conflict prevention
+                        if (isSyncing || isPerformingUndoRedo) {
+                            lastShownCountdown = null;
+                            return;
+                        }
+                        
+                        const modal = document.getElementById('confirmation-modal');
+                        if (modal && !modal.classList.contains('hidden')) {
+                            lastShownCountdown = null;
+                            return;
+                        }
+                        
+                        if (isTyping) {
+                            lastShownCountdown = null;
+                            return;
+                        }
+                        
+                        // Check suppression windows
+                        if (Date.now() < suppressAutosaveUntil) {
+                            lastShownCountdown = null;
+                            return;
+                        }
+                        
+                        // Check pending operations
+                        if (currentOperation && currentOperation.type) {
+                            lastShownCountdown = null;
+                            return;
+                        }
+                        
+                        const remaining = AUTOSAVE_DELAY_MS - (Date.now() - lastEditAt);
+                        if (remaining > 0) {
+                            const secs = Math.ceil(remaining / 1000);
+                            if (secs !== lastShownCountdown) {
+                                showMessage(`Sauvegarde dans ${secs} s`, 'info');
+                                lastShownCountdown = secs;
+                            }
+                        } else {
+                            if (lastShownCountdown !== 0) {
+                                showMessage('Sauvegarde imminente…', 'info');
+                                lastShownCountdown = 0;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('❌ Error in autosave ticker:', error);
+                    }
+                }, 250);
+                
+                console.log('✅ Enhanced autosave scheduled successfully');
+            } catch (error) {
+                console.error('❌ Error scheduling enhanced autosave:', error);
+            }
+        }
+        
+        // Enhanced periodic sync with conflict prevention
+        function startPeriodicSyncEnhanced() {
+            try {
+                // Cleanup existing timer
+                if (window._syncTimer) {
+                    clearInterval(window._syncTimer);
+                    window._syncTimer = null;
+                }
+                
+                // Check for conflicts before starting
+                const conflicts = detectAndPreventConflicts();
+                if (conflicts.length > 0) {
+                    console.warn('⚠️ Sync conflicts detected:', conflicts);
+                    return;
+                }
+                
+                window._syncTimer = setInterval(async () => {
+                    try {
+                        // Enhanced conflict prevention
+                        if (isTyping || isPerformingUndoRedo) {
+                            return;
+                        }
+                        
+                        if (Date.now() - lastEditAt < AUTOSAVE_DELAY_MS) {
+                            return;
+                        }
+                        
+                        const modal = document.getElementById('confirmation-modal');
+                        if (modal && !modal.classList.contains('hidden')) {
+                            return;
+                        }
+                        
+                        if (isSyncing || !isDirty) {
+                            return;
+                        }
+                        
+                        // Check suppression windows
+                        if (Date.now() < suppressAutosaveUntil) {
+                            return;
+                        }
+                        
+                        // Check pending operations
+                        if (currentOperation && currentOperation.type) {
+                            return;
+                        }
+                        
+                        isSyncing = true;
+                        log('Auto-sync (500ms poll, 3s idle) vers Supabase…');
+                        await syncToMaster(false);
+                    } catch (error) {
+                        console.error('❌ Error in periodic sync:', error);
+                    } finally {
+                        isSyncing = false;
+                    }
+                }, 500);
+                
+                console.log('✅ Enhanced periodic sync started successfully');
+            } catch (error) {
+                console.error('❌ Error starting enhanced periodic sync:', error);
+            }
+        }
+        
         // Expose timer cleanup function globally
         window.cleanupAllTimers = cleanupAllTimers;
+        
+        // Expose conflict detection and prevention functions globally
+        window.detectAndPreventConflicts = detectAndPreventConflicts;
+        window.scheduleAutosaveCountdownEnhanced = scheduleAutosaveCountdownEnhanced;
+        window.startPeriodicSyncEnhanced = startPeriodicSyncEnhanced;
+        
+        // Function to test and report all potential conflicts
+        window.testSystemConflicts = function() {
+            try {
+                console.log('🔍 Testing system for potential conflicts...');
+                
+                // Test timer conflicts
+                const timerConflicts = detectAndPreventConflicts();
+                if (timerConflicts.length > 0) {
+                    console.warn('⚠️ Timer conflicts detected:', timerConflicts);
+                } else {
+                    console.log('✅ No timer conflicts detected');
+                }
+                
+                // Test autosave state
+                console.log('📊 Autosave state:', {
+                    autosaveTicker: !!autosaveTicker,
+                    isPerformingUndoRedo,
+                    suppressAutosaveUntil: Date.now() < suppressAutosaveUntil,
+                    currentOperation: !!currentOperation
+                });
+                
+                // Test sync state
+                console.log('📊 Sync state:', {
+                    syncTimer: !!window._syncTimer,
+                    isSyncing,
+                    isDirty,
+                    lastEditAt: new Date(lastEditAt).toLocaleTimeString()
+                });
+                
+                // Test realtime state
+                console.log('📊 Realtime state:', {
+                    realtimeSubscription: !!realtimeSubscription,
+                    suppressRealtimeUntil: Date.now() < suppressRealtimeUntil
+                });
+                
+                // Test undo/redo state
+                console.log('📊 Undo/Redo state:', {
+                    operationHistoryLength: operationHistory.length,
+                    redoHistoryLength: redoHistory.length,
+                    isPerformingUndoRedo
+                });
+                
+                console.log('✅ System conflict test completed');
+                return {
+                    timerConflicts,
+                    autosaveState: { autosaveTicker: !!autosaveTicker, isPerformingUndoRedo, suppressAutosaveUntil: Date.now() < suppressAutosaveUntil, currentOperation: !!currentOperation },
+                    syncState: { syncTimer: !!window._syncTimer, isSyncing, isDirty, lastEditAt: new Date(lastEditAt).toLocaleTimeString() },
+                    realtimeState: { realtimeSubscription: !!realtimeSubscription, suppressRealtimeUntil: Date.now() < suppressRealtimeUntil },
+                    undoRedoState: { operationHistoryLength: operationHistory.length, redoHistoryLength: redoHistory.length, isPerformingUndoRedo }
+                };
+                
+            } catch (error) {
+                console.error('❌ Error testing system conflicts:', error);
+                return null;
+            }
+        };
         
         // Fonction utilitaire pour afficher les informations détaillées du stockage
         window.showStorageInfo = async function() {
