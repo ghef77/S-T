@@ -217,51 +217,6 @@
             display: none !important;
         }
         
-        /* Cell locking system - Excel-like cell editing with dual colors */
-        .cell-locked {
-            border: 2px solid !important;
-            box-shadow: 0 0 8px !important;
-            position: relative;
-        }
-        
-        /* Green border for current user's cells */
-        .cell-locked-by-me {
-            border-color: #10b981 !important; /* Green */
-            box-shadow-color: rgba(16, 185, 129, 0.6) !important;
-        }
-        
-        /* Red border for other users' cells */
-        .cell-locked-by-other {
-            border-color: #dc2626 !important; /* Red */
-            box-shadow-color: rgba(220, 38, 38, 0.6) !important;
-        }
-        
-        .cell-locked::before {
-            content: "🔒";
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 8px;
-            z-index: 10;
-            color: white;
-        }
-        
-        /* No lock icon for current user (green cells) */
-        .cell-locked-by-me::before {
-            display: none;
-        }
-        
-        /* Red lock icon for other users */
-        .cell-locked-by-other::before {
-            background: #dc2626;
-        }
-        
         /* Animation classes */
         .sync-pending-animation { 
             animation: pulse 1.5s infinite; 
@@ -958,12 +913,9 @@
         <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
 
         <!-- Toggle button for history bar (always visible) -->
-        <div class="flex justify-end mb-0.5 gap-2">
-            <button id="test-cell-lock" onclick="testCellLocking()" title="Test du système de verrouillage" aria-label="Test verrouillage" class="bg-blue-400 text-white px-0.5 py-0 rounded hover:bg-blue-500 transition-colors text-xs">
-                🔒 Test
-            </button>
-            <button id="history-toggle" onclick="toggleHistoryBar()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white px-0.5 py-0 rounded hover:bg-gray-500 transition-colors text-xs">
-                <i id="history-toggle-icon" class="fa-solid fa-chevron-up w-2 h-2"></i>
+        <div class="flex justify-end mb-1">
+            <button id="history-toggle" onclick="toggleHistoryBar()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white px-1 py-0 rounded hover:bg-gray-500 transition-colors">
+                <i id="history-toggle-icon" class="fa-solid fa-chevron-up w-2.5 h-2.5"></i>
             </button>
         </div>
 
@@ -1203,12 +1155,6 @@
         
         // History bar visibility state (saved in localStorage)
         let isHistoryBarVisible = localStorage.getItem('historyBarVisible') !== 'false'; // Default to true
-        
-        // Cell locking system - Excel-like cell editing
-        let lockedCells = new Map(); // Map of cell identifiers to user info
-        let currentUser = 'user_' + Math.random().toString(36).substr(2, 9); // Unique user identifier
-        let cellLockTimeout = 30000; // 30 seconds timeout for cell locks
-        let cellLocksSubscription = null; // Supabase realtime subscription for cell locks
 
         
         // Row color management
@@ -2212,23 +2158,10 @@
                     cell.contentEditable = 'false';
                     cell.style.backgroundColor = '#f8f9fa';
                     cell.style.cursor = 'default';
-                    
-                    // Remove cell locking event listeners and unlock in view mode
-                    cell.removeEventListener('focus', handleCellFocus);
-                    cell.removeEventListener('blur', handleCellBlur);
-                    cell.removeEventListener('input', handleCellInput);
-                    cell.removeEventListener('keydown', handleCellKeydown);
-                    unlockCell(cell);
                 } else {
                     cell.contentEditable = 'true';
                     cell.style.backgroundColor = '';
                     cell.style.cursor = 'text';
-                    
-                    // Add cell locking event listeners when editing is enabled
-                    cell.addEventListener('focus', handleCellFocus);
-                    cell.addEventListener('blur', handleCellBlur);
-                    cell.addEventListener('input', handleCellInput);
-                    cell.addEventListener('keydown', handleCellKeydown);
                 }
             });
             
@@ -2272,13 +2205,6 @@
                     cell.contentEditable = 'false';
                     cell.style.backgroundColor = '#f8f9fa';
                     cell.style.cursor = 'default';
-                    
-                    // Remove cell locking event listeners and unlock in view mode
-                    cell.removeEventListener('focus', handleCellFocus);
-                    cell.removeEventListener('blur', handleCellBlur);
-                    cell.removeEventListener('input', handleCellInput);
-                    cell.removeEventListener('keydown', handleCellKeydown);
-                    unlockCell(cell);
                 });
             }
         }
@@ -2336,7 +2262,15 @@
         }
 
         // Focus management
+        let isInitialLoad = true; // Flag to prevent automatic capture on initial load
+        
         function captureSimplePos() {
+            // Skip capture during initial load to prevent overwriting user's intended position
+            if (isInitialLoad) {
+                log(`🚫 captureSimplePos SKIPPED - initial load in progress`);
+                return;
+            }
+            
             const active = document.activeElement;
             if (!(active && active.tagName === 'TD' && active.isContentEditable)) return;
             
@@ -2345,8 +2279,26 @@
             const rowIndex = Array.from(tbody.querySelectorAll('tr')).indexOf(rowEl);
             const cellIndex = Array.from(rowEl.cells).indexOf(active);
             
+            // DEBUG: Log detailed information about the cell being captured
+            if (active && rowEl) {
+                const cellLabel = active.getAttribute('data-label') || 'NO_LABEL';
+                const cellText = active.textContent.substring(0, 20) + '...';
+                const totalCells = rowEl.cells.length;
+                const totalRows = tbody.querySelectorAll('tr').length;
+                
+                log(`🔍 CAPTURE DEBUG: row=${rowIndex}/${totalRows}, cell=${cellIndex}/${totalCells}, label="${cellLabel}", text="${cellText}"`);
+            }
+            
             if (rowIndex >= 0 && cellIndex >= 0) {
                 lastCellPos = { rowIndex, cellIndex };
+                
+                // UNIFY: Also update lastFocusInfo to use the same position
+                const colLabel = active.getAttribute('data-label') || '';
+                const rowKey = rowEl ? rowEl.dataset.key || null : null;
+                const caret = getCaretOffsetWithin(active);
+                
+                lastFocusInfo = { rowKey, rowIndex, colLabel, caret };
+                log(`🔄 UNIFIED CAPTURE: Updated both lastCellPos and lastFocusInfo with same rowIndex=${rowIndex}`);
             }
             
             if (lastCellPos) { 
@@ -2355,6 +2307,7 @@
             
             try { 
                 localStorage.setItem('lastCellPos', JSON.stringify(lastCellPos)); 
+                localStorage.setItem('lastFocusInfo', JSON.stringify(lastFocusInfo)); 
             } catch(_) {}
         }
 
@@ -2515,6 +2468,12 @@
         }
 
         function captureFocusInfo() {
+            // Skip capture during initial load to prevent overwriting user's intended position
+            if (isInitialLoad) {
+                log(`🚫 captureFocusInfo SKIPPED - initial load in progress`);
+                return;
+            }
+            
             const active = document.activeElement;
             if (!(active && active.tagName === 'TD' && active.isContentEditable)) return;
             
@@ -2535,25 +2494,42 @@
         function focusCellFromInfo(info) {
             if (!info) return false;
             
+            log(`🔍 focusCellFromInfo: Looking for rowKey="${info.rowKey}", rowIndex=${info.rowIndex}, colLabel="${info.colLabel}"`);
+            
             const tbody = document.getElementById('table-body');
             let targetRow = null;
             
             if (info.rowKey) {
                 targetRow = Array.from(tbody.querySelectorAll('tr')).find(tr => tr.dataset.key === String(info.rowKey));
+                log(`🔍 focusCellFromInfo: Found row by key: ${!!targetRow}`);
             }
             
             if (!targetRow) {
                 const rows = tbody.querySelectorAll('tr');
                 targetRow = rows[info.rowIndex] || null;
+                log(`🔍 focusCellFromInfo: Found row by index: ${!!targetRow}`);
             }
             
-            if (!targetRow) return false;
+            if (!targetRow) {
+                log(`❌ focusCellFromInfo: No target row found`);
+                return false;
+            }
             
             const cells = Array.from(targetRow.querySelectorAll('td'));
-            const editableCells = cells.slice(2);
-            const cell = editableCells.find(td => (td.getAttribute('data-label') || '') === info.colLabel) || null;
+            log(`🔍 focusCellFromInfo: Row has ${cells.length} cells, looking for label "${info.colLabel}"`);
             
-            if (!cell) return false;
+            // Use absolute cell index like focusCellByPos, not sliced cells
+            const cell = cells.find(td => (td.getAttribute('data-label') || '') === info.colLabel) || null;
+            
+            if (!cell) {
+                log(`❌ focusCellFromInfo: No cell found with label "${info.colLabel}"`);
+                // Debug: show all available labels
+                const availableLabels = cells.map((td, i) => `${i}:"${td.getAttribute('data-label') || 'NO_LABEL'}"`).join(', ');
+                log(`🔍 Available labels: ${availableLabels}`);
+                return false;
+            }
+            
+            log(`✅ focusCellFromInfo: Found cell at index ${cells.indexOf(cell)} with label "${info.colLabel}"`);
             
             if (isMobile()) {
                 return focusCellWithMobileSupport(cell);
@@ -2600,13 +2576,27 @@
                 if (!pos) return false;
                 
                 const tbody = document.getElementById('table-body');
+                const totalRows = tbody.querySelectorAll('tr').length;
                 const row = tbody.querySelectorAll('tr')[pos.rowIndex];
-                if (!row) return false;
                 
+                if (!row) {
+                    log(`❌ RESTORE DEBUG: Row ${pos.rowIndex} not found (total rows: ${totalRows})`);
+                    return false;
+                }
+                
+                const totalCells = row.cells.length;
                 const cell = row.cells[pos.cellIndex];
-                if (!cell) return false;
                 
-                log(`focusCellByPos -> trying row=${pos.rowIndex}, cell=${pos.cellIndex}`);
+                if (!cell) {
+                    log(`❌ RESTORE DEBUG: Cell ${pos.cellIndex} not found in row ${pos.rowIndex} (total cells: ${totalCells})`);
+                    return false;
+                }
+                
+                // DEBUG: Log detailed information about the cell being restored
+                const cellLabel = cell.getAttribute('data-label') || 'NO_LABEL';
+                const cellText = cell.textContent.substring(0, 20) + '...';
+                
+                log(`🔍 RESTORE DEBUG: row=${pos.rowIndex}/${totalRows}, cell=${pos.cellIndex}/${totalCells}, label="${cellLabel}", text="${cellText}"`);
                 
                 if (isMobile()) {
                     return focusCellWithMobileSupport(cell);
@@ -3935,39 +3925,40 @@
                 return; 
             }
             
-            log('🔄 Synchronisation temps réel - Rechargement SANS restauration du focus...');
+            log('🔄 Synchronisation temps réel - Capture du focus et rechargement...');
             
-            // Set flag to prevent cell unlocking during realtime sync
-            window.isRealtimeSyncing = true;
-            
-            // ⚠️ NE PAS capturer le focus - laissons l'utilisateur choisir où cliquer
-            // captureFocusInfo();
-            // captureSimplePos();
+            // Try to preserve focus across realtime-driven reload as well
+            captureFocusInfo();
+            captureSimplePos();
             
             const onReload = () => {
-                log('realtime -> table:reloaded caught; NO focus restore to avoid conflicts');
+                log('🔄 REALTIME -> table:reloaded caught; attempting focus restore');
                 document.removeEventListener('table:reloaded', onReload);
                 
-                // ❌ PAS de restauration automatique du focus pour éviter les conflits
-                // setTimeout(() => {
-                //     const posResult = focusCellByPos(lastCellPos);
-                //     if (!posResult) {
-                //         const infoResult = focusCellFromInfo(lastFocusInfo);
-                //         log(`🔍 Focus restore temps réel - pos: ${posResult}, info: ${infoResult}`);
-                //     }
-                //     
-                //     // Clear the realtime sync flag after focus restore
-                //     window.isRealtimeSyncing = false;
-                // }, 100);
-                
-                // ✅ Juste nettoyer le flag et nettoyer les locks expirés
-                window.isRealtimeSyncing = false;
-                
-                // 🔧 Nettoyer les locks expirés pour éviter les conflits visuels
+                // Use the same consolidated restoration logic
                 setTimeout(() => {
-                    cleanupExpiredLocks();
-                    log('🧹 Locks expirés nettoyés après rechargement temps réel');
-                }, 500);
+                    log(`🔄 REALTIME: Performing cursor restoration`);
+                    
+                    // Try focusCellFromInfo first (more reliable)
+                    let restorationSuccess = false;
+                    if (lastFocusInfo && lastFocusInfo.rowIndex >= 0 && lastFocusInfo.colLabel) {
+                        restorationSuccess = focusCellFromInfo(lastFocusInfo);
+                        log(`🔄 REALTIME: focusCellFromInfo result: ${restorationSuccess}`);
+                    }
+                    
+                    // Fallback to focusCellByPos if focusCellFromInfo fails
+                    if (!restorationSuccess && lastCellPos && lastCellPos.rowIndex >= 0 && lastCellPos.cellIndex >= 0) {
+                        log(`🔄 REALTIME: Trying focusCellByPos with ${JSON.stringify(lastCellPos)}`);
+                        restorationSuccess = focusCellByPos(lastCellPos);
+                        log(`🔄 REALTIME: focusCellByPos result: ${restorationSuccess}`);
+                    }
+                    
+                    if (restorationSuccess) {
+                        log(`✅ REALTIME: Cursor restoration successful`);
+                    } else {
+                        log(`⚠️ REALTIME: Cursor restoration failed`);
+                    }
+                }, 100);
             };
             
             document.addEventListener('table:reloaded', onReload, { once: true });
@@ -4780,15 +4771,6 @@
             cells.forEach(cell => {
                 cell.contentEditable = false;
                 cell.classList.add('snapshot-readonly');
-                
-                // Remove cell locking event listeners
-                cell.removeEventListener('focus', handleCellFocus);
-                cell.removeEventListener('blur', handleCellBlur);
-                cell.removeEventListener('input', handleCellInput);
-                cell.removeEventListener('keydown', handleCellKeydown);
-                
-                // Unlock cell if it was locked
-                unlockCell(cell);
             });
             
             // Disable all function buttons in snapshot mode
@@ -4802,58 +4784,12 @@
             if (fabAdd) fabAdd.style.pointerEvents = 'none';
         }
         
-                // Enable table editing
+        // Enable table editing
         function enableTableEditing() {
-            console.log('🚀 enableTableEditing called');
-            console.log('🔍 isViewMode:', isViewMode);
-            
-            // Check if table-body exists
-            const tableBody = document.getElementById('table-body');
-            if (!tableBody) {
-                console.error('❌ table-body not found!');
-                return;
-            }
-            console.log('✅ table-body found');
-            
-            // Check for editable cells
             const cells = document.querySelectorAll('#table-body td.editable-cell');
-            console.log('🔍 Found editable cells:', cells.length);
-            
-            // If no editable cells found, try to find any td cells
-            if (cells.length === 0) {
-                console.log('🔍 No editable-cell class found, checking for any td cells...');
-                const allCells = document.querySelectorAll('#table-body td');
-                console.log('🔍 Total td cells found:', allCells.length);
-                
-                // Check first few cells to see their classes
-                allCells.slice(0, 5).forEach((cell, index) => {
-                    console.log(`🔍 Sample cell ${index}:`, {
-                        tagName: cell.tagName,
-                        classList: cell.classList.toString(),
-                        contentEditable: cell.contentEditable
-                    });
-                });
-            }
-            
-            cells.forEach((cell, index) => {
-                console.log(`🔍 Cell ${index}:`, {
-                    tagName: cell.tagName,
-                    classList: cell.classList.toString(),
-                    contentEditable: cell.contentEditable
-                });
-                
+            cells.forEach(cell => {
                 if (!isViewMode) { // Only enable if not in view mode
                     cell.contentEditable = true;
-                    console.log(`✅ Cell ${index} made editable`);
-                    
-                    // Add cell locking event listeners
-                    cell.addEventListener('focus', handleCellFocus);
-                    cell.addEventListener('blur', handleCellBlur);
-                    cell.addEventListener('input', handleCellInput);
-                    cell.addEventListener('keydown', handleCellKeydown);
-                    console.log(`✅ Cell ${index} event listeners added`);
-                } else {
-                    console.log(`❌ Cell ${index} not made editable (view mode)`);
                 }
                 cell.classList.remove('snapshot-readonly');
             });
@@ -4867,20 +4803,6 @@
             // Re-enable FAB add button
             const fabAdd = document.getElementById('fab-add');
             if (fabAdd) fabAdd.style.pointerEvents = 'auto';
-            
-            // Start cleanup timer for expired locks
-            setInterval(cleanupExpiredLocks, 10000); // Check every 10 seconds
-            console.log('✅ Cleanup timer started');
-            
-            // Initialize collaborative cell locking system
-            console.log('🚀 Starting collaborative cell locking system initialization...');
-            loadExistingLocks().then(() => {
-                console.log('✅ Existing locks loaded, setting up realtime...');
-                setupCellLocksRealtime();
-                console.log('✅ Collaborative cell locking system initialized');
-            }).catch(error => {
-                console.error('❌ Failed to initialize collaborative cell locking system:', error);
-            });
         }
         
         // Format date for display
@@ -4931,606 +4853,9 @@
             }
         }
         
-        // ===== CELL LOCKING SYSTEM FUNCTIONS =====
-        
-        // Generate unique cell identifier
-        function getCellIdentifier(cell) {
-            if (!cell) return null;
-            
-            const row = cell.closest('tr');
-            if (!row || !row.parentNode) return null;
-            
-            const rowIndex = Array.from(row.parentNode.children).indexOf(row);
-            if (rowIndex === -1) return null;
-            
-            const cellIndex = Array.from(row.children).indexOf(cell);
-            if (cellIndex === -1) return null;
-            
-            return `${rowIndex}_${cellIndex}`;
-        }
-        
-        // Lock a cell for editing (Excel-like)
-        async function lockCell(cell) {
-            console.log('🔒 lockCell called for:', cell);
-            
-            if (!cell) {
-                console.log('❌ No cell provided');
-                return false;
-            }
-            
-            if (cell.classList.contains('cell-locked')) {
-                console.log('❌ Cell already locked');
-                return false;
-            }
-            
-            const cellId = getCellIdentifier(cell);
-            console.log('🔍 Cell ID:', cellId);
-            
-            const now = Date.now();
-            
-            // Check if cell is already locked by another user
-            if (lockedCells.has(cellId)) {
-                const lockInfo = lockedCells.get(cellId);
-                if (lockInfo.user !== currentUser && (now - lockInfo.timestamp) < cellLockTimeout) {
-                    console.log(`🔒 Cell ${cellId} is locked by ${lockInfo.user}`);
-                    return false;
-                }
-            }
-            
-            try {
-                // Try to lock cell in Supabase first
-                const { data, error } = await supabase
-                    .from('celllocks')
-                    .upsert({
-                        cell_id: cellId,
-                        user_id: currentUser,
-                        locked_at: new Date().toISOString(),
-                        expires_at: new Date(now + cellLockTimeout).toISOString()
-                    }, {
-                        onConflict: 'cell_id'
-                    });
-                
-                if (error) {
-                    console.error('❌ Failed to lock cell in Supabase:', error);
-                    return false;
-                }
-                
-                // Lock the cell locally
-                lockedCells.set(cellId, {
-                    user: currentUser,
-                    timestamp: now
-                });
-                
-                        // Apply visual lock - green for current user, red for others
-        cell.classList.add('cell-locked');
-        cell.classList.add('cell-locked-by-me'); // Green border for current user
-        cell.setAttribute('data-locked-by', currentUser);
-                
-                console.log(`🔒 Cell ${cellId} locked by ${currentUser} in Supabase`);
-                console.log('🔍 Cell classes after lock:', cell.classList.toString());
-                console.log('🔍 Cell data attributes:', cell.getAttribute('data-locked-by'));
-                
-                return true;
-                
-            } catch (error) {
-                console.error('❌ Error locking cell:', error);
-                return false;
-            }
-        }
-        
-        // Unlock a cell
-        async function unlockCell(cell) {
-            if (!cell) return;
-            
-            // Safety check: ensure cell is still in DOM
-            if (!document.contains(cell)) {
-                console.log('🔒 Cell no longer in DOM, skipping unlock');
-                return;
-            }
-            
-            const cellId = getCellIdentifier(cell);
-            if (!cellId) {
-                console.log('🔒 Could not get cell ID, skipping unlock');
-                return;
-            }
-            
-            const lockInfo = lockedCells.get(cellId);
-            
-            // Only unlock if we own the lock
-            if (lockInfo && lockInfo.user === currentUser) {
-                try {
-                    // Remove lock from Supabase
-                    const { error } = await supabase
-                        .from('celllocks')
-                        .delete()
-                        .eq('cell_id', cellId)
-                        .eq('user_id', currentUser);
-                    
-                    if (error) {
-                        console.error('❌ Failed to unlock cell in Supabase:', error);
-                    }
-                    
-                    // Unlock locally
-                    lockedCells.delete(cellId);
-                    cell.classList.remove('cell-locked');
-                    cell.classList.remove('cell-locked-by-me'); // Remove green border
-                    cell.classList.remove('cell-locked-by-other'); // Remove red border
-                    cell.removeAttribute('data-locked-by');
-                    console.log(`🔓 Cell ${cellId} unlocked by ${currentUser} in Supabase`);
-                    
-                } catch (error) {
-                    console.error('❌ Error unlocking cell:', error);
-                }
-            }
-        }
-        
-        // Check if cell is locked by current user
-        function isCellLockedByMe(cell) {
-            if (!cell) return false;
-            const cellId = getCellIdentifier(cell);
-            const lockInfo = lockedCells.get(cellId);
-            return lockInfo && lockInfo.user === currentUser;
-        }
-        
-        // Check if cell is locked by another user
-        function isCellLockedByOther(cell) {
-            if (!cell) return false;
-            const cellId = getCellIdentifier(cell);
-            const lockInfo = lockedCells.get(cellId);
-            return lockInfo && lockInfo.user !== currentUser;
-        }
-        
-        // Load existing locks from Supabase
-        async function loadExistingLocks() {
-            console.log('🔍 loadExistingLocks called');
-            console.log('🔍 supabase client:', !!supabase);
-            console.log('🔍 currentUser:', currentUser);
-            
-            try {
-                console.log('🔍 Attempting to query celllocks table...');
-                const { data: locks, error } = await supabase
-                    .from('celllocks')
-                    .select('*')
-                    .gte('expires_at', new Date().toISOString());
-                
-                if (error) {
-                    console.error('❌ Failed to load existing locks:', error);
-                    console.log('🔍 This might mean the celllocks table does not exist yet');
-                    return;
-                }
-                
-                console.log('🔍 Loaded existing locks:', locks);
-                console.log('🔍 Total locks found:', locks.length);
-                
-                // Apply locks to UI
-                locks.forEach(lock => {
-                    console.log('🔍 Processing lock:', lock);
-                    if (lock.user_id !== currentUser) {
-                        console.log('🔍 Lock from other user, applying red border...');
-                        const cell = findCellById(lock.cell_id);
-                        if (cell) {
-                            applyLockToCell(cell, lock.user_id, lock.locked_at);
-                            console.log('✅ Red border applied to cell:', lock.cell_id);
-                        } else {
-                            console.log('⚠️ Cell not found for lock:', lock.cell_id);
-                        }
-                    } else {
-                        console.log('🔍 Lock from current user, skipping...');
-                    }
-                });
-                
-            } catch (error) {
-                console.error('❌ Error loading existing locks:', error);
-                console.log('🔍 This might mean the celllocks table does not exist yet');
-            }
-        }
-        
-        // Find cell by ID
-        function findCellById(cellId) {
-            const [rowIndex, cellIndex] = cellId.split('_').map(Number);
-            const tableBody = document.getElementById('table-body');
-            if (!tableBody) return null;
-            
-            const rows = tableBody.querySelectorAll('tr');
-            if (rowIndex >= 0 && rowIndex < rows.length) {
-                const cells = rows[rowIndex].querySelectorAll('td');
-                if (cellIndex >= 0 && cellIndex < cells.length) {
-                    return cells[cellIndex];
-                }
-            }
-            return null;
-        }
-        
-        // Apply lock to cell (for other users' locks)
-        function applyLockToCell(cell, userId, lockedAt) {
-            if (!cell) return;
-            
-            const cellId = getCellIdentifier(cell);
-            const lockTimestamp = new Date(lockedAt).getTime();
-            
-            // Add to local locks map
-            lockedCells.set(cellId, {
-                user: userId,
-                timestamp: lockTimestamp
-            });
-            
-            // Apply visual lock - red border for other users
-            cell.classList.add('cell-locked');
-            cell.classList.add('cell-locked-by-other'); // Red border for other users
-            cell.setAttribute('data-locked-by', userId);
-            
-            console.log(`🔒 Applied lock from other user: ${userId} on cell ${cellId} (red border)`);
-        }
-        
-        // Setup realtime subscription for cell locks
-        function setupCellLocksRealtime() {
-            console.log('🔍 setupCellLocksRealtime called');
-            console.log('🔍 supabase client:', !!supabase);
-            console.log('🔍 currentUser:', currentUser);
-            
-            if (cellLocksSubscription) {
-                console.log('🔍 Unsubscribing from existing subscription');
-                try {
-                    cellLocksSubscription.unsubscribe();
-                } catch (e) {
-                    console.log('🔍 Error unsubscribing:', e);
-                }
-            }
-            
-            try {
-                console.log('🔍 Setting up realtime subscription for cellLocks table...');
-                
-                // Create a unique channel name to avoid conflicts
-                const channelName = `cell-locks-${currentUser}-${Date.now()}`;
-                console.log('🔍 Using channel:', channelName);
-                
-                // Test if we can access the celllocks table
-                console.log('🔍 Testing celllocks table access...');
-                supabase.from('celllocks').select('count').limit(1).then(result => {
-                    console.log('🔍 celllocks table test result:', result);
-                }).catch(error => {
-                    console.error('❌ Cannot access celllocks table:', error);
-                });
-                
-                cellLocksSubscription = supabase
-                    .channel(channelName)
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'celllocks'
-                    }, (payload) => {
-                        console.log('🔔 Cell lock change received:', payload);
-                        console.log('🔍 Payload details:', {
-                            eventType: payload.eventType,
-                            new: payload.new,
-                            old: payload.old,
-                            table: payload.table,
-                            schema: payload.schema
-                        });
-                        
-                        if (payload.eventType === 'INSERT') {
-                            const lock = payload.new;
-                            console.log('🔒 New lock detected:', lock);
-                            
-                            if (lock.user_id !== currentUser) {
-                                console.log('🔒 Lock from other user, applying red border...');
-                                const cell = findCellById(lock.cell_id);
-                                if (cell) {
-                                    applyLockToCell(cell, lock.user_id, lock.locked_at);
-                                    console.log('✅ Red border applied to cell:', lock.cell_id);
-                                } else {
-                                    console.log('⚠️ Cell not found for lock:', lock.cell_id);
-                                }
-                            } else {
-                                console.log('🔒 Lock from current user, skipping...');
-                            }
-                        } else if (payload.eventType === 'DELETE') {
-                            const lock = payload.old;
-                            console.log('🔓 Lock removed:', lock);
-                            
-                            const cell = findCellById(lock.cell_id);
-                            if (cell) {
-                                removeLockFromCell(cell);
-                                console.log('✅ Lock removed from cell:', lock.cell_id);
-                            } else {
-                                console.log('⚠️ Cell not found for lock removal:', lock.cell_id);
-                            }
-                        }
-                    })
-                    .subscribe((status) => {
-                        console.log('🔍 Cell locks subscription status:', status);
-                        console.log('🔍 Channel name:', channelName);
-                        
-                        if (status === 'SUBSCRIBED') {
-                            console.log('✅ Cell locks realtime subscription active');
-                            console.log('🔍 Listening for changes on table: celllocks');
-                        } else if (status === 'CHANNEL_ERROR') {
-                            console.error('❌ Cell locks channel error, retrying...');
-                            setTimeout(setupCellLocksRealtime, 2000);
-                        } else if (status === 'TIMED_OUT') {
-                            console.warn('⏰ Cell locks channel timed out, retrying...');
-                            setTimeout(setupCellLocksRealtime, 2000);
-                        } else {
-                            console.log('🔍 Other status:', status);
-                        }
-                    });
-                
-                console.log('✅ Cell locks realtime subscription setup complete');
-                
-            } catch (error) {
-                console.error('❌ Error setting up realtime subscription:', error);
-                // Retry after 2 seconds
-                setTimeout(setupCellLocksRealtime, 2000);
-            }
-        }
-        
-        // Remove lock from cell
-        function removeLockFromCell(cell) {
-            if (!cell) return;
-            
-            const cellId = getCellIdentifier(cell);
-            lockedCells.delete(cellId);
-            cell.classList.remove('cell-locked');
-            cell.classList.remove('cell-locked-by-me'); // Remove green border
-            cell.classList.remove('cell-locked-by-other'); // Remove red border
-            cell.removeAttribute('data-locked-by');
-            
-            console.log(`🔓 Lock removed from cell ${cellId}`);
-        }
-        
-        // Clean up expired locks
-        async function cleanupExpiredLocks() {
-            try {
-                // Clean up expired locks in Supabase
-                const { error } = await supabase
-                    .from('celllocks')
-                    .delete()
-                    .lt('expires_at', new Date().toISOString());
-                
-                if (error) {
-                    console.error('❌ Failed to cleanup expired locks in Supabase:', error);
-                }
-                
-                // Clean up local expired locks
-                const now = Date.now();
-                for (const [cellId, lockInfo] of lockedCells.entries()) {
-                    if ((now - lockInfo.timestamp) > cellLockTimeout) {
-                        lockedCells.delete(cellId);
-                        
-                        // Remove visual lock from DOM
-                        const cell = document.querySelector(`[data-locked-by="${lockInfo.user}"]`);
-                        if (cell) {
-                            cell.classList.remove('cell-locked');
-                            cell.removeAttribute('data-locked-by');
-                        }
-                        
-                        console.log(`🧹 Expired lock removed for cell ${cellId}`);
-                    }
-                }
-                
-                // 🔧 Nettoyer aussi les locks visuels orphelins qui pourraient rester
-                const allLockedCells = document.querySelectorAll('.cell-locked');
-                allLockedCells.forEach(cell => {
-                    const cellId = getCellIdentifier(cell);
-                    if (cellId && !lockedCells.has(cellId)) {
-                        removeLockFromCell(cell);
-                        console.log(`🧹 Removed orphaned visual lock from cell: ${cellId}`);
-                    }
-                });
-                
-                // Realtime subscription health check removed to prevent reconnection loops
-                // Supabase handles reconnection automatically
-                
-            } catch (error) {
-                console.error('❌ Error cleaning up expired locks:', error);
-            }
-        }
-        
-        // Cell event handlers
-        function handleCellFocus(e) {
-            console.log('🎯 handleCellFocus called', e.target);
-            const cell = e.target;
-            if (!cell) {
-                console.log('❌ No cell target');
-                return;
-            }
-            if (isViewMode) {
-                console.log('❌ View mode active, ignoring focus');
-                return;
-            }
-            
-            console.log('🔍 Cell info:', {
-                tagName: cell.tagName,
-                classList: cell.classList.toString(),
-                contentEditable: cell.contentEditable,
-                isViewMode: isViewMode
-            });
-            
-            // Try to lock the cell
-            if (lockCell(cell)) {
-                console.log(`🔒 Cell focused and locked: ${getCellIdentifier(cell)}`);
-            } else {
-                // Cell is locked by another user, prevent editing
-                cell.blur();
-                alert(`Cette cellule est en cours d'édition par un autre utilisateur. Veuillez attendre.`);
-                console.log(`🚫 Cell access denied: ${getCellIdentifier(cell)}`);
-            }
-        }
-        
-        function handleCellBlur(e) {
-            const cell = e.target;
-            if (!cell) return;
-            
-            // Unlock the cell after a short delay to allow for save operations
-            setTimeout(() => {
-                if (!cell.matches(':focus')) {
-                    unlockCell(cell);
-                }
-            }, 1000);
-        }
-        
-        function handleCellInput(e) {
-            const cell = e.target;
-            if (!cell) return;
-            
-            // Ensure cell remains locked during editing
-            if (!isCellLockedByMe(cell)) {
-                lockCell(cell);
-            }
-        }
-        
-        function handleCellKeydown(e) {
-            const cell = e.target;
-            if (!cell) return;
-            
-            // Handle Enter key to move to next cell
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const nextCell = getNextEditableCell(cell);
-                if (nextCell) {
-                    unlockCell(cell);
-                    nextCell.focus();
-                }
-            }
-            
-            // Handle Tab key
-            if (e.key === 'Tab') {
-                e.preventDefault();
-                const nextCell = e.shiftKey ? getPreviousEditableCell(cell) : getNextEditableCell(cell);
-                if (nextCell) {
-                    unlockCell(cell);
-                    nextCell.focus();
-                }
-            }
-        }
-        
-        // Navigation helper functions
-        function getNextEditableCell(currentCell) {
-            const row = currentCell.closest('tr');
-            const nextRow = row.nextElementSibling;
-            
-            if (nextRow) {
-                const nextCell = nextRow.children[currentCell.cellIndex];
-                if (nextCell && nextCell.classList.contains('editable-cell') && !isViewMode) {
-                    return nextCell;
-                }
-            }
-            
-            // Try next cell in same row
-            const nextCell = currentCell.nextElementSibling;
-            if (nextCell && nextCell.classList.contains('editable-cell') && !isViewMode) {
-                return nextCell;
-            }
-            
-            return null;
-        }
-        
-        function getPreviousEditableCell(currentCell) {
-            const row = currentCell.closest('tr');
-            const prevRow = row.previousElementSibling;
-            
-            if (prevRow) {
-                const prevCell = prevRow.children[currentCell.cellIndex];
-                if (prevCell && prevCell.classList.contains('editable-cell') && !isViewMode) {
-                    return prevCell;
-                }
-            }
-            
-            // Try previous cell in same row
-            const prevCell = currentCell.previousElementSibling;
-            if (prevCell && prevCell.classList.contains('editable-cell') && !isViewMode) {
-                return prevCell;
-            }
-            
-            return null;
-        }
-        
-        // Test function for cell locking system
-        function testCellLocking() {
-            console.log('🧪 Testing cell locking system...');
-            
-            // Check if system is initialized
-            console.log('🔍 Current state:', {
-                lockedCells: lockedCells.size,
-                currentUser: currentUser,
-                isViewMode: isViewMode,
-                supabaseClient: !!supabase
-            });
-            
-            // Check if enableTableEditing was called
-            console.log('🔍 Checking if enableTableEditing was called...');
-            const cells = document.querySelectorAll('#table-body td.editable-cell');
-            console.log('🔍 Found editable cells:', cells.length);
-            
-            if (cells.length > 0) {
-                const firstCell = cells[0];
-                console.log('🔍 First cell details:', {
-                    tagName: firstCell.tagName,
-                    classList: firstCell.classList.toString(),
-                    contentEditable: firstCell.contentEditable,
-                    hasFocusListener: firstCell.onfocus !== null,
-                    hasBlurListener: firstCell.onblur !== null,
-                    lockStatus: firstCell.classList.contains('cell-locked-by-me') ? '🔒 My cell (GREEN)' : 
-                               firstCell.classList.contains('cell-locked-by-other') ? '🔒 Other user (RED)' : '🔓 Unlocked'
-                });
-                
-                // Check if event listeners are attached
-                console.log('🔍 Checking event listeners...');
-                try {
-                    const events = getEventListeners(firstCell);
-                    console.log('🔍 Event listeners on first cell:', events);
-                } catch (error) {
-                    console.log('🔍 Event listener check failed:', error.message);
-                }
-                
-                console.log('✅ Found test cell, attempting to lock...');
-                
-                // Test direct function calls
-                console.log('🔍 Testing direct lockCell function...');
-                try {
-                    const lockResult = lockCell(firstCell);
-                    console.log('🔒 Direct lock result:', lockResult);
-                } catch (error) {
-                    console.error('❌ Error calling lockCell directly:', error);
-                }
-                
-                // Test focus event
-                console.log('🔍 Testing focus event...');
-                firstCell.focus();
-                
-                // Try to manually attach event listeners if they're missing
-                if (!firstCell.onfocus) {
-                    console.log('🔧 Manually attaching event listeners to test cell...');
-                    firstCell.addEventListener('focus', handleCellFocus);
-                    firstCell.addEventListener('blur', handleCellBlur);
-                    firstCell.addEventListener('input', handleCellInput);
-                    firstCell.addEventListener('keydown', handleCellKeydown);
-                    console.log('✅ Event listeners manually attached');
-                }
-            } else {
-                console.log('❌ No editable cells found for testing');
-                console.log('🔍 Available cells:', document.querySelectorAll('#table-body td').length);
-                console.log('🔍 Cells with editable-cell class:', document.querySelectorAll('#table-body td.editable-cell').length);
-            }
-        }
-        
-        // Helper function to check event listeners (if available)
-        function getEventListeners(element) {
-            try {
-                // This is a Chrome DevTools function, may not be available
-                if (typeof getEventListeners === 'function') {
-                    return getEventListeners(element);
-                } else {
-                    return 'getEventListeners not available (Chrome DevTools only)';
-                }
-            } catch (e) {
-                return 'Cannot check event listeners: ' + e.message;
-            }
-        }
-        
-        // ===== END CELL LOCKING SYSTEM FUNCTIONS =====
-        
         // ===== END SNAPSHOT SYSTEM FUNCTIONS =====
+
+
 
         // Initialize application
         function initializeApp() {
@@ -5572,7 +4897,8 @@
             adaptStatusDisplay();
             window.addEventListener('resize', adaptStatusDisplay);
             
-            // Image functionality removed - not needed for staff table
+            // Configurer le clic sur les noms de patients pour les images
+            setupPatientImageClick();
             
             // Check if already logged in
             const already = sessionStorage.getItem('isLoggedIn') === '1';
@@ -5589,20 +4915,46 @@
                 restoreLocalDraft(); 
                 ensureDDNHeader();
                 
+                // Consolidated cursor restoration function
+                const performCursorRestoration = () => {
+                    log(`🔄 CURSOR RESTORATION: lastFocusInfo=${JSON.stringify(lastFocusInfo)}, lastCellPos=${JSON.stringify(lastCellPos)}`);
+                    
+                    // Try focusCellFromInfo first (more reliable)
+                    let restorationSuccess = false;
+                    if (lastFocusInfo && lastFocusInfo.rowIndex >= 0 && lastFocusInfo.colLabel) {
+                        restorationSuccess = focusCellFromInfo(lastFocusInfo);
+                        log(`🔄 focusCellFromInfo result: ${restorationSuccess}`);
+                    }
+                    
+                    // Fallback to focusCellByPos if focusCellFromInfo fails
+                    if (!restorationSuccess && lastCellPos && lastCellPos.rowIndex >= 0 && lastCellPos.cellIndex >= 0) {
+                        log(`🔄 Trying focusCellByPos with ${JSON.stringify(lastCellPos)}`);
+                        restorationSuccess = focusCellByPos(lastCellPos);
+                        log(`🔄 focusCellByPos result: ${restorationSuccess}`);
+                    }
+                    
+                    if (restorationSuccess) {
+                        log(`✅ Cursor restoration successful`);
+                    } else {
+                        log(`⚠️ Cursor restoration failed - no valid position information`);
+                    }
+                };
+                
                 const restoreAfterReload = () => {
                     document.removeEventListener('table:reloaded', restoreAfterReload);
+                    
+                    // Wait for table to be fully rendered and image icons updated
+                    // Use a longer delay to ensure all table updates are complete
                     setTimeout(() => {
-                        if (!focusCellFromInfo(lastFocusInfo)) { 
-                            focusCellByPos(lastCellPos); 
-                        }
+                        performCursorRestoration();
+                        
+                        // Additional mobile retry if needed
                         if (isMobile()) {
                             setTimeout(() => { 
-                                if (!focusCellFromInfo(lastFocusInfo)) { 
-                                    focusCellByPos(lastCellPos); 
-                                } 
+                                performCursorRestoration();
                             }, 350);
                         }
-                    }, 50);
+                    }, 200); // Increased delay to ensure table and image icons are fully ready
                 };
                 
                 document.addEventListener('table:reloaded', restoreAfterReload, { once: true });
@@ -5620,12 +4972,6 @@
                 // Apply saved history bar visibility preference
                 updateHistoryBarVisibility();
                 
-                // Initialize cell locking system after data is loaded
-                setTimeout(() => {
-                    console.log('🎯 Initializing cell locking system...');
-                    enableTableEditing();
-                }, 200);
-                
                 // Appliquer le mode visualisation APRÈS la restauration des données
                 setTimeout(() => {
                     console.log('🎯 Applying view mode after data restoration...');
@@ -5638,22 +4984,38 @@
                 // Adapter l'affichage après le chargement des données
                 setTimeout(adaptStatusDisplay, 100);
                 
-                // Cell locking system already initialized above
+                // Mettre à jour les indicateurs d'images
+                setTimeout(updateImageIndicators, 200);
+                
+                // Charger les images depuis Supabase
+                setTimeout(loadImagesFromSupabase, 300);
+                
+                // Mettre à jour les icônes de la colonne Images après le chargement
+                setTimeout(updateAllImageColumnIcons, 500);
+                
+                // Afficher le statut de synchronisation des images
+                setTimeout(showImageSyncStatus, 600);
+                
+                // Enable focus capture after initialization is complete
+                setTimeout(() => {
+                    isInitialLoad = false;
+                    log(`✅ Initial load complete - focus capture now enabled`);
+                    
+                    // Ensure cursor restoration happens after all updates are complete
+                    if (lastFocusInfo || lastCellPos) {
+                        log(`🔄 Delayed cursor restoration after initialization complete`);
+                        setTimeout(() => {
+                            performCursorRestoration();
+                        }, 100);
+                    }
+                }, 1000);
             } else {
                 document.getElementById('login-container').classList.remove('hidden');
-                
-                // Even if not logged in, initialize cell locking for demo purposes
-                setTimeout(() => {
-                    console.log('🎯 Initializing cell locking system (demo mode)...');
-                    enableTableEditing();
-                }, 500);
             }
             
 
         }
         
-        // Image management functions removed - not needed for staff table
-        
 
         
 
@@ -5664,29 +5026,469 @@
         
 
         
-
+        function displayPatientImages(patientName) {
+            const gallery = document.getElementById('image-gallery');
+            const images = patientImages[patientName] || [];
+            
+            gallery.innerHTML = '';
+            
+            if (images.length === 0) {
+                gallery.innerHTML = '<p class="text-gray-500 text-center col-span-full">Aucune image pour ce patient</p>';
+                return;
+            }
+            
+            images.forEach((image, index) => {
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'relative group';
+                
+                imageDiv.innerHTML = `
+                    <img src="${image.data}" alt="${image.name}" class="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" 
+                         onclick="viewImage('${patientName}', ${index})"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                    <div class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs cursor-pointer hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                         onclick="deleteImage('${patientName}', ${index})">×</div>
+                    <p class="text-xs text-gray-600 mt-1 truncate">${image.name}</p>
+                    <div class="hidden text-xs text-gray-400 text-center mt-2">Image corrompue</div>
+                `;
+                
+                gallery.appendChild(imageDiv);
+            });
+        }
         
-
-
-
-
-
+        function viewImage(patientName, imageIndex) {
+            const images = patientImages[patientName] || [];
+            if (images.length === 0) return;
+            
+            currentPatientImages = images;
+            currentImageIndex = imageIndex;
+            
+            const modal = document.getElementById('image-viewer-modal');
+            const currentImage = document.getElementById('current-image');
+            const counter = document.getElementById('image-counter');
+            
+            currentImage.src = images[imageIndex].data;
+            currentImage.onerror = () => {
+                showMessage('Erreur lors du chargement de l\'image', 'error');
+                currentImage.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NzM4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vbiB0cm91dsOpZTwvdGV4dD48L3N2Zz4=';
+            };
+            counter.textContent = `${imageIndex + 1} / ${images.length}`;
+            
+            modal.classList.remove('hidden');
+        }
         
-
+        function closeImageViewer() {
+            document.getElementById('image-viewer-modal').classList.add('hidden');
+        }
         
-
+        function nextImage() {
+            if (currentPatientImages.length === 0) return;
+            currentImageIndex = (currentImageIndex + 1) % currentPatientImages.length;
+            updateImageViewer();
+        }
         
-
+        function previousImage() {
+            if (currentPatientImages.length === 0) return;
+            currentImageIndex = currentImageIndex === 0 ? currentPatientImages.length - 1 : currentImageIndex - 1;
+            updateImageViewer();
+        }
         
-
+        function updateImageViewer() {
+            const currentImage = document.getElementById('current-image');
+            const counter = document.getElementById('image-counter');
+            
+            currentImage.src = currentPatientImages[currentImageIndex].data;
+            currentImage.onerror = () => {
+                showMessage('Erreur lors du chargement de l\'image', 'error');
+                currentImage.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NzM4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vbiB0cm91dsOpZTwvdGV4dD48L3N2Zz4=';
+            };
+            counter.textContent = `${currentImageIndex + 1} / ${currentPatientImages.length}`;
+        }
         
+        async function deleteImage(patientName, imageIndex) {
+            try {
+                // Vérifier que l'image existe
+                if (!patientImages[patientName] || !patientImages[patientName][imageIndex]) {
+                    showMessage('Image non trouvée', 'error');
+                    return;
+                }
 
+                // Demander confirmation
+                if (!confirm(`Voulez-vous vraiment supprimer cette image ?`)) {
+                    return;
+                }
+
+                const imageToDelete = patientImages[patientName][imageIndex];
+                
+                // Supprimer de Supabase si l'image a un ID
+                if (imageToDelete.id) {
+                    try {
+                        const { error } = await supabase
+                            .from('patientImages')
+                            .delete()
+                            .eq('id', imageToDelete.id);
+                        
+                        if (error) {
+                            console.error('Erreur lors de la suppression depuis Supabase:', error);
+                            showMessage('Erreur lors de la suppression depuis le serveur', 'error');
+                            return;
+                        }
+                    } catch (supabaseError) {
+                        console.error('Erreur de connexion Supabase:', supabaseError);
+                        showMessage('Erreur de connexion au serveur', 'error');
+                        return;
+                    }
+                }
+
+                // Supprimer du stockage local
+                patientImages[patientName].splice(imageIndex, 1);
+                
+                // Si c'était la dernière image du patient, supprimer l'entrée du patient
+                if (patientImages[patientName].length === 0) {
+                    delete patientImages[patientName];
+                }
+                
+                // Sauvegarder les changements
+                savePatientImages();
+                
+                // Mettre à jour l'affichage
+                displayPatientImages(patientName);
+                updateAllImageColumnIcons(true); // Éviter les sauvegardes automatiques
+                
+                // Réinitialiser les indicateurs de modification pour éviter l'autosave
+                isDirty = false;
+                lastEditAt = Date.now() - AUTOSAVE_DELAY_MS - 1000; // Désactiver l'autosave
+                
+                // Fermer le visualiseur si c'était la dernière image
+                if (!patientImages[patientName] || patientImages[patientName].length === 0) {
+                    closeImageViewer();
+                }
+                
+                showMessage('Image supprimée avec succès', 'success');
+                
+            } catch (error) {
+                console.error('Erreur lors de la suppression de l\'image:', error);
+                showMessage('Erreur lors de la suppression de l\'image', 'error');
+            }
+                }
+
+        // Fonction pour supprimer toutes les images d'un patient
+        async function deleteAllImagesForPatient(patientName) {
+            try {
+                if (!patientImages[patientName] || patientImages[patientName].length === 0) {
+                    showMessage('Aucune image à supprimer pour ce patient', 'info');
+                    return;
+                }
+
+                const imageCount = patientImages[patientName].length;
+                
+                // Supprimer toutes les images de Supabase
+                for (const image of patientImages[patientName]) {
+                    if (image.id) {
+                        try {
+                            const { error } = await supabase
+                                .from('patientImages')
+                                .delete()
+                                .eq('id', image.id);
+                            
+                            if (error) {
+                                console.error('Erreur lors de la suppression de l\'image depuis Supabase:', error);
+                            }
+                        } catch (supabaseError) {
+                            console.error('Erreur de connexion Supabase:', supabaseError);
+                        }
+                    }
+                }
+
+                // Supprimer du stockage local
+                delete patientImages[patientName];
+                savePatientImages();
+                
+                // Mettre à jour l'affichage
+                updateAllImageColumnIcons(true); // Éviter les sauvegardes automatiques
+                
+                // Réinitialiser les indicateurs de modification pour éviter l'autosave
+                isDirty = false;
+                lastEditAt = Date.now() - AUTOSAVE_DELAY_MS - 1000; // Désactiver l'autosave
+                
+                // Fermer le visualiseur si il était ouvert pour ce patient
+                if (currentPatientImages && currentPatientImages.length > 0) {
+                    const firstImage = currentPatientImages[0];
+                    if (firstImage.patientName === patientName) {
+                        closeImageViewer();
+                    }
+                }
+                
+                showMessage(`${imageCount} image(s) supprimée(s) pour ${patientName}`, 'success');
+                
+            } catch (error) {
+                console.error('Erreur lors de la suppression de toutes les images:', error);
+                showMessage('Erreur lors de la suppression des images', 'error');
+            }
+        }
+
+        async function syncImageToSupabase(imageData) {
+            try {
+                // Créer une entrée dans la table des images
+                const { error } = await supabase
+                    .from('patientImages')
+                    .upsert({
+                        id: imageData.id,
+                        patientName: imageData.patientName,
+                        imageName: imageData.name,
+                        imageData: imageData.data,
+                        imageType: imageData.type,
+                        imageSize: imageData.size,
+                        uploadDate: imageData.uploadDate,
+                        lastSync: new Date().toISOString()
+                    });
+                
+                if (error) {
+                    console.error('Erreur Supabase:', error);
+                    // Stocker pour synchronisation ultérieure
+                    storeImageForLaterSync(imageData);
+                }
+            } catch (error) {
+                console.error('Erreur de synchronisation:', error);
+                // Stocker pour synchronisation ultérieure
+                storeImageForLaterSync(imageData);
+            }
+        }
         
-
+        function storeImageForLaterSync(imageData) {
+            let pendingImages = JSON.parse(localStorage.getItem('pendingImageSync') || '[]');
+            pendingImages.push(imageData);
+            localStorage.setItem('pendingImageSync', JSON.stringify(pendingImages));
+        }
         
+        async function syncPendingImages() {
+            try {
+                let pendingImages = JSON.parse(localStorage.getItem('pendingImageSync') || '[]');
+                if (pendingImages.length === 0) return;
+                
+                for (const imageData of pendingImages) {
+                    await syncImageToSupabase(imageData);
+                }
+                
+                // Vider la liste des images en attente
+                localStorage.removeItem('pendingImageSync');
+                
+                // Mettre à jour les icônes de la colonne Images
+                updateAllImageColumnIcons(true); // Éviter les sauvegardes automatiques
+                
+                // Réinitialiser les indicateurs de modification pour éviter l'autosave
+                isDirty = false;
+                lastEditAt = Date.now() - AUTOSAVE_DELAY_MS - 1000; // Désactiver l'autosave
+                
+                showMessage('Images synchronisées avec le serveur', 'success');
+            } catch (error) {
+                console.error('Erreur lors de la synchronisation des images en attente:', error);
+            }
+        }
+        
+        function savePatientImages() {
+            try {
+                localStorage.setItem('patientImages', JSON.stringify(patientImages));
+            } catch (e) {
+                console.error('Erreur lors de la sauvegarde des images:', e);
+            }
+        }
+        
+        // Fonction pour afficher les images au clic sur le nom du patient
+        function setupPatientImageClick() {
+            const tbody = document.getElementById('table-body');
+            if (!tbody) return;
+            
+            tbody.addEventListener('click', function(e) {
+                const nameCell = e.target.closest('td:nth-child(6)'); // Colonne Nom_Prénom
+                if (nameCell && nameCell.textContent.trim()) {
+                    const patientName = nameCell.textContent.trim();
+                    const images = patientImages[patientName] || [];
+                    
+                    if (images.length > 0) {
+                        // Ouvrir directement le visualiseur d'images
+                        currentPatientImages = images;
+                        currentImageIndex = 0;
+                        viewImage(patientName, 0);
+                    } else {
+                        // Aucune image pour ce patient - afficher un message
+                        showMessage('Aucune image pour ce patient. Utilisez le bouton ➕ dans la colonne Images pour ajouter des images.', 'info');
+                    }
+                }
+            });
+        }
+        
+        // Fonction pour afficher le statut de synchronisation des images
+        function showImageSyncStatus() {
+            const pendingImages = JSON.parse(localStorage.getItem('pendingImageSync') || '[]');
+            if (pendingImages.length > 0) {
+                showMessage(`${pendingImages.length} image(s) en attente de synchronisation`, 'warning');
+            }
+        }
+        
+        // Fonction pour mettre à jour les indicateurs d'images (maintenant uniquement dans la colonne Images)
+        function updateImageIndicators() {
+            // Cette fonction est maintenant remplacée par updateAllImageColumnIcons
+            // qui met à jour uniquement les icônes dans la colonne Images
+            updateAllImageColumnIcons();
+        }
+        
+        // Fonction pour charger les images depuis Supabase
+        async function loadImagesFromSupabase() {
+            // Skip if cursor restoration is in progress to avoid conflicts
+            if (isRestoringFocus) {
+                log('🔄 loadImagesFromSupabase skipped - cursor restoration in progress');
+                return;
+            }
+            
+            try {
+                const { data, error } = await supabase
+                    .from('patientImages')
+                    .select('*')
+                    .order('uploadDate', { ascending: false });
+                
+                if (error) {
+                    console.error('Erreur lors du chargement des images:', error);
+                    return;
+                }
+                
+                if (data && data.length > 0) {
+                    // Réorganiser les images par patient
+                    const newPatientImages = {};
+                    data.forEach(image => {
+                        if (!newPatientImages[image.patientName]) {
+                            newPatientImages[image.patientName] = [];
+                        }
+                        newPatientImages[image.patientName].push({
+                            id: image.id,
+                            name: image.imageName,
+                            data: image.imageData,
+                            type: image.imageType,
+                            size: image.imageSize,
+                            uploadDate: image.uploadDate,
+                            patientName: image.patientName
+                        });
+                    });
+                    
+                    // Mettre à jour les images locales
+                    patientImages = { ...patientImages, ...newPatientImages };
+                    savePatientImages();
+                    
+                    // Synchroniser les images en attente
+                    await syncPendingImages();
+                    
+                    // Mettre à jour les icônes de la colonne Images
+                    updateAllImageColumnIcons(true); // Éviter les sauvegardes automatiques
+                    
+                    // Réinitialiser les indicateurs de modification pour éviter l'autosave
+                    isDirty = false;
+                    lastEditAt = Date.now() - AUTOSAVE_DELAY_MS - 1000; // Désactiver l'autosave
+                    
+                    showMessage(`${data.length} image(s) chargée(s) depuis le serveur`, 'success');
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement des images:', error);
+            }
+        }
 
-
-
+                // Fonction pour mettre à jour toutes les icônes de la colonne Images
+        function updateAllImageColumnIcons(skipAutoSave = false) {
+            const tbody = document.getElementById('table-body');
+            if (!tbody) return;
+            
+            // Skip if cursor restoration is in progress to avoid conflicts
+            if (isRestoringFocus) {
+                log('🔄 updateAllImageColumnIcons skipped - cursor restoration in progress');
+                return;
+            }
+            
+            Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+                const imageCell = row.querySelector('[data-label="Images"]');
+                if (imageCell) {
+                    const mainButton = imageCell.querySelector('button:first-child');
+                    const trashButton = imageCell.querySelector('button:last-child');
+                    const container = imageCell.querySelector('div');
+                    
+                    if (mainButton && trashButton && container) {
+                        const nameCell = row.querySelector('[data-label="Nom_Prénom"]');
+                        if (nameCell) {
+                            const patientName = nameCell.textContent.trim();
+                            
+                            
+                            
+                            // Vérifier si l'état actuel correspond à l'état souhaité pour éviter les modifications inutiles
+                            const hasImages = patientName && patientImages[patientName] && patientImages[patientName].length > 0;
+                            const currentHasImages = mainButton.innerHTML === '📷';
+                            
+                            // Ne mettre à jour que si l'état a changé
+                            if (hasImages !== currentHasImages) {
+                                if (hasImages) {
+                                    // Il y a des photos - afficher le bouton caméra et la poubelle
+                                    mainButton.innerHTML = '📷';
+                                    mainButton.title = `${patientImages[patientName].length} image(s) - Cliquez pour voir`;
+                                    mainButton.onclick = (e) => {
+                                        e.stopPropagation();
+                                        viewImage(patientName, 0);
+                                    };
+                                    mainButton.className = 'p-1 rounded-full hover:bg-gray-200 transition-colors text-blue-500';
+                                    
+                                    // Afficher la poubelle
+                                    trashButton.style.opacity = '1';
+                                    trashButton.onclick = (e) => {
+                                        e.stopPropagation();
+                                        if (confirm(`Voulez-vous vraiment supprimer toutes les images de ${patientName} ?`)) {
+                                            deleteAllImagesForPatient(patientName);
+                                        }
+                                    };
+                                    
+                                    // Ajouter un bouton + pour ajouter plus d'images (seulement s'il n'existe pas déjà)
+                                    let addMoreButton = container.querySelector('.add-more-button');
+                                    if (!addMoreButton) {
+                                        addMoreButton = document.createElement('button');
+                                        addMoreButton.innerHTML = '➕';
+                                        addMoreButton.className = 'add-more-button p-1 rounded-full hover:bg-green-200 transition-colors text-green-600 ml-1';
+                                        addMoreButton.title = 'Ajouter plus d\'images pour ce patient';
+                                        addMoreButton.onclick = (e) => {
+                                            e.stopPropagation();
+                                            const fileInput = imageCell.querySelector('input[type="file"]');
+                                            if (fileInput) fileInput.click();
+                                        };
+                                        container.appendChild(addMoreButton);
+                                    }
+                                    
+                                } else {
+                                // Pas de photos - afficher le bouton ajouter et cacher la poubelle
+                                mainButton.innerHTML = '➕';
+                                mainButton.title = 'Ajouter des images pour ce patient';
+                                mainButton.onclick = (e) => {
+                                    e.stopPropagation();
+                                    const fileInput = imageCell.querySelector('input[type="file"]');
+                                    if (fileInput) fileInput.click();
+                                };
+                                mainButton.className = 'p-1 rounded-full hover:bg-green-200 transition-colors text-green-600';
+                                
+                                    // Cacher la poubelle
+                                    trashButton.style.opacity = '0';
+                                    trashButton.onclick = null;
+                                    
+                                    // Supprimer le bouton + s'il existe
+                                    const addMoreButton = container.querySelector('.add-more-button');
+                                    if (addMoreButton) {
+                                        addMoreButton.remove();
+                                    }
+                                }
+                            } else if (hasImages) {
+                                // Mettre à jour seulement le titre si le nombre d'images a changé
+                                const currentTitle = mainButton.title;
+                                const newTitle = `${patientImages[patientName].length} image(s) - Cliquez pour voir`;
+                                if (currentTitle !== newTitle) {
+                                    mainButton.title = newTitle;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
 
         // Make functions globally available
         window.checkPassword = checkPassword;
@@ -5709,45 +5511,16 @@
         // Expose history bar toggle functions
         window.toggleHistoryBar = toggleHistoryBar;
         window.updateHistoryBarVisibility = updateHistoryBarVisibility;
-        
-        // Expose cell locking test function
-        window.testCellLocking = testCellLocking;
-        
-        // Expose manual initialization function
-        window.initCellLocking = enableTableEditing;
-        
-        // Expose manual refresh function for testing
-        window.refreshCellLocks = function() {
-            console.log('🔄 Manual refresh of cell locks requested...');
-            loadExistingLocks();
-            setupCellLocksRealtime();
-        };
-        
-        // Expose test function for real-time subscription
-        window.testRealtimeSubscription = function() {
-            console.log('🧪 Testing real-time subscription...');
-            console.log('🔍 Current subscription:', cellLocksSubscription);
-            console.log('🔍 Current user:', currentUser);
-            console.log('🔍 Supabase client:', !!supabase);
-            
-            // Test if we can access the celllocks table
-            supabase.from('celllocks').select('*').limit(5).then(result => {
-                console.log('🔍 celllocks table access test:', result);
-            }).catch(error => {
-                console.error('❌ celllocks table access failed:', error);
-            });
-            
-            // Test if subscription is active
-            if (cellLocksSubscription) {
-                console.log('🔍 Subscription object exists');
-                console.log('🔍 Subscription state:', cellLocksSubscription.state);
-                console.log('🔍 Subscription channel:', cellLocksSubscription.channel);
-            } else {
-                console.log('❌ No subscription object found');
-            }
-        };
 
-        // Image functions removed - not needed for staff table
+        window.viewImage = viewImage;
+        window.closeImageViewer = closeImageViewer;
+        window.nextImage = nextImage;
+        window.previousImage = previousImage;
+        window.deleteImage = deleteImage;
+        window.deleteAllImagesForPatient = deleteAllImagesForPatient;
+        window.syncPendingImages = syncPendingImages;
+        window.loadImagesFromSupabase = loadImagesFromSupabase;
+        window.updateAllImageColumnIcons = updateAllImageColumnIcons;
 
         // Fonction pour ouvrir la galerie simple
         function openSimpleGallery() {
