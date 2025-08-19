@@ -1700,7 +1700,10 @@
             
             const lastOperation = operationHistory.pop();
             console.log(`🔄 Undoing operation: ${lastOperation.type}`, lastOperation);
-            console.log(`🔄 Undoing operation: ${lastOperation.type}`, lastOperation);
+            
+            // ENHANCED: Show detailed message about what is being undone
+            const undoMessage = getDetailedOperationDescription(lastOperation, true);
+            showMessage(undoMessage, 'info');
             
             try {
                 isPerformingUndoRedo = true;
@@ -1905,6 +1908,10 @@
             
             const op = redoHistory.pop();
             console.log(`⏩ Redoing operation: ${op.type}`, op);
+            
+            // ENHANCED: Show detailed message about what is being redone
+            const redoMessage = getDetailedOperationDescription(op, false);
+            showMessage(redoMessage, 'info');
             try {
                 isPerformingUndoRedo = true;
                 clearOperationTimeout();
@@ -2044,12 +2051,17 @@
         
 
         
-        // Function to get operation description for display
+        // ENHANCED: Function to get detailed operation description for display
         function getOperationDescription(operation) {
             switch (operation.type) {
                 case OPERATION_TYPES.CELL_EDIT:
                     const cellInfo = operation.data.columnLabel || 'cellule';
                     const rowInfo = operation.data.rowKey ? `ligne ${operation.data.rowKey}` : '';
+                    const oldValue = operation.data.initialValue || '';
+                    const newValue = operation.data.currentValue || '';
+                    if (oldValue && newValue) {
+                        return `Modification: ${cellInfo}${rowInfo ? ` (${rowInfo})` : ''} - "${oldValue}" → "${newValue}"`;
+                    }
                     return `Modification: ${cellInfo}${rowInfo ? ` (${rowInfo})` : ''}`;
                 case OPERATION_TYPES.ROW_INSERT:
                     return 'Insertion de ligne';
@@ -2059,9 +2071,79 @@
                     }
                     return 'Suppression de ligne';
                 case OPERATION_TYPES.BULK_EDIT:
+                    if (operation.data.edits && operation.data.edits.length > 0) {
+                        return `Modifications en lot: ${operation.data.edits.length} cellule(s) modifiée(s)`;
+                    }
                     return 'Modifications en lot';
                 default:
                     return 'Opération';
+            }
+        }
+        
+        // ENHANCED: Function to get detailed operation description for undo/redo messages
+        function getDetailedOperationDescription(operation, isUndo = true) {
+            switch (operation.type) {
+                case OPERATION_TYPES.CELL_EDIT:
+                    const cellInfo = operation.data.columnLabel || 'cellule';
+                    const rowInfo = operation.data.rowKey ? `ligne ${operation.data.rowKey}` : '';
+                    const oldValue = operation.data.initialValue || '';
+                    const newValue = operation.data.currentValue || '';
+                    
+                    if (isUndo) {
+                        if (oldValue && newValue) {
+                            return `🔄 Annulation: ${cellInfo}${rowInfo ? ` (${rowInfo})` : ''} - "${newValue}" → "${oldValue}"`;
+                        }
+                        return `🔄 Annulation: modification de ${cellInfo}${rowInfo ? ` (${rowInfo})` : ''}`;
+                    } else {
+                        if (oldValue && newValue) {
+                            return `⏩ Rétablissement: ${cellInfo}${rowInfo ? ` (${rowInfo})` : ''} - "${oldValue}" → "${newValue}"`;
+                        }
+                        return `⏩ Rétablissement: modification de ${cellInfo}${rowInfo ? ` (${rowInfo})` : ''}`;
+                    }
+                    
+                case OPERATION_TYPES.ROW_INSERT:
+                    if (isUndo) {
+                        return `🔄 Annulation: suppression de la ligne insérée`;
+                    } else {
+                        return `⏩ Rétablissement: insertion de ligne`;
+                    }
+                    
+                case OPERATION_TYPES.ROW_DELETE:
+                    if (operation.data.deletedRows && operation.data.deletedRows > 1) {
+                        if (isUndo) {
+                            return `🔄 Annulation: restauration de ${operation.data.deletedRows} ligne(s) supprimée(s)`;
+                        } else {
+                            return `⏩ Rétablissement: suppression de ${operation.data.deletedRows} ligne(s)`;
+                        }
+                    } else {
+                        if (isUndo) {
+                            return `🔄 Annulation: restauration de la ligne supprimée`;
+                        } else {
+                            return `⏩ Rétablissement: suppression de ligne`;
+                        }
+                    }
+                    
+                case OPERATION_TYPES.BULK_EDIT:
+                    if (operation.data.edits && operation.data.edits.length > 0) {
+                        if (isUndo) {
+                            return `🔄 Annulation: restauration de ${operation.data.edits.length} modification(s) de cellule(s)`;
+                        } else {
+                            return `⏩ Rétablissement: ${operation.data.edits.length} modification(s) de cellule(s)`;
+                        }
+                    } else {
+                        if (isUndo) {
+                            return `🔄 Annulation: restauration des modifications en lot`;
+                        } else {
+                            return `⏩ Rétablissement: modifications en lot`;
+                        }
+                    }
+                    
+                default:
+                    if (isUndo) {
+                        return `🔄 Annulation: ${operation.type}`;
+                    } else {
+                        return `⏩ Rétablissement: ${operation.type}`;
+                    }
             }
         }
         
@@ -2086,6 +2168,7 @@
         // Expose undo/redo functions globally so buttons can access them
         window.undo = undo;
         window.redo = redo;
+        window.getDetailedOperationDescription = getDetailedOperationDescription;
         
         // Function to clear operation timeout
         function clearOperationTimeout() {
