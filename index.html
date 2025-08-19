@@ -5338,10 +5338,155 @@
 
         // ===== SNAPSHOT SYSTEM FUNCTIONS =====
         
-        // Create a demo snapshot with unique date logic
+        // Fonction de nettoyage automatique des anciens snapshots
+        async function cleanupOldSnapshots(keepCount = 20) {
+            try {
+                // Récupérer tous les snapshots triés par date (plus récents en premier)
+                const { data: snapshots, error: fetchError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*')
+                    .order('snapshot_date', { ascending: false });
+                
+                if (fetchError) {
+                    console.error('❌ Error fetching snapshots for cleanup:', fetchError);
+                    return;
+                }
+                
+                if (snapshots.length > keepCount) {
+                    // Supprimer les snapshots les plus anciens
+                    const toDelete = snapshots.slice(keepCount);
+                    let deletedCount = 0;
+                    
+                    for (const snapshot of toDelete) {
+                        try {
+                            // Supprimer du stockage Supabase
+                            const { error: storageError } = await supabaseStorage.storage
+                                .from('table-snapshots')
+                                .remove([snapshot.object_path]);
+                            
+                            if (storageError) {
+                                console.warn(`⚠️ Warning: Could not delete file ${snapshot.object_path}:`, storageError);
+                            }
+                            
+                            // Supprimer de la base de données
+                            const { error: dbError } = await supabase
+                                .from('table_snapshots_index')
+                                .delete()
+                                .eq('id', snapshot.id);
+                            
+                            if (dbError) {
+                                console.warn(`⚠️ Warning: Could not delete database record for ${snapshot.snapshot_date}:`, dbError);
+                            } else {
+                                deletedCount++;
+                            }
+                            
+                        } catch (error) {
+                            console.warn(`⚠️ Warning: Error deleting snapshot ${snapshot.snapshot_date}:`, error);
+                        }
+                    }
+                    
+                    if (deletedCount > 0) {
+                        console.log(`🧹 Cleanup completed: ${deletedCount} old snapshots removed`);
+                        if (typeof showMessage === 'function') {
+                            showMessage(`🧹 Nettoyage automatique : ${deletedCount} anciens snapshots supprimés`, 'info');
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                console.error('❌ Error in cleanupOldSnapshots:', error);
+            }
+        }
+
+        // Fonction de vérification de la capacité de stockage
+        async function checkStorageCapacity() {
+            try {
+                const { data: snapshots, error: fetchError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*');
+                
+                if (fetchError) {
+                    console.error('❌ Error checking storage capacity:', fetchError);
+                    return { count: 0, needsCleanup: false };
+                }
+                
+                const snapshotCount = snapshots.length;
+                const MAX_SNAPSHOTS = 50; // Limite de 50 snapshots
+                
+                // Si on dépasse 80% de la capacité, déclencher le nettoyage
+                if (snapshotCount >= MAX_SNAPSHOTS * 0.8) {
+                    return { count: snapshotCount, needsCleanup: true, target: Math.floor(MAX_SNAPSHOTS * 0.6) };
+                }
+                
+                return { count: snapshotCount, needsCleanup: false };
+                
+            } catch (error) {
+                console.error('❌ Error checking storage capacity:', error);
+                return { count: 0, needsCleanup: false };
+            }
+        }
+
+        // Fonction de monitoring et d'alertes du stockage
+        async function monitorStorageHealth() {
+            try {
+                const { data: snapshots, error: fetchError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*');
+                
+                if (fetchError) {
+                    console.error('❌ Error monitoring storage health:', fetchError);
+                    return;
+                }
+                
+                const snapshotCount = snapshots.length;
+                const MAX_SNAPSHOTS = 50;
+                
+                // Calculer la taille totale des snapshots
+                let totalSize = 0;
+                snapshots.forEach(snapshot => {
+                    totalSize += snapshot.file_size_bytes || 0;
+                });
+                
+                const MAX_BUCKET_SIZE = 100 * 1024 * 1024; // 100 MB
+                const usagePercentage = (totalSize / MAX_BUCKET_SIZE) * 100;
+                
+                // Alertes automatiques selon l'utilisation
+                if (snapshotCount >= MAX_SNAPSHOTS * 0.9) {
+                    // 🚨 CRITIQUE : Presque plein
+                    if (typeof showMessage === 'function') {
+                        showMessage(`🚨 Stockage critique : ${snapshotCount}/${MAX_SNAPSHOTS} snapshots. Nettoyage urgent !`, 'error');
+                    }
+                } else if (snapshotCount >= MAX_SNAPSHOTS * 0.8) {
+                    // ⚠️ ATTENTION : Nettoyage recommandé
+                    if (typeof showMessage === 'function') {
+                        showMessage(`⚠️ Stockage élevé : ${snapshotCount}/${MAX_SNAPSHOTS} snapshots. Nettoyage recommandé.`, 'warning');
+                    }
+                } else if (snapshotCount >= MAX_SNAPSHOTS * 0.6) {
+                    // ℹ️ INFO : Surveillance
+                    if (typeof showMessage === 'function') {
+                        showMessage(`ℹ️ Stockage modéré : ${snapshotCount}/${MAX_SNAPSHOTS} snapshots.`, 'info');
+                    }
+                }
+                
+                // Log des informations de stockage
+                console.log(`📊 Storage Health: ${snapshotCount}/${MAX_SNAPSHOTS} snapshots, ${(totalSize / 1024 / 1024).toFixed(2)} MB used (${usagePercentage.toFixed(1)}%)`);
+                
+            } catch (error) {
+                console.error('❌ Error in monitorStorageHealth:', error);
+            }
+        }
+
+        // Create a demo snapshot with unique date logic and automatic cleanup
         async function createDemoSnapshot(useCurrentData = false) {
             try {
                 console.log('➕ Creating demo snapshot...');
+                
+                // VÉRIFICATION ET NETTOYAGE AUTOMATIQUE AVANT CRÉATION
+                const capacityInfo = await checkStorageCapacity();
+                if (capacityInfo.needsCleanup) {
+                    console.log(`🧹 Storage capacity warning: ${capacityInfo.count} snapshots. Triggering automatic cleanup...`);
+                    await cleanupOldSnapshots(capacityInfo.target);
+                }
                 
                 // Check current state
                 const { data: existing, error: checkError } = await supabase
@@ -5588,6 +5733,9 @@
                     await loadAvailableSnapshots();
                     // Update the calendar display
                     populateSnapshotCalendar();
+                    
+                    // MONITORING : Vérifier la santé du stockage après création
+                    await monitorStorageHealth();
                 }
                 
             } catch (err) {
@@ -5640,13 +5788,41 @@
                     // Clean: Removed debug log
                     await createDemoSnapshot();
                 } else {
-                updateHistoryNavigation();
+                    updateHistoryNavigation();
                     // Update the calendar display
                     populateSnapshotCalendar();
                 }
                 
+                        // MONITORING : Vérifier la santé du stockage après chargement
+        await monitorStorageHealth();
+        
+    } catch (error) {
+        console.error('❌ Error in loadAvailableSnapshots:', error);
+    }
+}
+
+        // Fonction utilitaire pour forcer le nettoyage manuel
+        async function forceStorageCleanup() {
+            try {
+                if (typeof showMessage === 'function') {
+                    showMessage('🧹 Déclenchement du nettoyage manuel du stockage...', 'info');
+                }
+                
+                // Forcer le nettoyage en gardant seulement 20 snapshots
+                await cleanupOldSnapshots(20);
+                
+                // Recharger les snapshots disponibles
+                await loadAvailableSnapshots();
+                
+                if (typeof showMessage === 'function') {
+                    showMessage('✅ Nettoyage manuel terminé avec succès !', 'success');
+                }
+                
             } catch (error) {
-                console.error('❌ Error in loadAvailableSnapshots:', error);
+                console.error('❌ Error in forceStorageCleanup:', error);
+                if (typeof showMessage === 'function') {
+                    showMessage('❌ Erreur lors du nettoyage manuel', 'error');
+                }
             }
         }
         
@@ -6924,6 +7100,12 @@
         window.openDatePicker = openDatePicker;
         window.formatDateForDisplay = formatDateForDisplay;
         window.disableTableEditing = disableTableEditing;
+        
+        // Expose storage management functions globally
+        window.cleanupOldSnapshots = cleanupOldSnapshots;
+        window.checkStorageCapacity = checkStorageCapacity;
+        window.monitorStorageHealth = monitorStorageHealth;
+        window.forceStorageCleanup = forceStorageCleanup;
         window.enableTableEditing = enableTableEditing;
         window.updateHistoryNavigation = updateHistoryNavigation;
         window.updateSnapshotBanner = updateSnapshotBanner;
