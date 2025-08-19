@@ -1393,12 +1393,27 @@
         try { 
             lastFocusInfo = JSON.parse(localStorage.getItem('lastFocusInfo') || 'null'); 
             
-            // Forcer l'affichage du bouton d'ajout au démarrage
+            // Forcer l'affichage du bouton d'ajout au démarrage (en respectant le mode visualisation)
             const fabAdd = document.getElementById('fab-add');
             if (fabAdd) {
                 fabAdd.style.display = 'flex';
-                fabAdd.style.pointerEvents = 'auto';
-                console.log('✅ FAB add button forced visible on startup');
+                fabAdd.style.visibility = 'visible';
+                
+                if (isViewMode) {
+                    // Mode visualisation : bouton visible mais désactivé
+                    fabAdd.style.opacity = '0.5';
+                    fabAdd.style.pointerEvents = 'none';
+                    fabAdd.style.cursor = 'not-allowed';
+                    fabAdd.title = 'Mode visualisation actif - Ajout de lignes désactivé';
+                } else {
+                    // Mode normal : bouton pleinement fonctionnel
+                    fabAdd.style.opacity = '1';
+                    fabAdd.style.pointerEvents = 'auto';
+                    fabAdd.style.cursor = 'pointer';
+                    fabAdd.title = 'Ajouter une nouvelle ligne';
+                }
+                
+                console.log('✅ FAB add button forced visible on startup (respecting view mode)');
             }
         } catch(_) { 
             lastFocusInfo = null; 
@@ -1914,10 +1929,23 @@
             const fabAdd = document.getElementById('fab-add');
             if (fabAdd) {
                 fabAdd.style.display = 'flex';
-                fabAdd.style.pointerEvents = 'auto';
-                fabAdd.style.opacity = '1';
                 fabAdd.style.visibility = 'visible';
-                console.log('✅ FAB add button forced visible');
+                
+                if (isViewMode) {
+                    // Mode visualisation : bouton visible mais désactivé
+                    fabAdd.style.opacity = '0.5';
+                    fabAdd.style.pointerEvents = 'none';
+                    fabAdd.style.cursor = 'not-allowed';
+                    fabAdd.title = 'Mode visualisation actif - Ajout de lignes désactivé';
+                } else {
+                    // Mode normal : bouton pleinement fonctionnel
+                    fabAdd.style.opacity = '1';
+                    fabAdd.style.pointerEvents = 'auto';
+                    fabAdd.style.cursor = 'pointer';
+                    fabAdd.title = 'Ajouter une nouvelle ligne';
+                }
+                
+                console.log('✅ FAB add button forced visible (respecting view mode)');
                 return true;
             } else {
                 console.error('❌ FAB add button not found');
@@ -2436,9 +2464,24 @@
                 isViewModeProtected = false;
             }
             
-            // Masquer/afficher le bouton d'ajout FAB
+            // Le bouton d'ajout FAB doit toujours être visible, mais désactivé en mode visualisation
             if (fabAdd) {
-                fabAdd.style.display = isViewMode ? 'none' : 'flex';
+                fabAdd.style.display = 'flex';
+                fabAdd.style.visibility = 'visible';
+                
+                if (isViewMode) {
+                    // Mode visualisation : bouton visible mais désactivé
+                    fabAdd.style.opacity = '0.5';
+                    fabAdd.style.pointerEvents = 'none';
+                    fabAdd.style.cursor = 'not-allowed';
+                    fabAdd.title = 'Mode visualisation actif - Ajout de lignes désactivé';
+                } else {
+                    // Mode normal : bouton pleinement fonctionnel
+                    fabAdd.style.opacity = '1';
+                    fabAdd.style.pointerEvents = 'auto';
+                    fabAdd.style.cursor = 'pointer';
+                    fabAdd.title = 'Ajouter une nouvelle ligne';
+                }
             }
             
             // Sauvegarder l'état dans localStorage
@@ -3049,9 +3092,26 @@
                                 // Mettre à jour l'apparence du bouton
                                 updateViewModeButton();
                                 
-                                // Masquer le bouton d'ajout FAB
+                                // Le bouton d'ajout FAB doit toujours être visible, mais désactivé en mode visualisation
                                 const fabAdd = document.getElementById('fab-add');
-                                if (fabAdd) fabAdd.style.display = 'none';
+                                if (fabAdd) {
+                                    fabAdd.style.display = 'flex';
+                                    fabAdd.style.visibility = 'visible';
+                                    
+                                    if (isViewMode) {
+                                        // Mode visualisation : bouton visible mais désactivé
+                                        fabAdd.style.opacity = '0.5';
+                                        fabAdd.style.pointerEvents = 'none';
+                                        fabAdd.style.cursor = 'not-allowed';
+                                        fabAdd.title = 'Mode visualisation actif - Ajout de lignes désactivé';
+                                    } else {
+                                        // Mode normal : bouton pleinement fonctionnel
+                                        fabAdd.style.opacity = '1';
+                                        fabAdd.style.pointerEvents = 'auto';
+                                        fabAdd.style.cursor = 'pointer';
+                                        fabAdd.title = 'Ajouter une nouvelle ligne';
+                                    }
+                                }
                                 
                                 console.log('✅ View mode applied, functions will be restored in', restoreDelay, 'ms');
                                 
