@@ -640,47 +640,33 @@
                 overflow: auto !important;
                 -webkit-overflow-scrolling: touch;
             }
+            
+            /* History bar responsive adjustments */
+            #history-bar-container {
+                padding: 0.5rem !important;
+            }
+            
+            #history-bar-container button {
+                font-size: 0.75rem !important;
+                padding: 0.25rem 0.5rem !important;
+                min-height: 2rem !important;
+            }
+            
+            #history-bar-container .fa-solid {
+                width: 0.875rem !important;
+                height: 0.875rem !important;
+            }
         }
         
-        /* Mobile viewport height management */
-        .mobile-viewport-height {
-            height: 100vh;
-            height: 100dvh; /* Dynamic viewport height for mobile */
-            min-height: 100vh;
-            min-height: 100dvh;
-        }
-        
-        /* Mobile-specific viewport adjustments */
-        @media (max-width: 768px) {
-            body {
-                overflow-x: hidden;
-                position: fixed;
-                width: 100%;
-                height: 100%;
+        /* Small screen adjustments (sm breakpoint) */
+        @media (max-width: 640px) {
+            #history-bar-container {
+                gap: 0.25rem !important;
             }
             
-            #table-container {
-                height: 100vh;
-                height: 100dvh;
-                height: calc(var(--vh, 1vh) * 100);
-                min-height: 100vh;
-                min-height: 100dvh;
-                min-height: calc(var(--vh, 1vh) * 100);
-                overflow: hidden;
-            }
-            
-            /* Optimiser pour la barre de navigation mobile */
-            #fab-add {
-                position: fixed;
-                bottom: 16px;
-                right: 16px;
-                z-index: 1000;
-            }
-            
-            /* S'assurer que le contenu ne déborde pas */
-            .overflow-auto {
-                overflow: auto !important;
-                -webkit-overflow-scrolling: touch;
+            #history-bar-container button {
+                padding: 0.25rem 0.375rem !important;
+                font-size: 0.7rem !important;
             }
         }
         
@@ -912,53 +898,66 @@
 
         <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
 
-        <!-- Toggle button for history bar (always visible) -->
-        <div class="flex justify-end mb-1">
-            <button id="history-toggle" onclick="toggleHistoryBar()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white px-1 py-0 rounded hover:bg-gray-500 transition-colors">
-                <i id="history-toggle-icon" class="fa-solid fa-chevron-up w-2.5 h-2.5"></i>
+
+
+        <!-- Toggle button for history bar -->
+        <div class="flex justify-end mb-2">
+            <button id="history-toggle-btn" onclick="toggleHistoryBarSimple()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 transition-colors text-sm">
+                <i id="history-toggle-icon" class="fa-solid fa-chevron-down mr-1"></i>
+                Masquer l'historique
             </button>
         </div>
 
-        <!-- History Bar for Snapshot System -->
-        <div id="history-bar" class="hidden lg:flex flex-wrap items-center gap-2 mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <button id="history-back" onclick="goToPreviousSnapshot()" disabled title="Snapshot précédent" aria-label="Snapshot précédent" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                <i class="fa-solid fa-chevron-left w-4 h-4"></i>
-            </button>
-            
-            <button id="history-date" onclick="openDatePicker()" title="Choisir une date de snapshot" aria-label="Choisir une date" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                <span id="current-date-text">Données en direct</span>
-                <i class="fa-solid fa-calendar ml-2 w-4 h-4"></i>
-            </button>
-            
-            <button id="history-next" onclick="goToNextSnapshot()" disabled title="Snapshot suivant" aria-label="Snapshot suivant" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                <i class="fa-solid fa-chevron-right w-4 h-4"></i>
-            </button>
-            
-            <!-- Bouton d'actualisation du tableau -->
-            <button onclick="refreshTableData()" title="Actualiser le tableau avec les données les plus récentes" aria-label="Actualiser" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium">
-                <i class="fa-solid fa-arrows-rotate ml-2 w-4 h-4"></i>
-                Actualiser
-            </button>
-            
-            <!-- Calendar dropdown for snapshot dates -->
-            <div class="relative">
-                <button id="snapshot-calendar-btn" onclick="toggleSnapshotCalendar()" title="Choisir une date de snapshot" aria-label="Calendrier des snapshots" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium">
-                    <i class="fa-solid fa-calendar-days ml-2 w-4 h-4"></i>
-                    <span id="calendar-btn-text">Calendrier</span>
+        <!-- History Bar Container - This is what gets toggled -->
+        <div id="history-bar-container" class="mb-3">
+            <!-- All buttons in one responsive row -->
+            <div class="flex flex-wrap items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <!-- Navigation buttons - Hidden on small screens -->
+                <div class="hidden md:flex items-center gap-2">
+                    <button id="history-back" onclick="goToPreviousSnapshot()" disabled title="Snapshot précédent" aria-label="Snapshot précédent" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                        <i class="fa-solid fa-chevron-left w-3 h-3 mr-1"></i>
+                        Précédent
+                    </button>
+                    
+                    <button id="history-date" onclick="openDatePicker()" title="Choisir une date de snapshot" aria-label="Choisir une date" class="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700 transition-colors font-medium flex items-center justify-center">
+                        <span id="current-date-text">Données en direct</span>
+                        <i class="fa-solid fa-calendar ml-1 w-3 h-3"></i>
+                    </button>
+                    
+                    <button id="history-next" onclick="goToNextSnapshot()" disabled title="Snapshot suivant" aria-label="Snapshot suivant" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                        <i class="fa-solid fa-chevron-right w-3 h-3 ml-1"></i>
+                        Suivant
+                    </button>
+                </div>
+                
+                <!-- Action buttons - Always visible, smaller on mobile -->
+                <button onclick="refreshTableData()" title="Actualiser le tableau avec les données les plus récentes" aria-label="Actualiser" class="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700 transition-colors font-medium flex items-center justify-center">
+                    <i class="fa-solid fa-arrows-rotate mr-1 w-3 h-3"></i>
+                    <span class="hidden sm:inline">Actualiser</span>
+                    <span class="sm:hidden">Act</span>
                 </button>
                 
-                <!-- Calendar dropdown -->
-                <div id="snapshot-calendar-dropdown" class="hidden absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-64 max-h-96 overflow-y-auto">
-                    <div class="p-3 border-b border-gray-200">
-                        <h3 class="text-sm font-semibold text-gray-700 mb-2">📅 Snapshots disponibles</h3>
-                        <div class="text-xs text-gray-500">Cliquez sur une date pour charger le snapshot</div>
+                <!-- Calendar dropdown for snapshot dates -->
+                <div class="relative">
+                    <button id="snapshot-calendar-btn" onclick="toggleSnapshotCalendar()" title="Choisir une date de snapshot" aria-label="Calendrier des snapshots" class="bg-indigo-600 text-white px-2 py-1 rounded text-xs hover:bg-indigo-700 transition-colors font-medium flex items-center justify-center">
+                        <i class="fa-solid fa-calendar-days mr-1 w-3 h-3"></i>
+                        <span id="calendar-btn-text" class="hidden sm:inline">Calendrier</span>
+                        <span class="sm:hidden">Cal</span>
+                    </button>
+                    
+                    <!-- Calendar dropdown -->
+                    <div id="snapshot-calendar-dropdown" class="hidden absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-64 max-h-96 overflow-y-auto">
+                        <div class="p-3 border-b border-gray-200">
+                            <h3 class="text-sm font-semibold text-gray-700 mb-2">📅 Snapshots disponibles</h3>
+                            <div class="text-xs text-gray-500">Cliquez sur une date pour charger le snapshot</div>
+                        </div>
+                        <div id="snapshot-dates-list" class="p-2">
+                            <!-- Dates will be populated here -->
+                        </div>
                     </div>
-                    <div id="snapshot-dates-list" class="p-2">
-                        <!-- Dates will be populated here -->
-                    </div>
-
                 </div>
             </div>
+        </div>
             
 
 
@@ -1188,14 +1187,14 @@
         let currentSnapshotIndex = -1;
         
         // History bar visibility state (saved in localStorage)
-        let isHistoryBarVisible = localStorage.getItem('historyBarVisible') !== 'false'; // Default to true
+
         
         // Make snapshot system globally available
         window.snapshotMode = snapshotMode;
         window.currentSnapshotDate = currentSnapshotDate;
         window.availableSnapshots = availableSnapshots;
         window.currentSnapshotIndex = currentSnapshotIndex;
-        window.isHistoryBarVisible = isHistoryBarVisible;
+
         window.realtimeSubscription = realtimeSubscription;
         
         // Make other important variables globally available
@@ -4113,18 +4112,28 @@
             if (pwd === APP_CONFIG.password) { 
                 appState.isLoggedIn = true; 
                 sessionStorage.setItem('isLoggedIn', '1'); 
-                document.getElementById('login-container').classList.add('hidden'); 
-                document.getElementById('table-container').classList.remove('hidden'); 
-                restoreLocalDraft(); 
-                ensureDDNHeader(); 
-                fetchInitialData(); 
-                setupRealtimeSubscription(); 
-                startPeriodicSync(); 
                 
-                // Adapter l'affichage du statut après la connexion
-                setTimeout(() => {
-                    adaptStatusDisplay();
-                }, 100); 
+                // Masquer le login et afficher le tableau immédiatement
+                document.getElementById('login-container').classList.add('hidden'); 
+                document.getElementById('table-container').classList.remove('hidden');
+                
+                // S'assurer que le tableau est visible
+                const tableContainer = document.getElementById('table-container');
+                const table = document.getElementById('data-table');
+                
+                if (tableContainer) {
+                    tableContainer.style.display = 'block';
+                    tableContainer.style.visibility = 'visible';
+                }
+                
+                if (table) {
+                    table.style.display = 'table';
+                    table.style.visibility = 'visible';
+                }
+                
+                // Initialiser complètement l'application après la connexion
+                initializeApp();
+                
             } else { 
                 err.textContent = 'Mot de passe incorrect. Le champ est maintenant visible pour faciliter la correction.';
                 
@@ -5003,8 +5012,7 @@
             const backBtn = document.getElementById('history-back');
             const nextBtn = document.getElementById('history-next');
             
-            // Only update button states if history bar is visible
-            if (!isHistoryBarVisible) return;
+            // Always update button states
             
             if (snapshotMode === 'live') {
                 // Enable back/next if snapshots exist
@@ -5462,43 +5470,9 @@
             });
         }
         
-        // Toggle history bar visibility
-        function toggleHistoryBar() {
-            console.log('🔄 toggleHistoryBar called, current state:', isHistoryBarVisible);
-            
-            isHistoryBarVisible = !isHistoryBarVisible;
-            console.log('🔄 New state:', isHistoryBarVisible);
-            
-            // Save preference to localStorage
-            localStorage.setItem('historyBarVisible', isHistoryBarVisible);
-            console.log('💾 Preference saved to localStorage');
-            
-            // Update UI
-            updateHistoryBarVisibility();
-            console.log('✅ UI updated');
-        }
+
         
-        // Update history bar visibility based on saved preference
-        function updateHistoryBarVisibility() {
-            console.log('🔄 updateHistoryBarVisibility called, isHistoryBarVisible:', isHistoryBarVisible);
-            
-            const historyBar = document.getElementById('history-bar');
-            const toggleIcon = document.getElementById('history-toggle-icon');
-            
-            console.log('🔄 Elements found:', { historyBar: !!historyBar, toggleIcon: !!toggleIcon });
-            
-            if (isHistoryBarVisible) {
-                historyBar.classList.remove('hidden');
-                historyBar.classList.add('lg:flex');
-                toggleIcon.className = 'fa-solid fa-chevron-up w-4 h-4';
-                console.log('✅ History bar shown, icon set to up');
-            } else {
-                historyBar.classList.add('hidden');
-                historyBar.classList.remove('lg:flex');
-                toggleIcon.className = 'fa-solid fa-chevron-down w-4 h-4';
-                console.log('✅ History bar hidden, icon set to down');
-            }
-        }
+
         
         // Fonction pour actualiser le tableau avec les données les plus récentes
         function refreshTableData() {
@@ -5519,6 +5493,57 @@
                 console.error('❌ Erreur lors de l\'actualisation:', error);
                 showMessage('Erreur lors de l\'actualisation du tableau', 'error');
             });
+        }
+        
+        // Simple and robust history bar toggle function
+        function toggleHistoryBarSimple() {
+            console.log('🔄 toggleHistoryBarSimple called');
+            
+            // Debug: Vérifier que le DOM est chargé
+            if (document.readyState !== 'complete') {
+                console.warn('⚠️ DOM not fully loaded, waiting...');
+                setTimeout(toggleHistoryBarSimple, 100);
+                return;
+            }
+            
+            const historyBarContainer = document.getElementById('history-bar-container');
+            const toggleBtn = document.getElementById('history-toggle-btn');
+            
+            console.log('🔍 Elements found:', {
+                historyBarContainer: !!historyBarContainer,
+                toggleBtn: !!toggleBtn
+            });
+            
+            if (!historyBarContainer || !toggleBtn) {
+                console.error('❌ Required elements not found');
+                console.error('❌ historyBarContainer:', historyBarContainer);
+                console.error('❌ toggleBtn:', toggleBtn);
+                return;
+            }
+            
+            // Check current state
+            const isCurrentlyVisible = !historyBarContainer.classList.contains('hidden') && historyBarContainer.style.display !== 'none';
+            console.log('🔍 Current state:', isCurrentlyVisible ? 'visible' : 'hidden');
+            
+            if (isCurrentlyVisible) {
+                // Hide history bar container
+                historyBarContainer.classList.add('hidden');
+                historyBarContainer.style.display = 'none';
+                
+                // Update button text and icon
+                toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-up mr-1"></i>Afficher l\'historique';
+                
+                console.log('✅ History bar container hidden');
+            } else {
+                // Show history bar container
+                historyBarContainer.classList.remove('hidden');
+                historyBarContainer.style.display = 'block';
+                
+                // Update button text and icon
+                toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-down mr-1"></i>Masquer l\'historique';
+                
+                console.log('✅ History bar container shown');
+            }
         }
         
         // ===== END SNAPSHOT SYSTEM FUNCTIONS =====
@@ -5642,8 +5667,40 @@
                     populateSnapshotCalendar();
                 }, 500);
                 
-                // Apply saved history bar visibility preference
-                updateHistoryBarVisibility();
+                // Verify toggle button functionality
+                setTimeout(() => {
+                    console.log('🔍 Verifying toggle button functionality...');
+                    const toggleBtn = document.getElementById('history-toggle-btn');
+                    const historyBarContainer = document.getElementById('history-bar-container');
+                    console.log('✅ Toggle button found:', !!toggleBtn);
+                    console.log('✅ History bar container found:', !!historyBarContainer);
+                    
+                    if (toggleBtn && historyBarContainer) {
+                        console.log('✅ Toggle functionality ready');
+                        console.log('✅ Container initial state:', historyBarContainer.classList.contains('hidden') ? 'hidden' : 'visible');
+                    } else {
+                        console.warn('⚠️ Toggle elements not ready yet');
+                    }
+                }, 1000);
+                
+                // Force UI update to ensure everything is visible
+                setTimeout(() => {
+                    console.log('🎯 Force UI update after initialization...');
+                    document.getElementById('table-container').style.display = 'block';
+                    document.getElementById('table-container').classList.remove('hidden');
+                    
+                    // Ensure table is visible
+                    const table = document.getElementById('data-table');
+                    if (table) {
+                        table.style.display = 'table';
+                        table.style.visibility = 'visible';
+                    }
+                    
+                    // Force a reflow to ensure proper rendering
+                    table?.offsetHeight;
+                }, 100);
+                
+
                 
                 // Appliquer le mode visualisation APRÈS la restauration des données
                 setTimeout(() => {
@@ -6194,8 +6251,7 @@
         window.toggleViewMode = toggleViewMode;
         
         // Expose history bar toggle functions
-        window.toggleHistoryBar = toggleHistoryBar;
-        window.updateHistoryBarVisibility = updateHistoryBarVisibility;
+        window.toggleHistoryBarSimple = toggleHistoryBarSimple;
 
         window.viewImage = viewImage;
         
