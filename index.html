@@ -1092,6 +1092,10 @@
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
         const supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
         
+        // Make Supabase globally available
+        window.supabase = supabase;
+        window.supabaseConfig = supabaseConfig;
+        
         // Global state management
         const appState = { 
             isLoggedIn: false, 
@@ -1100,6 +1104,9 @@
             localData: null, 
             serverColumns: null 
         };
+        
+        // Make app state globally available
+        window.appState = appState;
         
         // Application state variables
         let isDirty = false;
@@ -1155,6 +1162,24 @@
         
         // History bar visibility state (saved in localStorage)
         let isHistoryBarVisible = localStorage.getItem('historyBarVisible') !== 'false'; // Default to true
+        
+        // Make snapshot system globally available
+        window.snapshotMode = snapshotMode;
+        window.currentSnapshotDate = currentSnapshotDate;
+        window.availableSnapshots = availableSnapshots;
+        window.currentSnapshotIndex = currentSnapshotIndex;
+        window.isHistoryBarVisible = isHistoryBarVisible;
+        window.realtimeSubscription = realtimeSubscription;
+        
+        // Make other important variables globally available
+        window.isViewMode = false; // Will be updated in initializeApp
+        window.isInitialLoad = true; // Will be set to false after initialization
+        window.isRestoringFocus = false; // Flag to prevent edit events during focus restoration
+        
+        // Add logging function
+        window.log = function(message, level = 'info') {
+            console.log(`[${level.toUpperCase()}] ${message}`);
+        };
 
         
         // Row color management
@@ -4568,6 +4593,21 @@
         // Load available snapshots from the database
         async function loadAvailableSnapshots() {
             try {
+                console.log('🔄 Loading available snapshots...');
+                
+                // First, test the database connection
+                const { data: testData, error: testError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*')
+                    .limit(1);
+                
+                if (testError) {
+                    console.error('❌ Database connection error:', testError);
+                    return;
+                }
+                
+                console.log('✅ Database connection successful, test data:', testData);
+                
                 const { data, error } = await supabase
                     .from('table_snapshots_index')
                     .select('snapshot_date, created_at, row_count')
@@ -4579,7 +4619,10 @@
                 }
                 
                 availableSnapshots = data || [];
-                console.log(`📸 Loaded ${availableSnapshots.length} available snapshots`);
+                // Update global variable
+                window.availableSnapshots = availableSnapshots;
+                
+                console.log(`📸 Loaded ${availableSnapshots.length} available snapshots:`, availableSnapshots);
                 updateHistoryNavigation();
             } catch (error) {
                 console.error('❌ Error in loadAvailableSnapshots:', error);
@@ -5513,6 +5556,23 @@
         window.updateHistoryBarVisibility = updateHistoryBarVisibility;
 
         window.viewImage = viewImage;
+        
+        // Expose snapshot system functions
+        window.loadAvailableSnapshots = loadAvailableSnapshots;
+        window.enterSnapshotMode = enterSnapshotMode;
+        window.returnToToday = returnToToday; // Use the existing function instead
+        window.goToPreviousSnapshot = goToPreviousSnapshot;
+        window.goToNextSnapshot = goToNextSnapshot;
+        window.openDatePicker = openDatePicker;
+        window.formatDateForDisplay = formatDateForDisplay;
+        window.disableTableEditing = disableTableEditing;
+        window.enableTableEditing = enableTableEditing;
+        window.updateHistoryNavigation = updateHistoryNavigation;
+        window.updateSnapshotBanner = updateSnapshotBanner;
+        window.updateHistoryDateButton = updateHistoryDateButton;
+        window.fetchInitialData = fetchInitialData;
+        window.loadTableData = loadTableData;
+        window.showMessage = showMessage;
         window.closeImageViewer = closeImageViewer;
         window.nextImage = nextImage;
         window.previousImage = previousImage;
@@ -5529,6 +5589,12 @@
         
         // Exposer la fonction globalement
         window.openSimpleGallery = openSimpleGallery;
+        window.setupMobileViewport = setupMobileViewport;
+        window.setupExtendedKeyboardShortcuts = setupExtendedKeyboardShortcuts;
+        window.initializeApp = initializeApp;
+        window.adaptStatusDisplay = adaptStatusDisplay;
+        window.getCurrentStatusType = getCurrentStatusType;
+        window.applyDotColor = applyDotColor;
 
         // Raccourcis clavier étendus
 

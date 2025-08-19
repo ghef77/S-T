@@ -40,3 +40,4 @@ cursor checkpoint restore "Checkpoint cursor-restoration-fixed - after consolida
 ```
 
 
+cursor fix hash: Commit Hash: c1182dc
