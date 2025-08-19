@@ -1579,9 +1579,13 @@
                 }
                 clearOperationTimeout();
                 
-                // Restore table state
-                if (lastOperation.tableState) {
+                // Restore table state - only if we have valid data
+                if (lastOperation.tableState && lastOperation.tableState.rows && Array.isArray(lastOperation.tableState.rows) && lastOperation.tableState.rows.length > 0) {
+                    console.log(`🔄 Restoring table state with ${lastOperation.tableState.rows.length} rows`);
                     loadTableData(lastOperation.tableState.rows);
+                } else if (lastOperation.tableState && lastOperation.tableState.rows) {
+                    console.warn(`⚠️ Table state has rows but they are invalid:`, lastOperation.tableState.rows);
+                    // Don't restore if data is invalid - this prevents table clearing
                 }
                 
                 // Special handling for cell edits - restore specific cell values
@@ -1709,9 +1713,13 @@
                 isPerformingUndoRedo = true;
                 clearOperationTimeout();
                 
-                // Re-apply the final state of the operation
-                if (op.finalState) {
+                // Re-apply the final state of the operation - only if we have valid data
+                if (op.finalState && op.finalState.rows && Array.isArray(op.finalState.rows) && op.finalState.rows.length > 0) {
+                    console.log(`⏩ Restoring table state with ${op.finalState.rows.length} rows`);
                     loadTableData(op.finalState.rows);
+                } else if (op.finalState && op.finalState.rows) {
+                    console.warn(`⚠️ Final state has rows but they are invalid:`, op.finalState.rows);
+                    // Don't restore if data is invalid - this prevents table clearing
                 }
                 
                 // Special handling for cell edits - restore final cell values
@@ -3809,6 +3817,13 @@
             if (!data) { 
                 log('Structure invalide', 'error'); 
                 return false; 
+            }
+            
+            // Protection supplémentaire contre l'effacement du tableau
+            if (!Array.isArray(data) || data.length === 0) {
+                console.warn('⚠️ loadTableData: data is not a valid array or is empty, refusing to clear table');
+                log('Données invalides - tableau non modifié', 'warning');
+                return false;
             }
             
             const tbody = document.getElementById('table-body');
