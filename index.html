@@ -1076,6 +1076,20 @@
             <button id="redo-button" onclick="redo()" disabled title="Rétablir" aria-label="Rétablir" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
                 <i class="fa-solid fa-rotate-right w-3.5 h-3.5"></i>
             </button>
+            
+            <!-- Boutons multi-pas pour navigation libre dans l'historique -->
+            <button onclick="undo10()" title="Annuler 10 opérations" aria-label="Annuler 10 opérations" class="bg-orange-400 text-white p-1.5 rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center w-7 h-7">
+                <span class="text-xs font-bold">10←</span>
+            </button>
+            <button onclick="undo5()" title="Annuler 5 opérations" aria-label="Annuler 5 opérations" class="bg-orange-300 text-white p-1.5 rounded-lg hover:bg-orange-400 transition-colors flex items-center justify-center w-7 h-7">
+                <span class="text-xs font-bold">5←</span>
+            </button>
+            <button onclick="redo5()" title="Rétablir 5 opérations" aria-label="Rétablir 5 opérations" class="bg-orange-300 text-white p-1.5 rounded-lg hover:bg-orange-400 transition-colors flex items-center justify-center w-7 h-7">
+                <span class="text-xs font-bold">→5</span>
+            </button>
+            <button onclick="redo10()" title="Rétablir 10 opérations" aria-label="Rétablir 10 opérations" class="bg-orange-400 text-white p-1.5 rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center w-7 h-7">
+                <span class="text-xs font-bold">→10</span>
+            </button>
             <button onclick="downloadExcel()" title="Exporter en Excel" aria-label="Exporter en Excel" class="bg-green-600 text-white p-1.5 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center w-7 h-7">
                 <i class="fa-solid fa-file-excel w-3.5 h-3.5"></i>
             </button>
@@ -1560,14 +1574,30 @@
             updateUndoButtonState();
         }
         
-        // Enhanced undo function (with redo support)
-        function undo() {
+        // Enhanced undo function (with redo support) - can go back multiple steps
+        function undo(steps = 1) {
             if (operationHistory.length === 0) {
                 log('Aucune opération à annuler.', 'info');
                 return;
             }
             
-            const lastOperation = operationHistory.pop();
+            // Limiter le nombre de pas à la taille de l'historique
+            const maxSteps = Math.min(steps, operationHistory.length);
+            if (maxSteps <= 0) {
+                log('Aucune opération à annuler.', 'info');
+                return;
+            }
+            
+            console.log(`🔄 Undoing ${maxSteps} operation(s) out of ${operationHistory.length} available`);
+            
+            // Collecter toutes les opérations à annuler
+            const operationsToUndo = [];
+            for (let i = 0; i < maxSteps; i++) {
+                operationsToUndo.push(operationHistory.pop());
+            }
+            
+            // Traiter la dernière opération (la plus récente) pour la restauration
+            const lastOperation = operationsToUndo[0];
             console.log(`🔄 Undoing operation: ${lastOperation.type}`, lastOperation);
             
             try {
@@ -1659,12 +1689,14 @@
                 // This allows proper undo/redo cycling
                 console.log(`📝 Keeping operation history intact for proper undo/redo cycling`);
 
-                // Push undone operation to redo stack
-                redoHistory.push(lastOperation);
+                // Push all undone operations to redo stack (in reverse order for proper redo)
+                for (let i = operationsToUndo.length - 1; i >= 0; i--) {
+                    redoHistory.push(operationsToUndo[i]);
+                }
                 
-                // Keep redo stack manageable but allow up to 30 operations
-                if (redoHistory.length > 30) {
-                    const toRemove = redoHistory.length - 20; // Keep 20 operations
+                // Keep redo stack manageable but allow up to 50 operations for multi-step navigation
+                if (redoHistory.length > 50) {
+                    const toRemove = redoHistory.length - 30; // Keep 30 operations
                     for (let i = 0; i < toRemove; i++) {
                         redoHistory.shift();
                     }
@@ -1673,7 +1705,11 @@
                 
                 persistHistoryStacks();
                 
-                log(`Opération '${lastOperation.type}' annulée avec succès.`, 'success');
+                if (maxSteps === 1) {
+                    log(`Opération '${lastOperation.type}' annulée avec succès.`, 'success');
+                } else {
+                    log(`${maxSteps} opérations annulées avec succès.`, 'success');
+                }
                 updateUndoButtonState();
                 
                 // Schedule automatic sync after undo operation with pruning
@@ -1700,14 +1736,30 @@
             }
         }
 
-        // Redo function
-        function redo() {
+        // Redo function - can go forward multiple steps
+        function redo(steps = 1) {
             if (redoHistory.length === 0) {
                 log('Aucune opération à rétablir.', 'info');
                 return;
             }
             
-            const op = redoHistory.pop();
+            // Limiter le nombre de pas à la taille de l'historique redo
+            const maxSteps = Math.min(steps, redoHistory.length);
+            if (maxSteps <= 0) {
+                log('Aucune opération à rétablir.', 'info');
+                return;
+            }
+            
+            console.log(`⏩ Redoing ${maxSteps} operation(s) out of ${redoHistory.length} available`);
+            
+            // Collecter toutes les opérations à rétablir
+            const operationsToRedo = [];
+            for (let i = 0; i < maxSteps; i++) {
+                operationsToRedo.push(redoHistory.pop());
+            }
+            
+            // Traiter la première opération (la plus ancienne) pour la restauration
+            const op = operationsToRedo[0];
             console.log(`⏩ Redoing operation: ${op.type}`, op);
             try {
                 isPerformingUndoRedo = true;
@@ -1778,11 +1830,18 @@
                     });
                 }
                 
-                // After redoing, push back to operation history
-                operationHistory.push(op);
+                // After redoing, push all operations back to operation history (in reverse order)
+                for (let i = operationsToRedo.length - 1; i >= 0; i--) {
+                    operationHistory.push(operationsToRedo[i]);
+                }
                 persistHistoryStacks();
                 updateUndoButtonState();
-                log('Rétabli.', 'success');
+                
+                if (maxSteps === 1) {
+                    log('Opération rétablie.', 'success');
+                } else {
+                    log(`${maxSteps} opérations rétablies.`, 'success');
+                }
                 
                 // Schedule automatic sync after redo operation with pruning and brief suppression
                 const SUPPRESSION_MS = 2000;
@@ -1805,6 +1864,31 @@
             } finally {
                 isPerformingUndoRedo = false;
             }
+        }
+        
+        // Utility functions for multi-step navigation
+        function undo10() {
+            undo(10);
+        }
+        
+        function redo10() {
+            redo(10);
+        }
+        
+        function undo5() {
+            undo(5);
+        }
+        
+        function redo5() {
+            redo(5);
+        }
+        
+        function undo3() {
+            undo(3);
+        }
+        
+        function redo3() {
+            redo(3);
         }
         
         // Function to get operation description for display
@@ -6583,6 +6667,13 @@
         window.addRow = addRow;
         window.saveManually = saveManually;
         window.undo = undo;
+        window.redo = redo;
+        window.undo10 = undo10;
+        window.redo10 = redo10;
+        window.undo5 = undo5;
+        window.redo5 = redo5;
+        window.undo3 = undo3;
+        window.redo3 = redo3;
         window.downloadExcel = downloadExcel;
         window.downloadPDF = downloadPDF;
         window.downloadImage = downloadImage;
