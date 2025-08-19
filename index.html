@@ -5692,14 +5692,23 @@
         
         // Update snapshot banner
         function updateSnapshotBanner() {
+            // Note: snapshot-banner HTML element has been removed from the interface
+            // This function is kept for compatibility but does nothing
             const banner = document.getElementById('snapshot-banner');
+            if (!banner) {
+                // Element doesn't exist anymore, silently return
+                return;
+            }
+            
             const bannerText = document.getElementById('snapshot-banner-text');
             
             // Only show banner when actively viewing history (snapshot mode)
             if (snapshotMode === 'snapshot' && currentSnapshotDate) {
                 banner.classList.remove('hidden');
                 banner.classList.add('flex');
-                bannerText.textContent = `Snapshot du ${formatDateForDisplay(currentSnapshotDate)}`;
+                if (bannerText) {
+                    bannerText.textContent = `Snapshot du ${formatDateForDisplay(currentSnapshotDate)}`;
+                }
             } else {
                 // Always hidden in live mode or when no snapshot is selected
                 banner.classList.add('hidden');
