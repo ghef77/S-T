@@ -5411,19 +5411,70 @@
                 }
                 
                 const snapshotCount = snapshots.length;
-                const MAX_SNAPSHOTS = 50; // Limite de 50 snapshots
                 
-                // Si on dépasse 80% de la capacité, déclencher le nettoyage
-                if (snapshotCount >= MAX_SNAPSHOTS * 0.8) {
-                    return { count: snapshotCount, needsCleanup: true, target: Math.floor(MAX_SNAPSHOTS * 0.6) };
+                // Calculer la taille totale des snapshots
+                let totalSize = 0;
+                snapshots.forEach(snapshot => {
+                    totalSize += snapshot.file_size_bytes || 0;
+                });
+                
+                // Limite de stockage : 100 MB (100 * 1024 * 1024 bytes)
+                const MAX_BUCKET_SIZE = 100 * 1024 * 1024;
+                const usagePercentage = (totalSize / MAX_BUCKET_SIZE) * 100;
+                
+                // Si on dépasse 95% de la capacité, déclencher le nettoyage
+                if (usagePercentage >= 95) {
+                    // Calculer combien de snapshots garder pour libérer de l'espace
+                    const targetSize = MAX_BUCKET_SIZE * 0.7; // Cibler 70% d'utilisation
+                    const snapshotsToKeep = calculateOptimalSnapshotCount(snapshots, targetSize);
+                    
+                    return { 
+                        count: snapshotCount, 
+                        needsCleanup: true, 
+                        target: snapshotsToKeep,
+                        currentSize: totalSize,
+                        maxSize: MAX_BUCKET_SIZE,
+                        usagePercentage: usagePercentage
+                    };
                 }
                 
-                return { count: snapshotCount, needsCleanup: false };
+                return { 
+                    count: snapshotCount, 
+                    needsCleanup: false,
+                    currentSize: totalSize,
+                    maxSize: MAX_BUCKET_SIZE,
+                    usagePercentage: usagePercentage
+                };
                 
             } catch (error) {
                 console.error('❌ Error checking storage capacity:', error);
                 return { count: 0, needsCleanup: false };
             }
+        }
+
+        // Fonction pour calculer le nombre optimal de snapshots à garder
+        function calculateOptimalSnapshotCount(snapshots, targetSize) {
+            // Trier les snapshots par date (plus récents en premier)
+            const sortedSnapshots = [...snapshots].sort((a, b) => 
+                new Date(b.snapshot_date) - new Date(a.snapshot_date)
+            );
+            
+            let currentSize = 0;
+            let snapshotsToKeep = 0;
+            
+            // Garder les snapshots les plus récents jusqu'à atteindre la taille cible
+            for (const snapshot of sortedSnapshots) {
+                const snapshotSize = snapshot.file_size_bytes || 0;
+                if (currentSize + snapshotSize <= targetSize) {
+                    currentSize += snapshotSize;
+                    snapshotsToKeep++;
+                } else {
+                    break;
+                }
+                }
+            
+            // Toujours garder au minimum 5 snapshots
+            return Math.max(snapshotsToKeep, 5);
         }
 
         // Fonction de monitoring et d'alertes du stockage
@@ -5439,7 +5490,6 @@
                 }
                 
                 const snapshotCount = snapshots.length;
-                const MAX_SNAPSHOTS = 50;
                 
                 // Calculer la taille totale des snapshots
                 let totalSize = 0;
@@ -5450,26 +5500,26 @@
                 const MAX_BUCKET_SIZE = 100 * 1024 * 1024; // 100 MB
                 const usagePercentage = (totalSize / MAX_BUCKET_SIZE) * 100;
                 
-                // Alertes automatiques selon l'utilisation
-                if (snapshotCount >= MAX_SNAPSHOTS * 0.9) {
-                    // 🚨 CRITIQUE : Presque plein
+                // Alertes automatiques selon l'utilisation de l'espace
+                if (usagePercentage >= 95) {
+                    // 🚨 CRITIQUE : Stockage presque plein
                     if (typeof showMessage === 'function') {
-                        showMessage(`🚨 Stockage critique : ${snapshotCount}/${MAX_SNAPSHOTS} snapshots. Nettoyage urgent !`, 'error');
+                        showMessage(`🚨 Stockage critique : ${usagePercentage.toFixed(1)}% utilisé (${(totalSize / 1024 / 1024).toFixed(2)} MB). Nettoyage automatique en cours...`, 'error');
                     }
-                } else if (snapshotCount >= MAX_SNAPSHOTS * 0.8) {
-                    // ⚠️ ATTENTION : Nettoyage recommandé
+                } else if (usagePercentage >= 85) {
+                    // ⚠️ ATTENTION : Stockage élevé
                     if (typeof showMessage === 'function') {
-                        showMessage(`⚠️ Stockage élevé : ${snapshotCount}/${MAX_SNAPSHOTS} snapshots. Nettoyage recommandé.`, 'warning');
+                        showMessage(`⚠️ Stockage élevé : ${usagePercentage.toFixed(1)}% utilisé (${(totalSize / 1024 / 1024).toFixed(2)} MB). Nettoyage préventif recommandé.`, 'warning');
                     }
-                } else if (snapshotCount >= MAX_SNAPSHOTS * 0.6) {
+                } else if (usagePercentage >= 70) {
                     // ℹ️ INFO : Surveillance
                     if (typeof showMessage === 'function') {
-                        showMessage(`ℹ️ Stockage modéré : ${snapshotCount}/${MAX_SNAPSHOTS} snapshots.`, 'info');
+                        showMessage(`ℹ️ Stockage modéré : ${usagePercentage.toFixed(1)}% utilisé (${(totalSize / 1024 / 1024).toFixed(2)} MB).`, 'info');
                     }
                 }
                 
                 // Log des informations de stockage
-                console.log(`📊 Storage Health: ${snapshotCount}/${MAX_SNAPSHOTS} snapshots, ${(totalSize / 1024 / 1024).toFixed(2)} MB used (${usagePercentage.toFixed(1)}%)`);
+                console.log(`📊 Storage Health: ${snapshotCount} snapshots, ${(totalSize / 1024 / 1024).toFixed(2)} MB used (${usagePercentage.toFixed(1)}% of ${(MAX_BUCKET_SIZE / 1024 / 1024).toFixed(0)} MB)`);
                 
             } catch (error) {
                 console.error('❌ Error in monitorStorageHealth:', error);
@@ -5484,7 +5534,8 @@
                 // VÉRIFICATION ET NETTOYAGE AUTOMATIQUE AVANT CRÉATION
                 const capacityInfo = await checkStorageCapacity();
                 if (capacityInfo.needsCleanup) {
-                    console.log(`🧹 Storage capacity warning: ${capacityInfo.count} snapshots. Triggering automatic cleanup...`);
+                    console.log(`🧹 Storage capacity warning: ${capacityInfo.usagePercentage.toFixed(1)}% used (${(capacityInfo.currentSize / 1024 / 1024).toFixed(2)} MB). Triggering automatic cleanup...`);
+                    console.log(`🧹 Will keep ${capacityInfo.target} most recent snapshots to free up space.`);
                     await cleanupOldSnapshots(capacityInfo.target);
                 }
                 
@@ -5808,14 +5859,23 @@
                     showMessage('🧹 Déclenchement du nettoyage manuel du stockage...', 'info');
                 }
                 
-                // Forcer le nettoyage en gardant seulement 20 snapshots
-                await cleanupOldSnapshots(20);
+                // Vérifier la capacité actuelle
+                const capacityInfo = await checkStorageCapacity();
+                
+                // Calculer le nombre optimal de snapshots à garder
+                const targetSize = capacityInfo.maxSize * 0.6; // Cibler 60% d'utilisation
+                const snapshotsToKeep = calculateOptimalSnapshotCount(availableSnapshots, targetSize);
+                
+                console.log(`🧹 Manual cleanup: targeting ${snapshotsToKeep} snapshots to reach ${(targetSize / 1024 / 1024).toFixed(2)} MB usage`);
+                
+                // Forcer le nettoyage en gardant le nombre optimal de snapshots
+                await cleanupOldSnapshots(snapshotsToKeep);
                 
                 // Recharger les snapshots disponibles
                 await loadAvailableSnapshots();
                 
                 if (typeof showMessage === 'function') {
-                    showMessage('✅ Nettoyage manuel terminé avec succès !', 'success');
+                    showMessage(`✅ Nettoyage manuel terminé ! Gardé ${snapshotsToKeep} snapshots les plus récents.`, 'success');
                 }
                 
             } catch (error) {
@@ -7106,6 +7166,40 @@
         window.checkStorageCapacity = checkStorageCapacity;
         window.monitorStorageHealth = monitorStorageHealth;
         window.forceStorageCleanup = forceStorageCleanup;
+        window.calculateOptimalSnapshotCount = calculateOptimalSnapshotCount;
+        
+        // Fonction utilitaire pour afficher les informations détaillées du stockage
+        window.showStorageInfo = async function() {
+            try {
+                const capacityInfo = await checkStorageCapacity();
+                const info = `
+📊 INFORMATIONS DÉTAILLÉES DU STOCKAGE :
+
+🔢 Nombre de snapshots : ${capacityInfo.count}
+💾 Espace utilisé : ${(capacityInfo.currentSize / 1024 / 1024).toFixed(2)} MB
+📦 Capacité totale : ${(capacityInfo.maxSize / 1024 / 1024).toFixed(0)} MB
+📈 Pourcentage utilisé : ${capacityInfo.usagePercentage.toFixed(1)}%
+
+${capacityInfo.needsCleanup ? 
+    `⚠️ NETTOYAGE RECOMMANDÉ : Garder ${capacityInfo.target} snapshots pour libérer de l'espace` : 
+    `✅ Stockage en bon état - Aucun nettoyage nécessaire`
+}
+
+🧹 Fonctions disponibles :
+- window.forceStorageCleanup() : Nettoyage manuel
+- window.monitorStorageHealth() : Vérification de santé
+- window.checkStorageCapacity() : Vérification de capacité
+                `;
+                
+                console.log(info);
+                if (typeof showMessage === 'function') {
+                    showMessage('📊 Informations du stockage affichées dans la console', 'info');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error showing storage info:', error);
+            }
+        };
         window.enableTableEditing = enableTableEditing;
         window.updateHistoryNavigation = updateHistoryNavigation;
         window.updateSnapshotBanner = updateSnapshotBanner;
