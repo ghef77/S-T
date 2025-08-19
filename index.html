@@ -1012,7 +1012,7 @@
             <!-- Toggle button container -->
             <div class="w-4 h-4">
                 <button id="history-toggle-btn" onclick="toggleHistoryBarSimple()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white p-0 rounded hover:bg-gray-500 transition-colors w-4 h-4 flex items-center justify-center">
-                    <i id="history-toggle-icon" class="fa-solid fa-plus w-2 h-2"></i>
+                    <i id="history-toggle-icon" class="fa-solid fa-plus w-2 h-2 flex items-center justify-center"></i>
                 </button>
             </div>
             
@@ -5663,7 +5663,7 @@
                 // Update button icon only
                 const toggleIcon = toggleBtn.querySelector('i');
                 if (toggleIcon) {
-                    toggleIcon.className = 'fa-solid fa-minus w-2 h-2';
+                    toggleIcon.className = 'fa-solid fa-minus w-2 h-2 flex items-center justify-center';
                 }
                 
                 console.log('✅ History bar container hidden');
@@ -5675,7 +5675,7 @@
                 // Update button icon only
                 const toggleIcon = toggleBtn.querySelector('i');
                 if (toggleIcon) {
-                    toggleIcon.className = 'fa-solid fa-plus w-2 h-2';
+                    toggleIcon.className = 'fa-solid fa-plus w-2 h-2 flex items-center justify-center';
                 }
                 
                 console.log('✅ History bar container shown');
