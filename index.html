@@ -934,7 +934,11 @@
                 <i class="fa-solid fa-chevron-right w-4 h-4"></i>
             </button>
             
-
+            <!-- Bouton d'actualisation du tableau -->
+            <button onclick="refreshTableData()" title="Actualiser le tableau avec les données les plus récentes" aria-label="Actualiser" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                <i class="fa-solid fa-arrows-rotate ml-2 w-4 h-4"></i>
+                Actualiser
+            </button>
             
             <!-- Calendar dropdown for snapshot dates -->
             <div class="relative">
@@ -3761,6 +3765,12 @@
         async function deleteRows(rows) { 
             if (!rows || rows.length === 0) return;
             
+            // Empêcher la suppression dans les snapshots
+            if (snapshotMode === 'snapshot') {
+                showMessage('Impossible de supprimer des lignes dans un snapshot. Retournez aux données en direct pour modifier le tableau.', 'warning');
+                return;
+            }
+            
             // Safety check: ensure we're not in the middle of an undo operation
             if (currentOperation && currentOperation.type.includes('undo')) {
                 console.log('⚠️ Delete operation blocked: undo in progress');
@@ -5490,6 +5500,27 @@
             }
         }
         
+        // Fonction pour actualiser le tableau avec les données les plus récentes
+        function refreshTableData() {
+            console.log('🔄 Actualisation du tableau...');
+            
+            // Si on est en mode snapshot, retourner aux données en direct
+            if (snapshotMode === 'snapshot') {
+                console.log('📸 Retour aux données en direct depuis le mode snapshot');
+                returnToToday();
+            }
+            
+            // Recharger les données depuis Supabase
+            console.log('🔄 Rechargement des données depuis Supabase...');
+            loadTableData().then(() => {
+                console.log('✅ Données actualisées avec succès');
+                showMessage('Tableau actualisé avec les données les plus récentes', 'success');
+            }).catch(error => {
+                console.error('❌ Erreur lors de l\'actualisation:', error);
+                showMessage('Erreur lors de l\'actualisation du tableau', 'error');
+            });
+        }
+        
         // ===== END SNAPSHOT SYSTEM FUNCTIONS =====
 
 
@@ -6174,6 +6205,7 @@
         window.returnToToday = returnToToday; // Use the existing function instead
         window.goToPreviousSnapshot = goToPreviousSnapshot;
         window.goToNextSnapshot = goToNextSnapshot;
+        window.refreshTableData = refreshTableData;
         window.toggleSnapshotCalendar = toggleSnapshotCalendar;
         window.populateSnapshotCalendar = populateSnapshotCalendar;
         window.openDatePicker = openDatePicker;
@@ -6290,7 +6322,24 @@
                 // Supprimer: Supprimer lignes sélectionnées
                 if (e.key === 'Delete') {
                     e.preventDefault();
-                    // À implémenter selon la sélection des lignes
+                    
+                    // Empêcher la suppression dans les snapshots
+                    if (snapshotMode === 'snapshot') {
+                        showMessage('Impossible de supprimer des lignes dans un snapshot. Retournez aux données en direct pour modifier le tableau.', 'warning');
+                        return;
+                    }
+                    
+                    // Récupérer les lignes sélectionnées
+                    const selectedRows = Array.from(document.querySelectorAll('#table-body tr.selected-row'));
+                    if (selectedRows.length > 0) {
+                        promptKeyConfirm(`Supprimer ${selectedRows.length} ligne(s) ?`, () => deleteRows(selectedRows));
+                    } else {
+                        // Si aucune ligne sélectionnée, essayer de supprimer la ligne active
+                        const activeRow = document.querySelector('#table-body tr:focus') || document.querySelector('#table-body tr.selected-row');
+                        if (activeRow) {
+                            promptKeyConfirm('Appuyez sur Entrée pour supprimer cette ligne, Échap pour annuler.', () => deleteRows([activeRow]));
+                        }
+                    }
                     return;
                 }
 
