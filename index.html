@@ -3888,6 +3888,12 @@
         }
 
         async function addRow() {
+            // Empêcher l'ajout en mode visualisation
+            if (isViewMode) {
+                showMessage('Impossible d\'ajouter des lignes en mode visualisation. Désactivez le mode visualisation pour modifier le tableau.', 'warning');
+                return;
+            }
+            
             // Start operation tracking for row addition
             startOperation(OPERATION_TYPES.ROW_ADD, {
                 newRowKey: Date.now() + Math.random()
@@ -3993,9 +3999,15 @@
         async function deleteRows(rows) { 
             if (!rows || rows.length === 0) return;
             
-            // Empêcher la suppression dans les snapshots
+            // Empêcher la suppression dans les snapshots ET en mode visualisation
             if (snapshotMode === 'snapshot') {
                 showMessage('Impossible de supprimer des lignes dans un snapshot. Retournez aux données en direct pour modifier le tableau.', 'warning');
+                return;
+            }
+            
+            // Empêcher la suppression en mode visualisation
+            if (isViewMode) {
+                showMessage('Impossible de supprimer des lignes en mode visualisation. Désactivez le mode visualisation pour modifier le tableau.', 'warning');
                 return;
             }
             
@@ -4746,6 +4758,11 @@
                         if (nx) {
                             next = nx.cells[idx];
                         } else {
+                            // Empêcher l'ajout en mode visualisation
+                            if (isViewMode) {
+                                showMessage('Impossible d\'ajouter des lignes en mode visualisation. Désactivez le mode visualisation pour modifier le tableau.', 'warning');
+                                return;
+                            }
                             addRow();
                             setTimeout(() => {
                                 const nr = document.querySelector('#table-body tr:last-child');
@@ -4757,6 +4774,11 @@
                         if (nx) {
                             next = nx.cells[idx];
                         } else {
+                            // Empêcher l'ajout en mode visualisation
+                            if (isViewMode) {
+                                showMessage('Impossible d\'ajouter des lignes en mode visualisation. Désactivez le mode visualisation pour modifier le tableau.', 'warning');
+                                return;
+                            }
                             addRow();
                             setTimeout(() => {
                                 const nr = document.querySelector('#table-body tr:last-child');
@@ -4801,6 +4823,13 @@
                 // Ctrl+D: Duplicate row
                 if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D') && inCell) {
                     e.preventDefault();
+                    
+                    // Empêcher la duplication en mode visualisation
+                    if (isViewMode) {
+                        showMessage('Impossible de dupliquer des lignes en mode visualisation. Désactivez le mode visualisation pour modifier le tableau.', 'warning');
+                        return;
+                    }
+                    
                     const row = active.closest('tr');
                     if (row) {
                         const clone = row.cloneNode(true);
