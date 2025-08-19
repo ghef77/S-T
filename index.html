@@ -6153,9 +6153,7 @@
             }
             
             // Recharger les données depuis Supabase
-            // Clean: Removed debug log
-            loadTableData().then(() => {
-                // Clean: Removed debug log
+            fetchInitialData().then(() => {
                 showMessage('Tableau actualisé avec les données les plus récentes', 'success');
             }).catch(error => {
                 console.error('❌ Erreur lors de l\'actualisation:', error);
