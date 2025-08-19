@@ -1065,6 +1065,12 @@
             <button onclick='saveManually()' title="Sauvegarder" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
                 <i class="fa-solid fa-save w-3.5 h-3.5"></i>
             </button>
+            
+            <!-- Box affichant le nombre de lignes -->
+            <div id="row-count-display" class="flex items-center justify-center px-2 py-1 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 text-xs font-medium min-w-12">
+                <span>N=</span>
+                <span id="row-count-number" class="ml-1 font-bold">0</span>
+            </div>
             <button id="undo-button" onclick="undo()" disabled title="Annuler" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
                 <i class="fa-solid fa-rotate-left w-3.5 h-3.5"></i>
             </button>
@@ -1894,6 +1900,7 @@
         // Expose functions globally for debugging
         window.resetOperationHistory = resetOperationHistory;
         window.safeStartOperation = safeStartOperation;
+        window.updateRowCount = updateRowCount;
         
         // Utility functions
         function log(message, type = 'info') { 
@@ -3144,6 +3151,18 @@
         function getHeaders(){
           return Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th=>th.textContent);
         }
+        
+        // Fonction pour mettre à jour l'affichage du nombre de lignes
+        function updateRowCount() {
+            const tbody = document.getElementById('table-body');
+            const rowCountNumber = document.getElementById('row-count-number');
+            
+            if (tbody && rowCountNumber) {
+                const rowCount = tbody.children.length;
+                rowCountNumber.textContent = rowCount;
+                console.log(`📊 Row count updated: ${rowCount} rows`);
+            }
+        }
         function createDeleteCell(row){
           const deleteCell=document.createElement('td');
           deleteCell.className='p-0 text-center';
@@ -3778,6 +3797,10 @@
             document.dispatchEvent(new CustomEvent('table:reloaded'));
             updateTfootColspan();
             log('table:reloaded dispatched');
+            
+            // Mettre à jour l'affichage du nombre de lignes
+            updateRowCount();
+            
             return true;
         }
 
@@ -3879,6 +3902,9 @@
             completeOperation();
             
             markEdited();
+            
+            // Mettre à jour l'affichage du nombre de lignes
+            updateRowCount();
         }
 
         async function deleteRows(rows) { 
@@ -3961,6 +3987,9 @@
                 saveLocalDraft(); 
                 markEdited(); 
                 updateStatus('Ligne(s) supprimée(s)', 'success'); 
+                
+                // Mettre à jour l'affichage du nombre de lignes
+                updateRowCount();
                 
                 // Immediately sync with prune to avoid server reintroducing deleted rows
                 await syncToMaster(true, true);
@@ -5749,6 +5778,9 @@
                 
                 console.log('✅ History bar initialized as hidden by default');
             }
+            
+            // Initialiser l'affichage du nombre de lignes
+            updateRowCount();
             
             // Check if already logged in
             const already = sessionStorage.getItem('isLoggedIn') === '1';
