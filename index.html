@@ -2146,12 +2146,32 @@
         function setRowColor(tr, color) {
             if (!tr) return;
             
+            // S'assurer que tr est bien un élément TR
+            if (tr.tagName !== 'TR') {
+                console.warn('setRowColor: tr parameter is not a TR element:', tr);
+                return;
+            }
+            
             if (color) { 
+                // Colorer toute la ligne
                 tr.style.backgroundColor = color; 
                 tr.dataset.rowColored = '1'; 
+                
+                // S'assurer que toutes les cellules de la ligne héritent de la couleur
+                Array.from(tr.cells).forEach(cell => {
+                    if (cell.style.backgroundColor !== color) {
+                        cell.style.backgroundColor = color;
+                    }
+                });
             } else { 
+                // Décolorer toute la ligne
                 tr.style.backgroundColor = ''; 
                 tr.dataset.rowColored = '0'; 
+                
+                // S'assurer que toutes les cellules de la ligne sont décolorées
+                Array.from(tr.cells).forEach(cell => {
+                    cell.style.backgroundColor = '';
+                });
             }
         }
         
@@ -2160,6 +2180,12 @@
         }
 
         function toggleRowColor(tr) {
+            // S'assurer que tr est bien un élément tr (ligne)
+            if (!tr || tr.tagName !== 'TR') {
+                console.warn('toggleRowColor: tr parameter is not a TR element:', tr);
+                return;
+            }
+            
             const key = keyForRow(tr);
             
             // Respecter le mode de peinture actuel
