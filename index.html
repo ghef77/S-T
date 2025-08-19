@@ -2206,6 +2206,9 @@
             }
             clearOperationTimeout();
             clearUndoRedoSyncTimeout();
+            
+            // Cleanup all timers to prevent infinite loops
+            cleanupAllTimers();
         });
         
         // Handle page visibility change
@@ -4607,93 +4610,11 @@
             await fetchInitialData(); 
         }
         
-        function handleRealtimeUpdate() {
-            log('Mise à jour en temps réel reçue.');
-            
-            // ENHANCED: Block realtime updates during undo/redo operations
-            if (isPerformingUndoRedo) {
-                log('🚫 Realtime update BLOCKED - undo/redo in progress');
-                return;
-            }
-            
-            // ENHANCED: Block realtime updates during undo/redo sync windows
-            if (Date.now() < suppressRealtimeUntil) {
-                log('🚫 Realtime update suppressed due to undo/redo sync window');
-                return;
-            }
-            
-            // ENHANCED: Block realtime updates if there are pending undo/redo operations
-            if (currentOperation && currentOperation.type) {
-                log('🚫 Realtime update BLOCKED - pending undo/redo operation');
-                return;
-            }
+        // REMOVED: Duplicate handleRealtimeUpdate function - using supabase-connection.js version
+        // This function was causing conflicts and potential infinite loops
 
-            // Vérifier le cooldown pour éviter les conflits avec nos propres sauvegardes
-            const timeSinceLastSave = Date.now() - lastSaveTime;
-            if (timeSinceLastSave < REALTIME_COOLDOWN_MS) {
-                log(`⏰ Cooldown actif (${REALTIME_COOLDOWN_MS - timeSinceLastSave}ms restant) - Ignore l'événement temps réel`);
-                return;
-            }
-            
-            if (isDirty) { 
-                log('Modifs locales en attente, on ignore.'); 
-                return; 
-            }
-            
-            log('🔄 Synchronisation temps réel - Capture du focus et rechargement...');
-            
-            // Try to preserve focus across realtime-driven reload as well
-            captureFocusInfo();
-            captureSimplePos();
-            
-            const onReload = () => {
-                log('🔄 REALTIME -> table:reloaded caught; attempting focus restore');
-                document.removeEventListener('table:reloaded', onReload);
-                
-                // Use the same consolidated restoration logic
-                setTimeout(() => {
-                    log(`🔄 REALTIME: Performing cursor restoration`);
-                    
-                    // Try focusCellFromInfo first (more reliable)
-                    let restorationSuccess = false;
-                    if (lastFocusInfo && lastFocusInfo.rowIndex >= 0 && lastFocusInfo.colLabel) {
-                        restorationSuccess = focusCellFromInfo(lastFocusInfo);
-                        log(`🔄 REALTIME: focusCellFromInfo result: ${restorationSuccess}`);
-                    }
-                    
-                    // Fallback to focusCellByPos if focusCellFromInfo fails
-                    if (!restorationSuccess && lastCellPos && lastCellPos.rowIndex >= 0 && lastCellPos.cellIndex >= 0) {
-                    log(`🔄 REALTIME: Trying focusCellByPos with ${JSON.stringify(lastCellPos)}`);
-                        restorationSuccess = focusCellByPos(lastCellPos);
-                        log(`🔄 REALTIME: focusCellByPos result: ${restorationSuccess}`);
-                    }
-                    
-                    if (restorationSuccess) {
-                        log(`✅ REALTIME: Cursor restoration successful`);
-                    } else {
-                        log(`⚠️ REALTIME: Cursor restoration failed`);
-                    }
-                }, 100);
-            };
-            
-            document.addEventListener('table:reloaded', onReload, { once: true });
-            fetchInitialData();
-        }
-
-        // Realtime subscription setup
-        function setupRealtimeSubscription() { 
-            if (realtimeSubscription) { 
-                try { 
-                    supabase.removeChannel(realtimeSubscription);
-                } catch(e) {} 
-            } 
-            
-            realtimeSubscription = supabase.channel('table-changes')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: supabaseConfig.tableName }, handleRealtimeUpdate)
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: supabaseConfig.tableName }, handleRealtimeUpdate)
-                .on('postgres_changes', { event: 'DELETE', schema: 'public', table: supabaseConfig.tableName }, handleRealtimeUpdate)
-                .subscribe(status => log('Realtime status: ' + status)); 
-        }
+        // REMOVED: Duplicate setupRealtimeSubscription function - using supabase-connection.js version
+        // This function was causing conflicts and potential infinite loops
 
 
 
@@ -7157,6 +7078,51 @@
         window.monitorStorageHealth = monitorStorageHealth;
         window.forceStorageCleanup = forceStorageCleanup;
         window.calculateOptimalSnapshotCount = calculateOptimalSnapshotCount;
+        
+        // Timer cleanup function to prevent infinite loops
+        function cleanupAllTimers() {
+            try {
+                if (autosaveTicker) {
+                    clearInterval(autosaveTicker);
+                    autosaveTicker = null;
+                }
+                if (window._syncTimer) {
+                    clearInterval(window._syncTimer);
+                    window._syncTimer = null;
+                }
+                if (window._msgTimer) {
+                    clearTimeout(window._msgTimer);
+                    window._msgTimer = null;
+                }
+                if (cellEditTimeout) {
+                    clearTimeout(cellEditTimeout);
+                    cellEditTimeout = null;
+                }
+                if (undoRedoSyncTimeout) {
+                    clearTimeout(undoRedoSyncTimeout);
+                    undoRedoSyncTimeout = null;
+                }
+                if (historyDebounceTimeout) {
+                    clearTimeout(historyDebounceTimeout);
+                    historyDebounceTimeout = null;
+                }
+                if (typingTimer) {
+                    clearTimeout(typingTimer);
+                    typingTimer = null;
+                }
+                if (operationTimeout) {
+                    clearTimeout(operationTimeout);
+                    operationTimeout = null;
+                }
+                
+                console.log('🧹 All timers cleaned up successfully');
+            } catch (error) {
+                console.error('❌ Error cleaning up timers:', error);
+            }
+        }
+        
+        // Expose timer cleanup function globally
+        window.cleanupAllTimers = cleanupAllTimers;
         
         // Fonction utilitaire pour afficher les informations détaillées du stockage
         window.showStorageInfo = async function() {
