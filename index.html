@@ -5529,13 +5529,9 @@
         // Create a demo snapshot with unique date logic and automatic cleanup
         async function createDemoSnapshot(useCurrentData = false) {
             try {
-                console.log('➕ Creating demo snapshot...');
-                
                 // VÉRIFICATION ET NETTOYAGE AUTOMATIQUE AVANT CRÉATION
                 const capacityInfo = await checkStorageCapacity();
                 if (capacityInfo.needsCleanup) {
-                    console.log(`🧹 Storage capacity warning: ${capacityInfo.usagePercentage.toFixed(1)}% used (${(capacityInfo.currentSize / 1024 / 1024).toFixed(2)} MB). Triggering automatic cleanup...`);
-                    console.log(`🧹 Will keep ${capacityInfo.target} most recent snapshots to free up space.`);
                     await cleanupOldSnapshots(capacityInfo.target);
                 }
                 
@@ -5585,8 +5581,6 @@
                         dateString = `${randomYear}-${String(randomMonth).padStart(2, '0')}-${String(randomDay).padStart(2, '0')}`;
                     }
                     
-                    console.log(`📅 Attempt ${attempts}: date ${dateString}`);
-                    
                     // Check if this date already exists
                     const { data: existingDate, error: dateCheckError } = await supabase
                         .from('table_snapshots_index')
@@ -5600,17 +5594,13 @@
                     }
                     
                     if (!existingDate || existingDate.length === 0) {
-                        // Clean: Removed debug log
                         break;
                     }
-                    
-                    // Clean: Removed debug log
                     
                 } while (attempts < maxAttempts);
                 
                 if (attempts >= maxAttempts) {
                     console.error('❌ Unable to find unique date after 50 attempts');
-                    // Clean: Removed debug log
                     
                     // Show message to user
                     if (typeof showMessage === 'function') {
