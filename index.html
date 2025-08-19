@@ -997,7 +997,7 @@
             <!-- Toggle button container -->
             <div class="w-4 h-4">
                 <button id="history-toggle-btn" onclick="toggleHistoryBarSimple()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white p-0 rounded hover:bg-gray-500 transition-colors w-4 h-4 flex items-center justify-center">
-                    <i id="history-toggle-icon" class="fa-solid fa-minus w-2 h-2 flex items-center justify-center text-center leading-none"></i>
+                    <i id="history-toggle-icon" class="fa-solid fa-plus w-2 h-2 flex items-center justify-center text-center leading-none"></i>
                 </button>
             </div>
             
@@ -5736,18 +5736,18 @@
             // Configurer le clic sur les noms de patients pour les images
             setupPatientImageClick();
             
-            // Initialiser l'état de la barre d'historique : visible par défaut
+            // Initialiser l'état de la barre d'historique : cachée par défaut
             const historyBarContainer = document.getElementById('history-bar-container');
             const toggleIcon = document.getElementById('history-toggle-icon');
             if (historyBarContainer && toggleIcon) {
-                // S'assurer que la barre est visible
-                historyBarContainer.classList.remove('hidden');
-                historyBarContainer.style.display = 'block';
+                // S'assurer que la barre est cachée
+                historyBarContainer.classList.add('hidden');
+                historyBarContainer.style.display = 'none';
                 
-                // S'assurer que l'icône est en mode "moins" (ouvert)
-                toggleIcon.className = 'fa-solid fa-minus w-2 h-2 flex items-center justify-center text-center leading-none';
+                // S'assurer que l'icône est en mode "plus" (fermé)
+                toggleIcon.className = 'fa-solid fa-plus w-2 h-2 flex items-center justify-center text-center leading-none';
                 
-                console.log('✅ History bar initialized as visible by default');
+                console.log('✅ History bar initialized as hidden by default');
             }
             
             // Check if already logged in
