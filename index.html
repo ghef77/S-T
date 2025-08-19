@@ -1347,6 +1347,13 @@
             // Set timeout to complete operation after grouping delay
             cellEditTimeout = setTimeout(() => {
                 if (currentOperation && currentOperation.type === OPERATION_TYPES.CELL_EDIT) {
+                    // ENHANCED: Set suppression windows before completing operation
+                    const SUPPRESSION_MS = 2000;
+                    suppressRealtimeUntil = Date.now() + SUPPRESSION_MS;
+                    suppressAutosaveUntil = Date.now() + SUPPRESSION_MS;
+                    
+                    log(`🔄 Cell edit suppression windows: realtime=${SUPPRESSION_MS}ms, autosave=${SUPPRESSION_MS}ms`);
+                    
                     completeOperation();
                     pendingCellEdit = null;
                 }
@@ -1364,6 +1371,26 @@
                 }
             }
             return 'Unknown Column';
+        }
+        
+        // ENHANCED: Utility function to check if undo/redo operations are in progress
+        function isUndoRedoInProgress() {
+            return isPerformingUndoRedo || 
+                   (currentOperation && currentOperation.type) ||
+                   Date.now() < suppressAutosaveUntil ||
+                   Date.now() < suppressRealtimeUntil;
+        }
+        
+        // ENHANCED: Function to get current undo/redo status for debugging
+        function getUndoRedoStatus() {
+            return {
+                isPerformingUndoRedo,
+                hasCurrentOperation: !!(currentOperation && currentOperation.type),
+                suppressAutosaveUntil: Date.now() < suppressAutosaveUntil,
+                suppressRealtimeUntil: Date.now() < suppressRealtimeUntil,
+                timeUntilAutosaveUnlock: Math.max(0, suppressAutosaveUntil - Date.now()),
+                timeUntilRealtimeUnlock: Math.max(0, suppressRealtimeUntil - Date.now())
+            };
         }
         
         // Autosave configuration
@@ -1839,20 +1866,26 @@
                 log(`Opération '${lastOperation.type}' annulée avec succès.`, 'success');
                 updateUndoButtonState();
                 
-                // Schedule automatic sync after undo operation with pruning
-                // Ensure server deletes rows that are missing locally and suppress realtime/autosave briefly
-                const SUPPRESSION_MS = 2000;
+                // ENHANCED: Schedule automatic sync after undo operation with extended suppression
+                // Extended suppression windows to prevent conflicts with autosave/realtime
+                const SUPPRESSION_MS = 3000; // Increased from 2000ms to 3000ms
+                const AUTOSAVE_SUPPRESSION_MS = 4000; // Separate, longer suppression for autosave
+                
                 suppressRealtimeUntil = Date.now() + SUPPRESSION_MS;
-                suppressAutosaveUntil = Date.now() + SUPPRESSION_MS;
+                suppressAutosaveUntil = Date.now() + AUTOSAVE_SUPPRESSION_MS;
+                
+                log(`🔄 Undo suppression windows: realtime=${SUPPRESSION_MS}ms, autosave=${AUTOSAVE_SUPPRESSION_MS}ms`);
+                
                 if (typeof scheduleUndoRedoSync === 'function') {
                     clearUndoRedoSyncTimeout();
                     undoRedoSyncTimeout = setTimeout(() => {
                         if (!isPerformingUndoRedo) {
-                            log('🔄 Auto-sync (prune) after undo');
+                            log('🔄 Auto-sync (prune) after undo with conflict prevention');
+                            // Force manual save to bypass conflict checks
                             syncToMaster(true, true);
                             undoRedoSyncTimeout = null;
                         }
-                    }, 500);
+                    }, 800); // Increased delay from 500ms to 800ms for better conflict prevention
                 }
                 
             } catch (error) {
@@ -1979,19 +2012,26 @@
                 
                 log('Opération rétablie.', 'success');
                 
-                // Schedule automatic sync after redo operation with pruning and brief suppression
-                const SUPPRESSION_MS = 2000;
+                // ENHANCED: Schedule automatic sync after redo operation with extended suppression
+                // Extended suppression windows to prevent conflicts with autosave/realtime
+                const SUPPRESSION_MS = 3000; // Increased from 2000ms to 3000ms
+                const AUTOSAVE_SUPPRESSION_MS = 4000; // Separate, longer suppression for autosave
+                
                 suppressRealtimeUntil = Date.now() + SUPPRESSION_MS;
-                suppressAutosaveUntil = Date.now() + SUPPRESSION_MS;
+                suppressAutosaveUntil = Date.now() + AUTOSAVE_SUPPRESSION_MS;
+                
+                log(`🔄 Redo suppression windows: realtime=${SUPPRESSION_MS}ms, autosave=${AUTOSAVE_SUPPRESSION_MS}ms`);
+                
                 if (typeof scheduleUndoRedoSync === 'function') {
                     clearUndoRedoSyncTimeout();
                     undoRedoSyncTimeout = setTimeout(() => {
                         if (!isPerformingUndoRedo) {
-                            log('🔄 Auto-sync (prune) after redo');
+                            log('🔄 Auto-sync (prune) after redo with conflict prevention');
+                            // Force manual save to bypass conflict checks
                             syncToMaster(true, true);
                             undoRedoSyncTimeout = null;
                         }
-                    }, 500);
+                    }, 800); // Increased delay from 500ms to 800ms for better conflict prevention
                 }
                 
             } catch (e) {
@@ -3370,7 +3410,7 @@
             typingTimer = setTimeout(() => { isTyping = false; }, 1200);
         }
 
-        // Autosave functionality
+        // Autosave functionality with enhanced undo/redo conflict prevention
         function scheduleAutosaveCountdown() {
             try { 
                 if (autosaveTicker) clearInterval(autosaveTicker); 
@@ -3387,6 +3427,18 @@
                     if (isTyping) { 
                         lastShownCountdown = null; 
                         return; 
+                    }
+                    
+                    // ENHANCED: Block autosave during undo/redo operations
+                    if (isPerformingUndoRedo) {
+                        lastShownCountdown = null;
+                        return;
+                    }
+                    
+                    // ENHANCED: Block autosave during undo/redo sync windows
+                    if (Date.now() < suppressAutosaveUntil) {
+                        lastShownCountdown = null;
+                        return;
                     }
                     
                     const remaining = AUTOSAVE_DELAY_MS - (Date.now() - lastEditAt);
@@ -3418,18 +3470,25 @@
                 if (isSyncing) return;
                 if (!isDirty) return;
                 
-                // BLOCK autosave during undo/redo operations
+                // ENHANCED: Block autosave during undo/redo operations
                 if (isPerformingUndoRedo) {
                     log('🚫 Autosave BLOCKED - undo/redo in progress');
                     return;
                 }
                 
+                // ENHANCED: Block autosave during undo/redo sync windows
+                if (Date.now() < suppressAutosaveUntil) {
+                    log('🚫 Autosave suppressed due to undo/redo sync window');
+                    return;
+                }
+                
+                // ENHANCED: Block autosave if there are pending undo/redo operations
+                if (currentOperation && currentOperation.type) {
+                    log('🚫 Autosave BLOCKED - pending undo/redo operation');
+                    return;
+                }
+                
                 try {
-                    // During autosave suppression window, skip autosave
-                    if (Date.now() < suppressAutosaveUntil) {
-                        log('🚫 Autosave suppressed due to undo/redo sync window');
-                        return;
-                    }
                     isSyncing = true;
                     log('Auto-sync (500ms poll, 3s idle) vers Supabase…');
                     await syncToMaster(false);
@@ -4343,6 +4402,18 @@
         }
 
         async function syncToMaster(isManualSave = false, pruneMissing = false) {
+            // ENHANCED: Block sync during undo/redo operations (except manual saves)
+            if (!isManualSave && isPerformingUndoRedo) {
+                log('🚫 Sync BLOCKED - undo/redo in progress (manual save allowed)');
+                return;
+            }
+            
+            // ENHANCED: Block sync during undo/redo sync windows (except manual saves)
+            if (!isManualSave && Date.now() < suppressAutosaveUntil) {
+                log('🚫 Sync BLOCKED - undo/redo sync window active (manual save allowed)');
+                return;
+            }
+            
             try { 
                 if (autosaveTicker) clearInterval(autosaveTicker); 
             } catch(_) {}
@@ -4479,15 +4550,21 @@
         function handleRealtimeUpdate() {
             log('Mise à jour en temps réel reçue.');
             
-            // BLOCK realtime updates during undo/redo operations
+            // ENHANCED: Block realtime updates during undo/redo operations
             if (isPerformingUndoRedo) {
                 log('🚫 Realtime update BLOCKED - undo/redo in progress');
                 return;
             }
             
-            // Supprimer les événements temps réel durant la fenêtre de suppression
+            // ENHANCED: Block realtime updates during undo/redo sync windows
             if (Date.now() < suppressRealtimeUntil) {
                 log('🚫 Realtime update suppressed due to undo/redo sync window');
+                return;
+            }
+            
+            // ENHANCED: Block realtime updates if there are pending undo/redo operations
+            if (currentOperation && currentOperation.type) {
+                log('🚫 Realtime update BLOCKED - pending undo/redo operation');
                 return;
             }
 
@@ -6796,6 +6873,8 @@
         window.redo = redo;
         window.trackCellEdit = trackCellEdit;
         window.getColumnLabelForCell = getColumnLabelForCell;
+        window.isUndoRedoInProgress = isUndoRedoInProgress;
+        window.getUndoRedoStatus = getUndoRedoStatus;
         window.downloadExcel = downloadExcel;
         window.downloadPDF = downloadPDF;
         window.downloadImage = downloadImage;
