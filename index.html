@@ -3,7 +3,7 @@
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Tableau de Staff synchronisé - Supabase</title>
+    <title>S-T synchronisé - Supabase</title>
     
     <!-- Preload critical resources -->
     <link rel="preload" href="https://cdn.tailwindcss.com" as="script">
@@ -978,7 +978,13 @@
         <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-2 p-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
             <div class="flex-grow">
                 <div class="flex flex-wrap items-center gap-2 mb-1">
-                    <h2 id="staff-title" class="text-lg md:text-xl font-bold text-gray-800 tracking-tight">Tableau de Staff</h2>
+                    <h2 id="staff-title" class="text-lg md:text-xl font-bold text-gray-800 tracking-tight">S-T</h2>
+                
+                <!-- Box affichant le nombre de lignes - à côté du titre -->
+                <div id="row-count-display" class="flex items-center justify-center px-2 py-1 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 text-xs font-medium min-w-12 ml-2">
+                    <span>N=</span>
+                    <span id="row-count-number" class="ml-1 font-bold">0</span>
+                </div>
                     <span id="sync-status" class="sync-pending-animation px-2 py-1 rounded-full text-xs font-semibold border-2 bg-white shadow-sm">
                         <span class="sync-text">Initialisation...</span>
                         <i class="sync-icon fa-solid fa-check hidden"></i>
@@ -1065,12 +1071,6 @@
             <button onclick='saveManually()' title="Sauvegarder" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
                 <i class="fa-solid fa-save w-3.5 h-3.5"></i>
             </button>
-            
-            <!-- Box affichant le nombre de lignes -->
-            <div id="row-count-display" class="flex items-center justify-center px-2 py-1 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 text-xs font-medium min-w-12">
-                <span>N=</span>
-                <span id="row-count-number" class="ml-1 font-bold">0</span>
-            </div>
             <button id="undo-button" onclick="undo()" disabled title="Annuler" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
                 <i class="fa-solid fa-rotate-left w-3.5 h-3.5"></i>
             </button>
