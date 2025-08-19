@@ -697,6 +697,14 @@
         #history-bar-container {
             flex: 1;
             min-width: 0;
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        /* Reduced width container styling */
+        #history-bar-container > div {
+            max-width: 50%;
+            min-width: fit-content;
         }
         
         /* Responsive adjustments for history controls */
@@ -984,9 +992,9 @@
             </div>
             
             <!-- History Bar Container - This is what gets toggled -->
-            <div id="history-bar-container">
-                <!-- All buttons in one responsive row -->
-                <div class="flex flex-wrap items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div id="history-bar-container" class="flex justify-end">
+                <!-- All buttons in one responsive row with reduced width -->
+                <div class="flex flex-wrap items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 w-1/2">
                     <!-- Navigation buttons - Hidden on small screens -->
                     <div class="hidden md:flex items-center gap-2">
                         <button id="history-back" onclick="goToPreviousSnapshot()" disabled title="Snapshot précédent" aria-label="Snapshot précédent" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
