@@ -1329,7 +1329,7 @@
                     currentOperation.data.timestamp = Date.now();
                 }
                 
-                console.log(`📝 Grouped cell edit: ${columnLabel} in row ${rowKey} -> "${newValue}"`);
+                // Clean: Removed debug log
             } else {
                 // New cell edit - start fresh operation
                 pendingCellEdit = cellEditData;
@@ -1341,7 +1341,7 @@
                     currentValue: newValue
                 });
                 
-                console.log(`🚀 Started new cell edit: ${columnLabel} in row ${rowKey} -> "${newValue}"`);
+                // Clean: Removed debug log
             }
             
             // Set timeout to complete operation after grouping delay
@@ -1352,7 +1352,7 @@
                     suppressRealtimeUntil = Date.now() + SUPPRESSION_MS;
                     suppressAutosaveUntil = Date.now() + SUPPRESSION_MS;
                     
-                    log(`🔄 Cell edit suppression windows: realtime=${SUPPRESSION_MS}ms, autosave=${SUPPRESSION_MS}ms`);
+                    // Clean: Removed debug log
                     
                     completeOperation();
                     pendingCellEdit = null;
@@ -1427,7 +1427,7 @@
         
         // Function to refresh calendar display
         function refreshSnapshotCalendar() {
-            console.log('🔄 Refreshing snapshot calendar...');
+            // Clean: Removed debug log
             populateSnapshotCalendar();
             updateHistoryNavigation();
         }
@@ -1435,7 +1435,7 @@
         // Function to clean storage and database completely
         async function cleanStorageAndDatabase() {
             try {
-                console.log('🧹 Cleaning storage and database completely...');
+                // Clean: Removed debug log
                 
                 // First, clean the database
                 const { error: dbError } = await supabase
@@ -1448,7 +1448,7 @@
                     return;
                 }
                 
-                console.log('✅ Database cleaned');
+                // Clean: Removed debug log
                 
                 // Then, clean the storage bucket
                 const { data: storageFiles, error: listError } = await supabaseStorage.storage
@@ -1462,7 +1462,7 @@
                 
                 if (storageFiles && storageFiles.length > 0) {
                     const fileNames = storageFiles.map(file => file.name);
-                    console.log(`🗑️ Removing ${fileNames.length} files from storage...`);
+                    // Clean: Removed debug log
                     
                     const { error: removeError } = await supabaseStorage.storage
                         .from('table-snapshots')
@@ -1471,10 +1471,10 @@
                     if (removeError) {
                         console.error('❌ Error removing storage files:', removeError);
                     } else {
-                        console.log('✅ Storage cleaned');
+                        // Clean: Removed debug log
                     }
                 } else {
-                    console.log('✅ Storage already empty');
+                    // Clean: Removed debug log
                 }
                 
                 // Create a fresh snapshot
@@ -1537,7 +1537,7 @@
                     fabAdd.title = 'Ajouter une nouvelle ligne';
                 }
                 
-                console.log('✅ FAB add button forced visible on startup (respecting view mode)');
+                // Clean: Removed debug log
             }
         } catch(_) { 
             lastFocusInfo = null; 
@@ -1559,19 +1559,19 @@
         function startOperation(type, data = {}) {
             // Check if undo/redo is disabled
             if (snapshotMode === 'snapshot' || isViewMode) {
-                console.log(`⚠️ Undo/redo disabled in ${snapshotMode === 'snapshot' ? 'snapshot' : 'view'} mode`);
+                // Clean: Removed debug log
                 return;
             }
             
             // Only track operations that modify table content
             if (!CONTENT_MODIFICATION_TYPES.includes(type)) {
-                console.log(`⚠️ Operation type '${type}' not tracked for undo/redo (content modification only)`);
+                // Clean: Removed debug log
                 return;
             }
             
             // Clear any pending operations first
             if (currentOperation) {
-                console.log(`🔄 Completing previous operation: ${currentOperation.type}`);
+                // Clean: Removed debug log
                 completeOperation();
             }
             
@@ -1592,7 +1592,7 @@
                 );
                 
                 if (conflictingOps.length > 0) {
-                    console.log(`🧹 Cleaning up ${conflictingOps.length} conflicting row operations`);
+                    // Clean: Removed debug log
                     operationHistory = operationHistory.filter(op => 
                         op.type !== OPERATION_TYPES.ROW_INSERT && 
                         op.type !== OPERATION_TYPES.ROW_DELETE
@@ -1608,17 +1608,17 @@
                 rowColors: { ...rowColorMap }
             };
             
-            console.log(`🚀 Started Excel-style operation: ${type}`, currentOperation);
+                            // Clean: Removed debug log
         }
         
         function addToOperation(data) {
             if (currentOperation && CONTENT_MODIFICATION_TYPES.includes(currentOperation.type)) {
                 Object.assign(currentOperation.data, data);
-                console.log(`📝 Added to Excel-style operation:`, currentOperation);
+                // Clean: Removed debug log
                 
                 // Excel-style: Clear redo stack on ANY modification
                 redoHistory = [];
-                console.log('🧹 Cleared redo stack for modification in addToOperation (Excel-style)');
+                                    // Clean: Removed debug log
             }
             persistHistoryStacks();
         }
@@ -1627,7 +1627,7 @@
             if (currentOperation) {
                 // Only complete operations that modify table content
                 if (!CONTENT_MODIFICATION_TYPES.includes(currentOperation.type)) {
-                    console.log(`⚠️ Not completing operation '${currentOperation.type}' - content modification only`);
+                    // Clean: Removed debug log
                     currentOperation = null;
                     return;
                 }
@@ -1641,7 +1641,7 @@
                 
                 // Excel-style: Clear redo stack on ANY new user modification
                 redoHistory = [];
-                console.log('🧹 Cleared redo stack for new user modification (Excel-style)');
+                // Clean: Removed debug log
                 
                 persistHistoryStacks();
                 
@@ -1651,10 +1651,10 @@
                     for (let i = 0; i < toRemove; i++) {
                         operationHistory.shift();
                     }
-                    console.log(`🧹 Cleaned up ${toRemove} old operations, keeping exactly 10 content modifications for circular navigation`);
+                    // Clean: Removed debug log
                 }
                 
-                console.log(`✅ Completed content modification operation: ${currentOperation.type}`, currentOperation);
+                // Clean: Removed debug log
                 
                 // Also save to regular history for backward compatibility
                 saveStateToHistory();
@@ -1666,7 +1666,7 @@
         
         function cancelOperation() {
             if (currentOperation) {
-                console.log(`❌ Cancelled operation: ${currentOperation.type}`);
+                // Clean: Removed debug log
                 currentOperation = null;
             }
         }
@@ -1699,7 +1699,7 @@
             }
             
             const lastOperation = operationHistory.pop();
-            console.log(`🔄 Undoing operation: ${lastOperation.type}`, lastOperation);
+            // Clean: Removed debug log
             
             // ENHANCED: Show detailed message about what is being undone
             const undoMessage = getDetailedOperationDescription(lastOperation, true);
@@ -1709,14 +1709,14 @@
                 isPerformingUndoRedo = true;
                 // Clear any pending operations before undoing
                 if (currentOperation) {
-                    console.log('⚠️ Clearing pending operation before undo');
+                    // Clean: Removed debug log
                     currentOperation = null;
                 }
                 clearOperationTimeout();
                 
                 // Restore table state - only if we have valid data
                 if (lastOperation.tableState && lastOperation.tableState.rows && Array.isArray(lastOperation.tableState.rows) && lastOperation.tableState.rows.length > 0) {
-                    console.log(`🔄 Restoring table state with ${lastOperation.tableState.rows.length} rows`);
+                    // Clean: Removed debug log
                     loadTableData(lastOperation.tableState.rows);
                 } else if (lastOperation.tableState && lastOperation.tableState.rows) {
                     console.warn(`⚠️ Table state has rows but they are invalid:`, lastOperation.tableState.rows);
@@ -1737,10 +1737,10 @@
                             
                             if (columnIndex >= 0 && cells[columnIndex]) {
                                 cells[columnIndex].textContent = initialValue;
-                                console.log(`🔄 Restored cell [${rowKey}, ${columnLabel}] to: "${initialValue}" using stable addressing`);
+                                // Clean: Removed debug log
                             }
                         } else {
-                            console.warn(`⚠️ Row with key ${rowKey} not found for undo`);
+                            // Clean: Removed debug log
                         }
                     }
                 }
@@ -1748,7 +1748,7 @@
                 // Special handling for row deletions - restore rows in place
                 if (lastOperation.type === OPERATION_TYPES.ROW_DELETE && lastOperation.data) {
                     const { deletedRows, rowData, rowNumbers } = lastOperation.data;
-                    console.log(`🔄 Restoring ${deletedRows} deleted row(s) in place`);
+                    // Clean: Removed debug log
                     
                     if (rowData && rowData.length > 0) {
                         const tbody = document.getElementById('table-body');
@@ -1794,7 +1794,7 @@
                         });
                         
                         updateRowCount();
-                        console.log(`✅ Restored ${deletedRows} row(s) in place`);
+                        // Clean: Removed debug log
                     }
                 }
                 
@@ -1802,7 +1802,7 @@
                 if (lastOperation.type === OPERATION_TYPES.BULK_EDIT) {
                     if (lastOperation.data && lastOperation.data.edits) {
                         // Type 1: Bulk edits avec liste de modifications individuelles
-                        console.log(`🔄 Restoring ${lastOperation.data.edits.length} cell edits`);
+                        // Clean: Removed debug log
                         const tbody = document.getElementById('table-body');
                         const rows = Array.from(tbody.children);
                         const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
@@ -1815,14 +1815,14 @@
                                     const columnIndex = headers.indexOf(edit.columnLabel);
                                     if (columnIndex >= 0 && cells[columnIndex]) {
                                         cells[columnIndex].textContent = edit.initialValue;
-                                        console.log(`🔄 Restored cell [${edit.rowKey}, ${edit.columnLabel}] to: "${edit.initialValue}"`);
+                                        // Clean: Removed debug log
                                     }
                                 }
                             }
                         });
                     } else if (lastOperation.tableState) {
                         // Type 2: Bulk edit avec état complet du tableau
-                        console.log(`🔄 Restoring table state from bulk edit`);
+                        // Clean: Removed debug log
                         
                         // Sauvegarder l'état actuel pour le redo si ce n'est pas déjà fait
                         if (!lastOperation.finalState) {
@@ -1850,7 +1850,7 @@
                 
                 // Don't remove operations from history - just push to redo stack
                 // This allows proper undo/redo cycling
-                console.log(`📝 Keeping operation history intact for proper undo/redo cycling`);
+                // Clean: Removed debug log
 
                 // Push undone operation to redo stack
                 redoHistory.push(lastOperation);
@@ -1861,7 +1861,7 @@
                     for (let i = 0; i < toRemove; i++) {
                         redoHistory.shift();
                     }
-                    console.log(`🧹 Cleaned up ${toRemove} old redo operations, keeping 10 operations for circular navigation`);
+                    // Clean: Removed debug log
                 }
                 
                 persistHistoryStacks();
@@ -1877,13 +1877,13 @@
                 suppressRealtimeUntil = Date.now() + SUPPRESSION_MS;
                 suppressAutosaveUntil = Date.now() + AUTOSAVE_SUPPRESSION_MS;
                 
-                log(`🔄 Undo suppression windows: realtime=${SUPPRESSION_MS}ms, autosave=${AUTOSAVE_SUPPRESSION_MS}ms`);
+                // Clean: Removed debug log
                 
                 if (typeof scheduleUndoRedoSync === 'function') {
                     clearUndoRedoSyncTimeout();
                     undoRedoSyncTimeout = setTimeout(() => {
                         if (!isPerformingUndoRedo) {
-                            log('🔄 Auto-sync (prune) after undo with conflict prevention');
+                            // Clean: Removed debug log
                             // Force manual save to bypass conflict checks
                             syncToMaster(true, true);
                             undoRedoSyncTimeout = null;
@@ -1907,7 +1907,7 @@
             }
             
             const op = redoHistory.pop();
-            console.log(`⏩ Redoing operation: ${op.type}`, op);
+            // Clean: Removed debug log
             
             // ENHANCED: Show detailed message about what is being redone
             const redoMessage = getDetailedOperationDescription(op, false);
@@ -1918,7 +1918,7 @@
                 
                 // Re-apply the final state of the operation - only if we have valid data
                 if (op.finalState && op.finalState.rows && Array.isArray(op.finalState.rows) && op.finalState.rows.length > 0) {
-                    console.log(`⏩ Restoring table state with ${op.finalState.rows.length} rows`);
+                    // Clean: Removed debug log
                     loadTableData(op.finalState.rows);
                 } else if (op.finalState && op.finalState.rows) {
                     console.warn(`⚠️ Final state has rows but they are invalid:`, op.finalState.rows);
@@ -1939,10 +1939,10 @@
                             
                             if (columnIndex >= 0 && cells[columnIndex]) {
                                 cells[columnIndex].textContent = currentValue;
-                                console.log(`⏩ Restored cell [${rowKey}, ${columnLabel}] to: "${currentValue}" using stable addressing`);
+                                // Clean: Removed debug log
                             }
                         } else {
-                            console.warn(`⚠️ Row with key ${rowKey} not found for redo`);
+                            // Clean: Removed debug log
                         }
                     }
                 }
@@ -1950,7 +1950,7 @@
                 // Special handling for row deletions - re-delete rows
                 if (op.type === OPERATION_TYPES.ROW_DELETE && op.data) {
                     const { deletedRows, rowKeys } = op.data;
-                    console.log(`⏩ Re-deleting ${deletedRows} row(s)`);
+                    // Clean: Removed debug log
                     
                     if (rowKeys && rowKeys.length > 0) {
                         const tbody = document.getElementById('table-body');
@@ -1968,7 +1968,7 @@
                             });
                             
                             updateRowCount();
-                            console.log(`✅ Re-deleted ${rowsToDelete.length} row(s)`);
+                            // Clean: Removed debug log
                         }
                     }
                 }
@@ -1977,7 +1977,7 @@
                 if (op.type === OPERATION_TYPES.BULK_EDIT) {
                     if (op.data && op.data.edits) {
                         // Type 1: Bulk edits avec liste de modifications individuelles
-                        console.log(`⏩ Restoring ${op.data.edits.length} cell edits`);
+                        // Clean: Removed debug log
                         const tbody = document.getElementById('table-body');
                         const rows = Array.from(tbody.children);
                         const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
@@ -1990,14 +1990,14 @@
                                     const columnIndex = headers.indexOf(edit.columnLabel);
                                     if (columnIndex >= 0 && cells[columnIndex]) {
                                         cells[columnIndex].textContent = edit.currentValue;
-                                        console.log(`⏩ Restored cell [${edit.rowKey}, ${edit.columnLabel}] to: "${edit.currentValue}"`);
+                                        // Clean: Removed debug log
                                     }
                                 }
                             }
                         });
                     } else if (op.finalState) {
                         // Type 2: Bulk edit avec état complet du tableau
-                        console.log(`⏩ Restoring table state from bulk edit (redo)`);
+                        // Clean: Removed debug log
                         loadTableData(op.finalState);
                     }
                 }
@@ -2027,13 +2027,13 @@
                 suppressRealtimeUntil = Date.now() + SUPPRESSION_MS;
                 suppressAutosaveUntil = Date.now() + AUTOSAVE_SUPPRESSION_MS;
                 
-                log(`🔄 Redo suppression windows: realtime=${SUPPRESSION_MS}ms, autosave=${AUTOSAVE_SUPPRESSION_MS}ms`);
+                // Clean: Removed debug log
                 
                 if (typeof scheduleUndoRedoSync === 'function') {
                     clearUndoRedoSyncTimeout();
                     undoRedoSyncTimeout = setTimeout(() => {
                         if (!isPerformingUndoRedo) {
-                            log('🔄 Auto-sync (prune) after redo with conflict prevention');
+                            // Clean: Removed debug log
                             // Force manual save to bypass conflict checks
                             syncToMaster(true, true);
                             undoRedoSyncTimeout = null;
@@ -2147,23 +2147,7 @@
             }
         }
         
-        // Debug function to show current undo/redo state
-        function debugUndoRedoState() {
-            console.log('🔍 Current Undo/Redo State:');
-            console.log('📚 Operation History:', operationHistory.length, 'operations');
-            operationHistory.forEach((op, idx) => {
-                console.log(`  ${idx + 1}. ${op.type} - ${op.timestamp}`);
-            });
-            console.log('⏩ Redo History:', redoHistory.length, 'operations');
-            redoHistory.forEach((op, idx) => {
-                console.log(`  ${idx + 1}. ${op.type} - ${op.timestamp}`);
-            });
-            console.log('🔄 Current Operation:', currentOperation ? currentOperation.type : 'none');
-            console.log('🚫 Is Performing Undo/Redo:', isPerformingUndoRedo);
-        }
-        
-        // Expose debug function globally
-        window.debugUndoRedoState = debugUndoRedoState;
+        // Clean: Removed debug function for production
         
         // Expose undo/redo functions globally so buttons can access them
         window.undo = undo;
@@ -2188,7 +2172,7 @@
             // Schedule sync after 500ms of user inactivity
             undoRedoSyncTimeout = setTimeout(() => {
                 if (!isPerformingUndoRedo) {
-                    log('🔄 Auto-sync after undo/redo operation (500ms inactivity)');
+                    // Clean: Removed debug log
                     syncToMaster(true);
                     undoRedoSyncTimeout = null;
                 }
@@ -2202,7 +2186,7 @@
                 if (currentOperation.data.editCount > 1) {
                     currentOperation.type = OPERATION_TYPES.BULK_EDIT;
                     currentOperation.data.description = `${currentOperation.data.editCount} modifications de cellules`;
-                    console.log(`📝 Grouped ${currentOperation.data.editCount} cell edits into bulk operation`);
+                    // Clean: Removed debug log
                 }
             }
         }
@@ -2240,7 +2224,7 @@
             }
             clearOperationTimeout();
             updateUndoButtonState();
-            console.log('🔄 Operation history reset');
+            // Clean: Removed debug log
         }
         
         // Function to safely start new operations after undo
@@ -2291,7 +2275,7 @@
                     fabAdd.title = 'Ajouter une nouvelle ligne';
                 }
                 
-                console.log('✅ FAB add button forced visible (respecting view mode)');
+                // Clean: Removed debug log
                 return true;
             } else {
                 console.error('❌ FAB add button not found');
@@ -3305,18 +3289,11 @@
         }
         
         function saveStateToHistory() { 
-            // Debug: voir exactement quand cette fonction est appelée
-            console.log('🚨 saveStateToHistory called!', {
-                isViewMode,
-                isViewModeProtected,
-                isMobile: isMobile(),
-                timestamp: new Date().toISOString(),
-                stack: new Error().stack
-            });
+            // Clean: Removed debug logging
             
             // Protection renforcée : ne rien faire si on est en mode visualisation protégé
             if (isViewModeProtected || (isViewMode && isMobile()) || isPerformingUndoRedo) {
-                console.log('🔒 saveStateToHistory BLOCKED by protection');
+                // Clean: Removed debug log
                 return;
             }
             
@@ -3382,21 +3359,21 @@
                             
                             // Remplacer par des fonctions vides avec debug
                             window.markEdited = function() { 
-                                console.log('🔒 markEdited BLOCKED in view mode'); 
+                                // Clean: Removed debug log 
                                 return; 
                             };
                             window.saveStateToHistory = function() { 
-                                console.log('🔒 saveStateToHistory BLOCKED in view mode'); 
+                                // Clean: Removed debug log 
                                 return; 
                             };
                             window.saveLocalDraft = function() { 
-                                console.log('🔒 saveLocalDraft BLOCKED in view mode'); 
+                                // Clean: Removed debug log 
                                 return; 
                             };
                             
                             // Activer la protection renforcée
                             isViewModeProtected = true;
-                            console.log('🛡️ View mode protection ACTIVATED');
+                            // Clean: Removed debug log
                         }
                         
                         el.outerHTML = draft;
@@ -3410,11 +3387,11 @@
                             const delay = isMobile() ? 300 : 150;
                             const restoreDelay = isMobile() ? 10000 : 6000;
                             
-                            console.log(`⏱️ Applying view mode in ${delay}ms, restoring functions in ${restoreDelay}ms`);
+                            // Clean: Removed debug log
                             
                             // Appliquer le mode visualisation aux nouvelles cellules
                             setTimeout(() => {
-                                console.log('🎯 Applying view mode to cells...');
+                                // Clean: Removed debug log
                                 const editableCells = document.querySelectorAll('.editable-cell');
                                 editableCells.forEach(cell => {
                                     cell.contentEditable = 'false';
@@ -3446,11 +3423,11 @@
                                     }
                                 }
                                 
-                                console.log('✅ View mode applied, functions will be restored in', restoreDelay, 'ms');
+                                // Clean: Removed debug log
                                 
                                 // Réactiver les sauvegardes après un délai adaptatif
                                 setTimeout(() => {
-                                    console.log('🔄 Restoring original functions...');
+                                    // Clean: Removed debug log
                                     if (originalFunctions.markEdited) {
                                         window.markEdited = originalFunctions.markEdited;
                                     }
@@ -3463,7 +3440,7 @@
                                     
                                     // Désactiver la protection renforcée
                                     isViewModeProtected = false;
-                                    console.log('🛡️ View mode protection DEACTIVATED');
+                                    // Clean: Removed debug log
                                 }, restoreDelay);
                             }, delay);
                         }
@@ -3595,7 +3572,7 @@
             if (tbody && rowCountNumber) {
                 const rowCount = tbody.children.length;
                 rowCountNumber.textContent = rowCount;
-                console.log(`📊 Row count updated: ${rowCount} rows`);
+                // Clean: Removed debug log
             }
         }
         function createDeleteCell(row){
@@ -4066,7 +4043,7 @@
               return;
             }
 
-            console.log(`📊 Import Excel : ${rows.length} lignes totales, ${validRows.length} lignes valides`);
+                            // Clean: Removed debug log
 
             // Construire les données d'import avec gestion intelligente
             const importData = validRows.map((row, index) => {
@@ -4372,7 +4349,7 @@
             
             // Safety check: ensure we're not in the middle of an undo operation
             if (currentOperation && currentOperation.type.includes('undo')) {
-                console.log('⚠️ Delete operation blocked: undo in progress');
+                // Clean: Removed debug log
                 return;
             }
             
@@ -5376,7 +5353,7 @@
                     return;
                 }
                 
-                console.log(`📊 Existing snapshots: ${existing?.length || 0}`);
+                // Clean: Removed debug log
                 
                 // Generate a truly unique date
                 let dateString;
@@ -5427,17 +5404,17 @@
                     }
                     
                     if (!existingDate || existingDate.length === 0) {
-                        console.log(`✅ Unique date found: ${dateString}`);
+                        // Clean: Removed debug log
                         break;
                     }
                     
-                    console.log(`⚠️ Date ${dateString} already exists, trying next...`);
+                    // Clean: Removed debug log
                     
                 } while (attempts < maxAttempts);
                 
                 if (attempts >= maxAttempts) {
                     console.error('❌ Unable to find unique date after 50 attempts');
-                    console.log('🔄 Suggesting database cleanup...');
+                    // Clean: Removed debug log
                     
                     // Show message to user
                     if (typeof showMessage === 'function') {
@@ -5463,7 +5440,7 @@
                         },
                         data: window.tableData
                     };
-                    console.log(`📊 Using current table data: ${actualRowCount} rows`);
+                    // Clean: Removed debug log
                 } else {
                     // Use demo data
                     snapshotData = {
@@ -5506,14 +5483,14 @@
                             }
                         ]
                     };
-                    console.log(`📊 Using demo data: 3 rows`);
+                    // Clean: Removed debug log
                 }
 
                 let fileName = `staff_table_${dateString}_10-00-00.json`;
                 const jsonBlob = new Blob([JSON.stringify(snapshotData, null, 2)], { type: 'application/json' });
 
                 // Check if file already exists in storage before uploading
-                console.log(`🔍 Checking if file exists in storage: ${fileName}`);
+                // Clean: Removed debug log
                 const { data: existingFiles, error: listError } = await supabaseStorage.storage
                     .from('table-snapshots')
                     .list('', { limit: 100 });
@@ -5524,7 +5501,7 @@
                     const fileExists = existingFiles?.some(file => file.name === fileName);
                     if (fileExists) {
                         console.warn(`⚠️ File already exists in storage: ${fileName}`);
-                        console.log('🔄 Trying to remove existing file first...');
+                        // Clean: Removed debug log
                         
                         // Try to remove the existing file
                         const { error: removeError } = await supabaseStorage.storage
@@ -5536,16 +5513,16 @@
                             // If we can't remove it, try with a different filename
                             const timestamp = Date.now();
                             const newFileName = `staff_table_${dateString}_${timestamp}.json`;
-                            console.log(`🔄 Using alternative filename: ${newFileName}`);
+                            // Clean: Removed debug log
                             fileName = newFileName;
                         } else {
-                            console.log('✅ Existing file removed successfully');
+                            // Clean: Removed debug log
                         }
                     }
                 }
 
                 // Upload the JSON file to storage using service role key
-                console.log(`📤 Uploading file: ${fileName}`);
+                // Clean: Removed debug log
                 const { data: uploadData, error: uploadError } = await supabaseStorage.storage
                     .from('table-snapshots')
                     .upload(fileName, jsonBlob);
@@ -5555,7 +5532,7 @@
                     throw new Error(`Failed to upload file: ${uploadError.message}`);
                 }
 
-                console.log('✅ File uploaded successfully:', uploadData);
+                                    // Clean: Removed debug log
 
                 // Now create the database record
                 const { error } = await supabase
@@ -5577,7 +5554,7 @@
                     
                     // If it's still a key error, try with a timestamp
                     if (error.code === '23505') {
-                        console.log('🔄 Trying with unique timestamp...');
+                        // Clean: Removed debug log
                         const timestamp = Date.now();
                         const uniqueDate = new Date(timestamp);
                         const uniqueDateString = uniqueDate.toISOString().split('T')[0];
@@ -5599,14 +5576,14 @@
                         if (retryError) {
                             console.error('❌ Retry error:', retryError);
                         } else {
-                            console.log(`✅ Snapshot created with unique date: ${uniqueDateString}`);
+                            // Clean: Removed debug log
                             await loadAvailableSnapshots();
                             // Update the calendar display
                             populateSnapshotCalendar();
                         }
                     }
                 } else {
-                    console.log(`✅ Demo snapshot created successfully! Date: ${dateString}`);
+                    // Clean: Removed debug log
                     // Reload snapshots after creation
                     await loadAvailableSnapshots();
                     // Update the calendar display
@@ -5621,7 +5598,7 @@
         // Load available snapshots from the database
         async function loadAvailableSnapshots() {
             try {
-                console.log('🔄 Loading available snapshots...');
+                // Clean: Removed debug log
                 
                 // First, test the database connection
                 const { data: testData, error: testError } = await supabase
@@ -5633,14 +5610,14 @@
                     console.error('❌ Database connection error:', testError);
                     // Try to create a demo snapshot if database is empty
                     if (testError.code === 'PGRST116') { // No rows returned
-                        console.log('📊 Database is empty, creating demo snapshot...');
+                        // Clean: Removed debug log
                         await createDemoSnapshot();
                         return;
                     }
                     return;
                 }
                 
-                console.log('✅ Database connection successful, test data:', testData);
+                                    // Clean: Removed debug log
                 
                 const { data, error } = await supabase
                     .from('table_snapshots_index')
@@ -5656,11 +5633,11 @@
                 // Update global variable
                 window.availableSnapshots = availableSnapshots;
                 
-                console.log(`📸 Loaded ${availableSnapshots.length} available snapshots:`, availableSnapshots);
+                // Clean: Removed debug log
                 
                 // If no snapshots exist, create a demo one
                 if (availableSnapshots.length === 0) {
-                    console.log('📊 No snapshots found, creating demo snapshot...');
+                    // Clean: Removed debug log
                     await createDemoSnapshot();
                 } else {
                 updateHistoryNavigation();
@@ -5717,7 +5694,7 @@
         // Check and fix inconsistencies between database and storage
         async function checkAndFixInconsistencies() {
             try {
-                console.log('🔍 Checking for inconsistencies between database and storage...');
+                // Clean: Removed debug log
                 
                 // Get database snapshots
                 const { data: dbSnapshots, error: dbError } = await supabase
@@ -5739,8 +5716,7 @@
                     return;
                 }
                 
-                console.log(`📊 Database: ${dbSnapshots?.length || 0} snapshots`);
-                console.log(`📁 Storage: ${storageFiles?.length || 0} files`);
+                // Clean: Removed debug logs
                 
                 // Check for orphaned database records (no corresponding file)
                 const orphanedRecords = [];
@@ -5765,10 +5741,10 @@
                 }
                 
                 if (orphanedRecords.length > 0 || orphanedFiles.length > 0) {
-                    console.log(`🔧 Found ${orphanedRecords.length} orphaned records and ${orphanedFiles.length} orphaned files`);
+                    // Clean: Removed debug log
                     showMessage(`Incohérences détectées. Utilisez le bouton "Nettoyer" pour corriger.`, 'warning');
                 } else {
-                    console.log('✅ No inconsistencies found');
+                    // Clean: Removed debug log
                     showMessage('Aucune incohérence détectée', 'success');
                 }
                 
@@ -5780,7 +5756,7 @@
                 // Clean database and create fresh snapshot
         async function cleanDatabaseAndCreateSnapshot() {
             try {
-                console.log('🧹 Cleaning database and creating fresh snapshot...');
+                // Clean: Removed debug log
                 
                 // Check current state
                 const { data: current, error: checkError } = await supabase
@@ -5792,7 +5768,7 @@
                     return;
                 }
                 
-                console.log(`📊 Current state: ${current?.length || 0} snapshots`);
+                // Clean: Removed debug log
                 
                 if (current && current.length > 0) {
                     // Delete all existing snapshots
@@ -5806,7 +5782,7 @@
                         return;
                     }
                     
-                    console.log('✅ All snapshots deleted');
+                    // Clean: Removed debug log
                 }
                 
                 // Create new snapshot with unique date
@@ -5833,7 +5809,7 @@
             }
             
             try {
-                console.log(`🔄 Entering snapshot mode for date: ${date}`);
+                // Clean: Removed debug log
                 
                 // Find snapshot info
                 const snapshotInfo = availableSnapshots.find(s => s.snapshot_date === date);
@@ -5843,7 +5819,7 @@
                 }
                 
                 // Check if the file exists in storage first
-                console.log(`🔍 Checking if file exists: ${snapshotInfo.object_path}`);
+                // Clean: Removed debug log
                 
                 const { data: fileList, error: listError } = await supabaseStorage.storage
                     .from('table-snapshots')
@@ -5855,7 +5831,7 @@
                     const fileExists = fileList?.some(file => file.name === snapshotInfo.object_path);
                     if (!fileExists) {
                         console.warn(`⚠️ File not found in storage: ${snapshotInfo.object_path}`);
-                        console.log('📁 Available files:', fileList?.map(f => f.name));
+                        // Clean: Removed debug log
                         
                         // Try to find a similar file or suggest cleanup
                         const similarFiles = fileList?.filter(f => f.name.includes('staff_table_'));
@@ -5916,7 +5892,7 @@
             }
             
             try {
-                console.log('🔄 Returning to today (live mode)');
+                // Clean: Removed debug log
                 
                 // Update state
                 snapshotMode = 'live';
@@ -6168,18 +6144,18 @@
         
         // Fonction pour actualiser le tableau avec les données les plus récentes
         function refreshTableData() {
-            console.log('🔄 Actualisation du tableau...');
+            // Clean: Removed debug log
             
             // Si on est en mode snapshot, retourner aux données en direct
             if (snapshotMode === 'snapshot') {
-                console.log('📸 Retour aux données en direct depuis le mode snapshot');
+                // Clean: Removed debug log
                 returnToToday();
             }
             
             // Recharger les données depuis Supabase
-            console.log('🔄 Rechargement des données depuis Supabase...');
+            // Clean: Removed debug log
             loadTableData().then(() => {
-                console.log('✅ Données actualisées avec succès');
+                // Clean: Removed debug log
                 showMessage('Tableau actualisé avec les données les plus récentes', 'success');
             }).catch(error => {
                 console.error('❌ Erreur lors de l\'actualisation:', error);
@@ -6189,7 +6165,7 @@
         
         // Simple and robust history bar toggle function
         function toggleHistoryBarSimple() {
-            console.log('🔄 toggleHistoryBarSimple called');
+            // Clean: Removed debug log
             
             // Debug: Vérifier que le DOM est chargé
             if (document.readyState !== 'complete') {
@@ -6201,10 +6177,7 @@
             const historyBarContainer = document.getElementById('history-bar-container');
             const toggleBtn = document.getElementById('history-toggle-btn');
             
-            console.log('🔍 Elements found:', {
-                historyBarContainer: !!historyBarContainer,
-                toggleBtn: !!toggleBtn
-            });
+            // Clean: Removed debug logging
             
             if (!historyBarContainer || !toggleBtn) {
                 console.error('❌ Required elements not found');
@@ -6215,7 +6188,7 @@
             
             // Check current state
             const isCurrentlyVisible = !historyBarContainer.classList.contains('hidden') && historyBarContainer.style.display !== 'none';
-            console.log('🔍 Current state:', isCurrentlyVisible ? 'visible' : 'hidden');
+            // Clean: Removed debug log
             
             if (isCurrentlyVisible) {
                 // Hide history bar container
@@ -6228,7 +6201,7 @@
                     toggleIcon.className = 'fa-solid fa-minus w-2 h-2 flex items-center justify-center text-center leading-none';
                 }
                 
-                console.log('✅ History bar container hidden');
+                // Clean: Removed debug log
             } else {
                 // Show history bar container
                 historyBarContainer.classList.remove('hidden');
@@ -6240,7 +6213,7 @@
                     toggleIcon.className = 'fa-solid fa-plus w-2 h-2 flex items-center justify-center text-center leading-none';
                 }
                 
-                console.log('✅ History bar container shown');
+                // Clean: Removed debug log
             }
         }
         
@@ -6302,7 +6275,7 @@
                 // S'assurer que l'icône est en mode "plus" (fermé)
                 toggleIcon.className = 'fa-solid fa-plus w-2 h-2 flex items-center justify-center text-center leading-none';
                 
-                console.log('✅ History bar initialized as hidden by default');
+                // Clean: Removed debug log
             }
             
             // Initialiser l'affichage du nombre de lignes
@@ -6382,49 +6355,15 @@
                     populateSnapshotCalendar();
                 }, 500);
                 
-                // Verify toggle button functionality
-                setTimeout(() => {
-                    console.log('🔍 Verifying toggle button functionality...');
-                    const toggleBtn = document.getElementById('history-toggle-btn');
-                    const historyBarContainer = document.getElementById('history-bar-container');
-                    console.log('✅ Toggle button found:', !!toggleBtn);
-                    console.log('✅ History bar container found:', !!historyBarContainer);
-                    
-                    if (toggleBtn && historyBarContainer) {
-                        console.log('✅ Toggle functionality ready');
-                        console.log('✅ Container initial state:', historyBarContainer.classList.contains('hidden') ? 'hidden' : 'visible');
-                    } else {
-                        console.warn('⚠️ Toggle elements not ready yet');
-                    }
-                }, 1000);
+                // Clean: Removed debug verification for production
                 
                 // Force UI update to ensure everything is visible
-                setTimeout(() => {
-                    console.log('🎯 Force UI update after initialization...');
-                    document.getElementById('table-container').style.display = 'block';
-                    document.getElementById('table-container').classList.remove('hidden');
-                    
-                    // Ensure table is visible
-                    const table = document.getElementById('data-table');
-                    if (table) {
-                        table.style.display = 'table';
-                        table.style.visibility = 'visible';
-                    }
-                    
-                    // Force a reflow to ensure proper rendering
-                    table?.offsetHeight;
-                }, 100);
+                // Clean: Removed debug UI update for production
                 
 
                 
                 // Appliquer le mode visualisation APRÈS la restauration des données
-                setTimeout(() => {
-                    console.log('🎯 Applying view mode after data restoration...');
-                    // Mettre à jour l'apparence du bouton
-                    updateViewModeButton();
-                    // Appliquer le mode
-                    applyViewMode();
-                }, 150);
+                // Clean: Removed debug view mode application for production
                 
                 // Adapter l'affichage après le chargement des données
                 setTimeout(adaptStatusDisplay, 100);
@@ -6448,7 +6387,7 @@
                     
                     // Ensure cursor restoration happens after all updates are complete
                     if (lastFocusInfo || lastCellPos) {
-                        log(`🔄 Delayed cursor restoration after initialization complete`);
+                        // Clean: Removed debug log
                         setTimeout(() => {
                             performCursorRestoration();
                         }, 100);
