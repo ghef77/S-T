@@ -1392,6 +1392,14 @@
         // Initialize from localStorage
         try { 
             lastFocusInfo = JSON.parse(localStorage.getItem('lastFocusInfo') || 'null'); 
+            
+            // Forcer l'affichage du bouton d'ajout au démarrage
+            const fabAdd = document.getElementById('fab-add');
+            if (fabAdd) {
+                fabAdd.style.display = 'flex';
+                fabAdd.style.pointerEvents = 'auto';
+                console.log('✅ FAB add button forced visible on startup');
+            }
         } catch(_) { 
             lastFocusInfo = null; 
         }
@@ -1900,6 +1908,22 @@
         window.resetOperationHistory = resetOperationHistory;
         window.safeStartOperation = safeStartOperation;
         window.updateRowCount = updateRowCount;
+        
+        // Fonction pour forcer l'affichage du bouton d'ajout
+        window.forceFabAddVisible = function() {
+            const fabAdd = document.getElementById('fab-add');
+            if (fabAdd) {
+                fabAdd.style.display = 'flex';
+                fabAdd.style.pointerEvents = 'auto';
+                fabAdd.style.opacity = '1';
+                fabAdd.style.visibility = 'visible';
+                console.log('✅ FAB add button forced visible');
+                return true;
+            } else {
+                console.error('❌ FAB add button not found');
+                return false;
+            }
+        };
         
         // Utility functions
         function log(message, type = 'info') { 
