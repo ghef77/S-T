@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Snapshot System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { border-color: #4CAF50; background-color: #f1f8e9; }
+        .error { border-color: #f44336; background-color: #ffebee; }
+        .info { border-color: #2196F3; background-color: #e3f2fd; }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #1976D2; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Snapshot System</h1>
+    
+    <div class="container">
+        <h2>📊 État du Système</h2>
+        <div id="system-status" class="status info">Initialisation...</div>
+        <button onclick="checkSystemStatus()">🔄 Vérifier État</button>
+        <button onclick="clearLogs()">🗑️ Effacer Logs</button>
+    </div>
+
+    <div class="grid">
+        <div class="container">
+            <h2>🗄️ Test Base de Données</h2>
+            <div class="test-section">
+                <button onclick="testDatabaseConnection()">🔌 Test Connexion</button>
+                <button onclick="testSnapshotIndex()">📋 Test Table Index</button>
+                <button onclick="testRestoreLog()">📝 Test Log Restauration</button>
+            </div>
+            <div id="db-log" class="log"></div>
+        </div>
+
+        <div class="container">
+            <h2>📁 Test Storage</h2>
+            <div class="test-section">
+                <button onclick="testStorageBucket()">🪣 Test Bucket</button>
+                <button onclick="testFileDownload()">⬇️ Test Téléchargement</button>
+                <button onclick="testFileUpload()">⬆️ Test Upload</button>
+            </div>
+            <div id="storage-log" class="log"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🎯 Test Complet Snapshot</h2>
+        <div class="test-section">
+            <button onclick="runCompleteTest()">🚀 Lancer Test Complet</button>
+            <button onclick="testSnapshotLoading()">📊 Test Chargement Snapshot</button>
+            <button onclick="testSnapshotNavigation()">🔄 Test Navigation</button>
+        </div>
+        <div id="snapshot-log" class="log"></div>
+    </div>
+
+    <div class="container">
+        <h2>🔧 Outils de Correction</h2>
+        <div class="test-section">
+            <button onclick="fixDatabase()">🔧 Corriger Base</button>
+            <button onclick="createDemoSnapshot()">➕ Créer Snapshot Demo</button>
+            <button onclick="resetSystem()">🔄 Reset Système</button>
+            <button onclick="cleanDatabase()">🧹 Nettoyer Base</button>
+        </div>
+        <div id="fix-log" class="log"></div>
+    </div>
+
+    <script type="module">
+        // Configuration Supabase
+        const SUPABASE_URL = 'https://fiecugxopjxzqfdnaqsu.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw';
+
+        // Import Supabase
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+        
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // Variables globales
+        let logs = {
+            db: [],
+            storage: [],
+            snapshot: [],
+            fix: []
+        };
+
+        // Fonctions utilitaires
+        function log(type, message, data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}${data ? '\n' + JSON.stringify(data, null, 2) : ''}`;
+            
+            logs[type].push(logEntry);
+            document.getElementById(`${type}-log`).textContent = logs[type].join('\n\n');
+            
+            // Scroll to bottom
+            const logElement = document.getElementById(`${type}-log`);
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            console.log(`[${type.toUpperCase()}] ${message}`, data);
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusElement = document.getElementById('system-status');
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+        }
+
+        // Test de connexion à la base de données
+        async function testDatabaseConnection() {
+            log('db', '🔌 Test de connexion à la base de données...');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('table_snapshots_index')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) {
+                    log('db', '❌ Erreur de connexion:', error);
+                    return false;
+                }
+                
+                log('db', '✅ Connexion réussie!');
+                return true;
+            } catch (err) {
+                log('db', '❌ Erreur exception:', err);
+                return false;
+            }
+        }
+
+        // Test de la table des snapshots
+        async function testSnapshotIndex() {
+            log('db', '📋 Test de la table table_snapshots_index...');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*')
+                    .order('snapshot_date', { ascending: false });
+                
+                if (error) {
+                    log('db', '❌ Erreur lecture table:', error);
+                    return;
+                }
+                
+                if (data && data.length > 0) {
+                    log('db', `✅ ${data.length} snapshot(s) trouvé(s):`, data);
+                } else {
+                    log('db', '⚠️ Aucun snapshot trouvé dans la base');
+                }
+            } catch (err) {
+                log('db', '❌ Erreur exception:', err);
+            }
+        }
+
+        // Test de la table des logs de restauration
+        async function testRestoreLog() {
+            log('db', '📝 Test de la table snapshot_restore_log...');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('snapshot_restore_log')
+                    .select('*')
+                    .order('restored_at', { ascending: false })
+                    .limit(5);
+                
+                if (error) {
+                    log('db', '❌ Erreur lecture log:', error);
+                    return;
+                }
+                
+                if (data && data.length > 0) {
+                    log('db', `✅ ${data.length} log(s) trouvé(s):`, data);
+                } else {
+                    log('db', '⚠️ Aucun log de restauration trouvé');
+                }
+            } catch (err) {
+                log('db', '❌ Erreur exception:', err);
+            }
+        }
+
+        // Test du bucket de storage
+        async function testStorageBucket() {
+            log('storage', '🪣 Test du bucket table-snapshots...');
+            
+            try {
+                const { data, error } = await supabase.storage
+                    .from('table-snapshots')
+                    .list('', { limit: 10 });
+                
+                if (error) {
+                    log('storage', '❌ Erreur bucket:', error);
+                    return;
+                }
+                
+                if (data && data.length > 0) {
+                    log('storage', `✅ ${data.length} fichier(s) dans le bucket:`, data.map(f => f.name));
+                } else {
+                    log('storage', '⚠️ Bucket vide ou inaccessible');
+                }
+            } catch (err) {
+                log('storage', '❌ Erreur exception:', err);
+            }
+        }
+
+        // Test de téléchargement de fichier
+        async function testFileDownload() {
+            log('storage', '⬇️ Test de téléchargement du fichier JSON...');
+            
+            try {
+                const { data, error } = await supabase.storage
+                    .from('table-snapshots')
+                    .download('staff_table_2025-01-17_10-00-00.json');
+                
+                if (error) {
+                    log('storage', '❌ Erreur téléchargement:', error);
+                    return;
+                }
+                
+                log('storage', `✅ Fichier téléchargé! Taille: ${data.size} bytes`);
+                
+                // Test de lecture du contenu
+                const content = await data.text();
+                log('storage', '📄 Contenu du fichier (premiers 200 caractères):', content.substring(0, 200) + '...');
+                
+                // Test de parsing JSON
+                try {
+                    const parsed = JSON.parse(content);
+                    log('storage', '✅ JSON parsé avec succès!', {
+                        metadata: parsed.snapshot_metadata,
+                        dataCount: parsed.data?.length || 0
+                    });
+                } catch (jsonError) {
+                    log('storage', '❌ Erreur parsing JSON:', jsonError.message);
+                    log('storage', '🔍 Contenu problématique:', content);
+                }
+                
+            } catch (err) {
+                log('storage', '❌ Erreur exception:', err);
+            }
+        }
+
+        // Test d'upload de fichier
+        async function testFileUpload() {
+            log('storage', '⬆️ Test d\'upload d\'un fichier test...');
+            
+            try {
+                const testContent = JSON.stringify({
+                    test: true,
+                    timestamp: new Date().toISOString(),
+                    message: "Fichier de test pour vérifier les permissions"
+                });
+                
+                const testFile = new Blob([testContent], { type: 'application/json' });
+                
+                const { data, error } = await supabase.storage
+                    .from('table-snapshots')
+                    .upload(`test-${Date.now()}.json`, testFile);
+                
+                if (error) {
+                    log('storage', '❌ Erreur upload:', error);
+                    return;
+                }
+                
+                log('storage', '✅ Upload réussi!', data);
+                
+                // Nettoyer le fichier de test
+                setTimeout(async () => {
+                    try {
+                        await supabase.storage
+                            .from('table-snapshots')
+                            .remove([data.path]);
+                        log('storage', '🧹 Fichier de test supprimé');
+                    } catch (cleanupError) {
+                        log('storage', '⚠️ Erreur nettoyage:', cleanupError);
+                    }
+                }, 2000);
+                
+            } catch (err) {
+                log('storage', '❌ Erreur exception:', err);
+            }
+        }
+
+        // Test complet du système
+        async function runCompleteTest() {
+            log('snapshot', '🚀 Lancement du test complet...');
+            
+            // Test 1: Base de données
+            log('snapshot', '📊 Test 1: Base de données');
+            const dbOk = await testDatabaseConnection();
+            if (dbOk) {
+                await testSnapshotIndex();
+                await testRestoreLog();
+            }
+            
+            // Test 2: Storage
+            log('snapshot', '📁 Test 2: Storage');
+            await testStorageBucket();
+            await testFileDownload();
+            
+            // Test 3: Intégration
+            log('snapshot', '🔗 Test 3: Intégration');
+            await testSnapshotLoading();
+            
+            log('snapshot', '✅ Test complet terminé!');
+        }
+
+        // Test de chargement de snapshot
+        async function testSnapshotLoading() {
+            log('snapshot', '📊 Test de chargement de snapshot...');
+            
+            try {
+                // Récupérer les snapshots disponibles
+                const { data: snapshots, error: snapError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*')
+                    .order('snapshot_date', { ascending: false });
+                
+                if (snapError) {
+                    log('snapshot', '❌ Erreur récupération snapshots:', snapError);
+                    return;
+                }
+                
+                if (!snapshots || snapshots.length === 0) {
+                    log('snapshot', '⚠️ Aucun snapshot disponible');
+                    return;
+                }
+                
+                const snapshot = snapshots[0];
+                log('snapshot', '🎯 Test avec le snapshot:', snapshot);
+                
+                // Télécharger le fichier
+                const { data: file, error: fileError } = await supabase.storage
+                    .from('table-snapshots')
+                    .download(snapshot.object_path);
+                
+                if (fileError) {
+                    log('snapshot', '❌ Erreur téléchargement fichier:', fileError);
+                    return;
+                }
+                
+                // Lire et parser le contenu
+                const content = await file.text();
+                const parsed = JSON.parse(content);
+                
+                log('snapshot', '✅ Snapshot chargé avec succès!', {
+                    metadata: parsed.snapshot_metadata,
+                    dataCount: parsed.data?.length || 0,
+                    firstRecord: parsed.data?.[0]
+                });
+                
+            } catch (err) {
+                log('snapshot', '❌ Erreur test chargement:', err);
+            }
+        }
+
+        // Test de navigation entre snapshots
+        async function testSnapshotNavigation() {
+            log('snapshot', '🔄 Test de navigation entre snapshots...');
+            
+            try {
+                const { data: snapshots, error } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*')
+                    .order('snapshot_date', { ascending: false });
+                
+                if (error) {
+                    log('snapshot', '❌ Erreur récupération snapshots:', error);
+                    return;
+                }
+                
+                if (snapshots && snapshots.length > 1) {
+                    log('snapshot', `✅ ${snapshots.length} snapshots disponibles pour la navigation`);
+                    log('snapshot', '📅 Dates disponibles:', snapshots.map(s => s.snapshot_date));
+                } else {
+                    log('snapshot', '⚠️ Navigation impossible - besoin d\'au moins 2 snapshots');
+                }
+                
+            } catch (err) {
+                log('snapshot', '❌ Erreur test navigation:', err);
+            }
+        }
+
+        // Correction de la base de données
+        async function fixDatabase() {
+            log('fix', '🔧 Tentative de correction de la base de données...');
+            
+            try {
+                // Vérifier l'état actuel
+                const { data: current, error: checkError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*');
+                
+                if (checkError) {
+                    log('fix', '❌ Erreur vérification:', checkError);
+                    return;
+                }
+                
+                log('fix', `📊 État actuel: ${current?.length || 0} record(s)`);
+                
+                if (current && current.length > 0) {
+                    // Vérifier si le record a des données valides
+                    const record = current[0];
+                    if (!record.object_path || !record.row_count) {
+                        log('fix', '⚠️ Record incomplet détecté, tentative de correction...');
+                        
+                        // Mettre à jour le record
+                        const { error: updateError } = await supabase
+                            .from('table_snapshots_index')
+                            .update({
+                                object_path: 'staff_table_2025-01-17_10-00-00.json',
+                                row_count: 3,
+                                file_size_bytes: 1500,
+                                metadata: JSON.stringify({
+                                    table: 'staffTable',
+                                    version: '1.0.0',
+                                    description: 'Demo snapshot for testing'
+                                })
+                            })
+                            .eq('id', record.id);
+                        
+                        if (updateError) {
+                            log('fix', '❌ Erreur mise à jour:', updateError);
+                        } else {
+                            log('fix', '✅ Record corrigé avec succès!');
+                        }
+                    } else {
+                        log('fix', '✅ Base de données semble correcte');
+                    }
+                } else {
+                    log('fix', '⚠️ Aucun record trouvé, création d\'un nouveau...');
+                    await createDemoSnapshot();
+                }
+                
+            } catch (err) {
+                log('fix', '❌ Erreur correction:', err);
+            }
+        }
+
+        // Création d'un snapshot demo
+        async function createDemoSnapshot() {
+            log('fix', '➕ Création d\'un snapshot demo...');
+            
+            try {
+                // Vérifier d'abord l'état actuel
+                const { data: existing, error: checkError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*');
+                
+                if (checkError) {
+                    log('fix', '❌ Erreur vérification existants:', checkError);
+                    return;
+                }
+                
+                log('fix', `📊 Snapshots existants: ${existing?.length || 0}`);
+                
+                // Générer une date vraiment unique
+                let dateString;
+                let attempts = 0;
+                const maxAttempts = 10;
+                
+                do {
+                    attempts++;
+                    if (attempts === 1) {
+                        // Premier essai : date d'aujourd'hui
+                        const today = new Date();
+                        dateString = today.toISOString().split('T')[0];
+                    } else {
+                        // Essais suivants : date avec décalage
+                        const offsetDate = new Date();
+                        offsetDate.setDate(offsetDate.getDate() - attempts + 1);
+                        dateString = offsetDate.toISOString().split('T')[0];
+                    }
+                    
+                    log('fix', `📅 Tentative ${attempts}: date ${dateString}`);
+                    
+                    // Vérifier si cette date existe déjà
+                    const { data: existingDate, error: dateCheckError } = await supabase
+                        .from('table_snapshots_index')
+                        .select('snapshot_date')
+                        .eq('snapshot_date', dateString)
+                        .limit(1);
+                    
+                    if (dateCheckError) {
+                        log('fix', '❌ Erreur vérification date:', dateCheckError);
+                        break;
+                    }
+                    
+                    if (!existingDate || existingDate.length === 0) {
+                        log('fix', `✅ Date unique trouvée: ${dateString}`);
+                        break;
+                    }
+                    
+                    log('fix', `⚠️ Date ${dateString} existe déjà, essai suivant...`);
+                    
+                } while (attempts < maxAttempts);
+                
+                if (attempts >= maxAttempts) {
+                    log('fix', '❌ Impossible de trouver une date unique après 10 tentatives');
+                    return;
+                }
+                
+                // Créer le snapshot avec la date unique
+                const { error } = await supabase
+                    .from('table_snapshots_index')
+                    .insert({
+                        snapshot_date: dateString,
+                        object_path: `staff_table_${dateString}_10-00-00.json`,
+                        row_count: 3,
+                        file_size_bytes: 1500,
+                        metadata: JSON.stringify({
+                            table: 'staffTable',
+                            version: '1.0.0',
+                            description: 'Demo snapshot for testing'
+                        })
+                    });
+                
+                if (error) {
+                    log('fix', '❌ Erreur création snapshot:', error);
+                } else {
+                    log('fix', `✅ Snapshot demo créé avec succès! Date: ${dateString}`);
+                }
+                
+            } catch (err) {
+                log('fix', '❌ Erreur exception:', err);
+            }
+        }
+
+        // Reset du système
+        async function resetSystem() {
+            log('fix', '🔄 Reset du système...');
+            
+            if (!confirm('Êtes-vous sûr de vouloir réinitialiser le système? Cela supprimera tous les snapshots.')) {
+                return;
+            }
+            
+            try {
+                // Supprimer tous les snapshots
+                const { error: deleteError } = await supabase
+                    .from('table_snapshots_index')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000'); // Supprimer tous
+                
+                if (deleteError) {
+                    log('fix', '❌ Erreur suppression snapshots:', deleteError);
+                    return;
+                }
+                
+                // Supprimer tous les logs
+                const { error: logError } = await supabase
+                    .from('snapshot_restore_log')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000');
+                
+                if (logError) {
+                    log('fix', '⚠️ Erreur suppression logs:', logError);
+                }
+                
+                log('fix', '✅ Système réinitialisé!');
+                
+                // Vérifier que la base est bien vide
+                const { data: checkData, error: checkError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('count');
+                
+                if (checkError) {
+                    log('fix', '⚠️ Erreur vérification:', checkError);
+                } else {
+                    log('fix', `📊 Base vérifiée: ${checkData?.[0]?.count || 0} snapshots restants`);
+                }
+                
+                // Recréer un snapshot demo avec date unique
+                await createDemoSnapshot();
+                
+            } catch (err) {
+                log('fix', '❌ Erreur reset:', err);
+            }
+        }
+
+        // Nettoyer complètement la base
+        async function cleanDatabase() {
+            log('fix', '🧹 Nettoyage complet de la base...');
+            
+            try {
+                // Vérifier l'état actuel
+                const { data: current, error: checkError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*');
+                
+                if (checkError) {
+                    log('fix', '❌ Erreur vérification:', checkError);
+                    return;
+                }
+                
+                log('fix', `📊 État actuel: ${current?.length || 0} snapshots`);
+                
+                if (current && current.length > 0) {
+                    // Supprimer tous les snapshots
+                    const { error: deleteError } = await supabase
+                        .from('table_snapshots_index')
+                        .delete()
+                        .neq('id', '00000000-0000-0000-0000-000000000000');
+                    
+                    if (deleteError) {
+                        log('fix', '❌ Erreur suppression:', deleteError);
+                        return;
+                    }
+                    
+                    log('fix', '✅ Tous les snapshots supprimés');
+                }
+                
+                // Créer un nouveau snapshot avec date unique
+                await createDemoSnapshot();
+                
+            } catch (err) {
+                log('fix', '❌ Erreur nettoyage:', err);
+            }
+        }
+
+        // Vérification de l'état du système
+        async function checkSystemStatus() {
+            log('db', '🔄 Vérification de l\'état du système...');
+            
+            try {
+                // Test base de données
+                const dbOk = await testDatabaseConnection();
+                
+                // Test storage
+                const { data: storageData, error: storageError } = await supabase.storage
+                    .from('table-snapshots')
+                    .list('', { limit: 1 });
+                
+                const storageOk = !storageError && storageData;
+                
+                // Test snapshots
+                const { data: snapshots, error: snapError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('count');
+                
+                const snapshotsOk = !snapError;
+                
+                // Résumé
+                const status = {
+                    database: dbOk ? '✅' : '❌',
+                    storage: storageOk ? '✅' : '❌',
+                    snapshots: snapshotsOk ? '✅' : '❌'
+                };
+                
+                const allOk = dbOk && storageOk && snapshotsOk;
+                
+                if (allOk) {
+                    updateStatus('✅ Système opérationnel!', 'success');
+                } else {
+                    updateStatus('⚠️ Problèmes détectés - voir logs', 'error');
+                }
+                
+                log('db', '📊 État du système:', status);
+                
+            } catch (err) {
+                log('db', '❌ Erreur vérification:', err);
+                updateStatus('❌ Erreur système', 'error');
+            }
+        }
+
+        // Effacer les logs
+        function clearLogs() {
+            Object.keys(logs).forEach(key => {
+                logs[key] = [];
+                document.getElementById(`${key}-log`).textContent = '';
+            });
+            updateStatus('Logs effacés', 'info');
+        }
+
+        // Initialisation
+        window.addEventListener('load', () => {
+            updateStatus('Système initialisé - Prêt pour les tests', 'info');
+            
+            // Exposer TOUTES les fonctions globalement pour les boutons onclick
+            window.checkSystemStatus = checkSystemStatus;
+            window.clearLogs = clearLogs;
+            window.testDatabaseConnection = testDatabaseConnection;
+            window.testSnapshotIndex = testSnapshotIndex;
+            window.testRestoreLog = testRestoreLog;
+            window.testStorageBucket = testStorageBucket;
+            window.testFileDownload = testFileDownload;
+            window.testFileUpload = testFileUpload;
+            window.runCompleteTest = runCompleteTest;
+            window.testSnapshotLoading = testSnapshotLoading;
+            window.testSnapshotNavigation = testSnapshotNavigation;
+            window.fixDatabase = fixDatabase;
+            window.createDemoSnapshot = createDemoSnapshot;
+            window.resetSystem = resetSystem;
+            window.cleanDatabase = cleanDatabase;
+            
+            // Exposer aussi l'objet debugSnapshot pour la console
+            window.debugSnapshot = {
+                testDatabaseConnection,
+                testStorageBucket,
+                testFileDownload,
+                runCompleteTest,
+                fixDatabase,
+                createDemoSnapshot,
+                checkSystemStatus,
+                clearLogs,
+                testSnapshotIndex,
+                testRestoreLog,
+                testFileUpload,
+                testSnapshotLoading,
+                testSnapshotNavigation,
+                resetSystem,
+                cleanDatabase
+            };
+            
+            console.log('🔍 Debug Snapshot System initialisé!');
+            console.log('💡 Utilisez window.debugSnapshot pour tester depuis la console');
+            console.log('✅ Toutes les fonctions sont maintenant accessibles globalement');
+        });
+    </script>
+</body>
+</html>

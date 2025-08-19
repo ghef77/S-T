@@ -1,0 +1,84 @@
+{
+  "snapshot_metadata": {
+    "created_at": "2025-01-17T10:00:00.000Z",
+    "row_count": 25,
+    "total_size": 15420,
+    "version": "1.0",
+    "description": "Demo snapshot for testing the snapshot system"
+  },
+  "data": [
+    {
+      "id": 1,
+      "nom": "Dupont",
+      "prenom": "Jean",
+      "status": "En service",
+      "specialite": "Cardiologie",
+      "date_embauche": "2020-03-15",
+      "salaire": 4500,
+      "notes": "Excellent médecin, très apprécié des patients",
+      "email": "jean.dupont@hopital.fr",
+      "telephone": "01 23 45 67 89",
+      "adresse": "123 Rue de la Santé, 75001 Paris"
+    },
+    {
+      "id": 2,
+      "nom": "Martin",
+      "prenom": "Marie",
+      "status": "En service",
+      "specialite": "Pédiatrie",
+      "date_embauche": "2019-07-22",
+      "salaire": 4200,
+      "notes": "Spécialiste en maladies infantiles",
+      "email": "marie.martin@hopital.fr",
+      "telephone": "01 23 45 67 90",
+      "adresse": "456 Avenue des Enfants, 75002 Paris"
+    },
+    {
+      "id": 3,
+      "nom": "Bernard",
+      "prenom": "Pierre",
+      "status": "Congé",
+      "specialite": "Chirurgie",
+      "date_embauche": "2018-11-10",
+      "salaire": 5200,
+      "notes": "Chirurgien expérimenté, en congé jusqu'au 25/01",
+      "email": "pierre.bernard@hopital.fr",
+      "telephone": "01 23 45 67 91",
+      "adresse": "789 Boulevard de la Chirurgie, 75003 Paris"
+    },
+    {
+      "id": 4,
+      "nom": "Leroy",
+      "prenom": "Sophie",
+      "status": "En service",
+      "specialite": "Dermatologie",
+      "date_embauche": "2021-01-18",
+      "salaire": 3800,
+      "notes": "Nouvelle recrue, très prometteuse",
+      "email": "sophie.leroy@hopital.fr",
+      "telephone": "01 23 45 67 92",
+      "adresse": "321 Rue de la Peau, 75004 Paris"
+    },
+    {
+      "id": 5,
+      "nom": "Moreau",
+      "prenom": "Antoine",
+      "status": "En service",
+      "specialite": "Radiologie",
+      "date_embauche": "2017-05-20",
+      "salaire": 4800,
+      "notes": "Expert en imagerie médicale",
+      "email": "antoine.moreau@hopital.fr",
+      "telephone": "01 23 45 67 93",
+      "adresse": "654 Avenue des Rayons, 75005 Paris"
+    }
+  ],
+  "system_info": {
+    "snapshot_created_by": "demo_system",
+    "snapshot_type": "daily_backup",
+    "compression": "none",
+    "checksum": "abc123def456ghi789",
+    "source_table": "staffTable",
+    "database_version": "PostgreSQL 15.0"
+  }
+}

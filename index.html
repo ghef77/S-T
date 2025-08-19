@@ -938,6 +938,56 @@
                 <i class="fa-solid fa-clock ml-2 w-4 h-4"></i>
                 Aujourd'hui
             </button>
+            
+            <!-- Calendar dropdown for snapshot dates -->
+            <div class="relative">
+                <button id="snapshot-calendar-btn" onclick="toggleSnapshotCalendar()" title="Choisir une date de snapshot" aria-label="Calendrier des snapshots" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium">
+                    <i class="fa-solid fa-calendar-days ml-2 w-4 h-4"></i>
+                    <span id="calendar-btn-text">Calendrier</span>
+                </button>
+                
+                <!-- Calendar dropdown -->
+                <div id="snapshot-calendar-dropdown" class="hidden absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-64 max-h-96 overflow-y-auto">
+                    <div class="p-3 border-b border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">📅 Snapshots disponibles</h3>
+                        <div class="text-xs text-gray-500">Cliquez sur une date pour charger le snapshot</div>
+                    </div>
+                    <div id="snapshot-dates-list" class="p-2">
+                        <!-- Dates will be populated here -->
+                    </div>
+                    <div class="p-3 border-t border-gray-200 bg-gray-50">
+                        <button onclick="returnToToday()" class="w-full bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors">
+                            <i class="fa-solid fa-clock mr-2"></i>Retour à aujourd'hui
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Debug buttons for snapshot system -->
+            <button onclick="createDemoSnapshot(false)" title="Créer un snapshot demo" aria-label="Créer snapshot demo" class="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium">
+                <i class="fa-solid fa-plus ml-1 w-3 h-3"></i>
+                Demo
+            </button>
+            <button onclick="createDemoSnapshot(true)" title="Créer un snapshot des données actuelles" aria-label="Créer snapshot actuel" class="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                <i class="fa-solid fa-camera ml-1 w-3 h-3"></i>
+                Actuel
+            </button>
+            <button onclick="checkAndFixInconsistencies()" title="Vérifier les incohérences" aria-label="Vérifier incohérences" class="bg-orange-600 text-white px-3 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium">
+                <i class="fa-solid fa-search ml-1 w-3 h-3"></i>
+                Vérifier
+            </button>
+            <button onclick="refreshSnapshotCalendar()" title="Rafraîchir le calendrier" aria-label="Rafraîchir" class="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                <i class="fa-solid fa-arrows-rotate ml-1 w-3 h-3"></i>
+                Rafraîchir
+            </button>
+            <button onclick="cleanDatabaseAndCreateSnapshot()" title="Nettoyer la base et créer un snapshot" aria-label="Nettoyer base" class="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium">
+                <i class="fa-solid fa-broom ml-1 w-3 h-3"></i>
+                Nettoyer
+            </button>
+            <button onclick="cleanStorageAndDatabase()" title="Nettoyer storage et base complètement" aria-label="Nettoyer tout" class="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium">
+                <i class="fa-solid fa-trash-can ml-1 w-3 h-3"></i>
+                Nettoyer Tout
+            </button>
         </div>
 
         <!-- Snapshot Banner -->
@@ -1084,6 +1134,7 @@
         const supabaseConfig = { 
             supabaseUrl: 'https://fiecugxopjxzqfdnaqsu.supabase.co', 
             supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw', 
+            supabaseServiceKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDUwNTY1NywiZXhwIjoyMDcwMDgxNjU3fQ.5m7nLHxHxOkxQf8maZis7Y7jynqu2dWqIzEbgWvOTcE',
             tableName: 'staffTable', 
             primaryKeyColumn: 'No' 
         };
@@ -1092,8 +1143,12 @@
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
         const supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
         
+        // Create a separate Supabase client for storage operations with service role key
+        const supabaseStorage = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseServiceKey);
+        
         // Make Supabase globally available
         window.supabase = supabase;
+        window.supabaseStorage = supabaseStorage;
         window.supabaseConfig = supabaseConfig;
         
         // Global state management
@@ -1175,6 +1230,69 @@
         window.isViewMode = false; // Will be updated in initializeApp
         window.isInitialLoad = true; // Will be set to false after initialization
         window.isRestoringFocus = false; // Flag to prevent edit events during focus restoration
+        
+        // Function to refresh calendar display
+        function refreshSnapshotCalendar() {
+            console.log('🔄 Refreshing snapshot calendar...');
+            populateSnapshotCalendar();
+            updateHistoryNavigation();
+        }
+        
+        // Function to clean storage and database completely
+        async function cleanStorageAndDatabase() {
+            try {
+                console.log('🧹 Cleaning storage and database completely...');
+                
+                // First, clean the database
+                const { error: dbError } = await supabase
+                    .from('table_snapshots_index')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000');
+                
+                if (dbError) {
+                    console.error('❌ Error cleaning database:', dbError);
+                    return;
+                }
+                
+                console.log('✅ Database cleaned');
+                
+                // Then, clean the storage bucket
+                const { data: storageFiles, error: listError } = await supabaseStorage.storage
+                    .from('table-snapshots')
+                    .list('', { limit: 1000 });
+                
+                if (listError) {
+                    console.error('❌ Error listing storage files:', listError);
+                    return;
+                }
+                
+                if (storageFiles && storageFiles.length > 0) {
+                    const fileNames = storageFiles.map(file => file.name);
+                    console.log(`🗑️ Removing ${fileNames.length} files from storage...`);
+                    
+                    const { error: removeError } = await supabaseStorage.storage
+                        .from('table-snapshots')
+                        .remove(fileNames);
+                    
+                    if (removeError) {
+                        console.error('❌ Error removing storage files:', removeError);
+                    } else {
+                        console.log('✅ Storage cleaned');
+                    }
+                } else {
+                    console.log('✅ Storage already empty');
+                }
+                
+                // Create a fresh snapshot
+                await createDemoSnapshot();
+                
+                showMessage('Storage et base de données complètement nettoyés', 'success');
+                
+            } catch (err) {
+                console.error('❌ Error cleaning storage and database:', err);
+                showMessage('Erreur lors du nettoyage complet', 'error');
+            }
+        }
         
         // Add logging function
         window.log = function(message, level = 'info') {
@@ -4590,6 +4708,263 @@
 
         // ===== SNAPSHOT SYSTEM FUNCTIONS =====
         
+        // Create a demo snapshot with unique date logic
+        async function createDemoSnapshot(useCurrentData = false) {
+            try {
+                console.log('➕ Creating demo snapshot...');
+                
+                // Check current state
+                const { data: existing, error: checkError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*');
+                
+                if (checkError) {
+                    console.error('❌ Error checking existing snapshots:', checkError);
+                    return;
+                }
+                
+                console.log(`📊 Existing snapshots: ${existing?.length || 0}`);
+                
+                // Generate a truly unique date
+                let dateString;
+                let attempts = 0;
+                const maxAttempts = 50; // Increased to handle more date variations
+                
+                do {
+                    attempts++;
+                    if (attempts === 1) {
+                        // First attempt: today's date
+                        const today = new Date();
+                        dateString = today.toISOString().split('T')[0];
+                    } else if (attempts <= 10) {
+                        // Next 10 attempts: dates with small offset (yesterday, day before, etc.)
+                        const offsetDate = new Date();
+                        offsetDate.setDate(offsetDate.getDate() - attempts + 1);
+                        dateString = offsetDate.toISOString().split('T')[0];
+                    } else if (attempts <= 20) {
+                        // Next 10 attempts: dates with larger offset (1 week ago, 2 weeks ago, etc.)
+                        const offsetDate = new Date();
+                        offsetDate.setDate(offsetDate.getDate() - (attempts * 7));
+                        dateString = offsetDate.toISOString().split('T')[0];
+                    } else if (attempts <= 30) {
+                        // Next 10 attempts: dates with month offset
+                        const offsetDate = new Date();
+                        offsetDate.setMonth(offsetDate.getMonth() - (attempts - 20));
+                        dateString = offsetDate.toISOString().split('T')[0];
+                    } else {
+                        // Final attempts: use random dates from previous years
+                        const randomYear = 2020 + Math.floor(Math.random() * 5); // 2020-2024
+                        const randomMonth = 1 + Math.floor(Math.random() * 12);
+                        const randomDay = 1 + Math.floor(Math.random() * 28);
+                        dateString = `${randomYear}-${String(randomMonth).padStart(2, '0')}-${String(randomDay).padStart(2, '0')}`;
+                    }
+                    
+                    console.log(`📅 Attempt ${attempts}: date ${dateString}`);
+                    
+                    // Check if this date already exists
+                    const { data: existingDate, error: dateCheckError } = await supabase
+                        .from('table_snapshots_index')
+                        .select('snapshot_date')
+                        .eq('snapshot_date', dateString)
+                        .limit(1);
+                    
+                    if (dateCheckError) {
+                        console.error('❌ Error checking date:', dateCheckError);
+                        break;
+                    }
+                    
+                    if (!existingDate || existingDate.length === 0) {
+                        console.log(`✅ Unique date found: ${dateString}`);
+                        break;
+                    }
+                    
+                    console.log(`⚠️ Date ${dateString} already exists, trying next...`);
+                    
+                } while (attempts < maxAttempts);
+                
+                if (attempts >= maxAttempts) {
+                    console.error('❌ Unable to find unique date after 50 attempts');
+                    console.log('🔄 Suggesting database cleanup...');
+                    
+                    // Show message to user
+                    if (typeof showMessage === 'function') {
+                        showMessage('Impossible de trouver une date unique. Utilisez le bouton "Nettoyer" pour vider la base.', 'warning');
+                    }
+                    
+                    return;
+                }
+                
+                // Create the JSON content for the snapshot
+                let snapshotData;
+                let actualRowCount = 3;
+                
+                if (useCurrentData && window.tableData && window.tableData.length > 0) {
+                    // Use current table data
+                    actualRowCount = window.tableData.length;
+                    snapshotData = {
+                        snapshot_metadata: {
+                            created_at: new Date().toISOString(),
+                            row_count: actualRowCount,
+                            version: "1.0",
+                            description: "Snapshot des données actuelles du tableau"
+                        },
+                        data: window.tableData
+                    };
+                    console.log(`📊 Using current table data: ${actualRowCount} rows`);
+                } else {
+                    // Use demo data
+                    snapshotData = {
+                        snapshot_metadata: {
+                            created_at: new Date().toISOString(),
+                            row_count: 3,
+                            version: "1.0",
+                            description: "Demo snapshot for testing"
+                        },
+                        data: [
+                            {
+                                id: 1,
+                                nom: "Dupont",
+                                prenom: "Jean",
+                                status: "En service",
+                                specialite: "Cardiologie",
+                                date_embauche: "2020-03-15",
+                                salaire: 4500,
+                                notes: "Excellent médecin, très apprécié des patients"
+                            },
+                            {
+                                id: 2,
+                                nom: "Martin",
+                                prenom: "Marie",
+                                status: "En service",
+                                specialite: "Pédiatrie",
+                                date_embauche: "2019-07-22",
+                                salaire: 4200,
+                                notes: "Spécialiste en maladies infantiles"
+                            },
+                            {
+                                id: 3,
+                                nom: "Bernard",
+                                prenom: "Pierre",
+                                status: "Congé",
+                                specialite: "Chirurgie",
+                                date_embauche: "2018-11-10",
+                                salaire: 5200,
+                                notes: "Chirurgien expérimenté"
+                            }
+                        ]
+                    };
+                    console.log(`📊 Using demo data: 3 rows`);
+                }
+
+                let fileName = `staff_table_${dateString}_10-00-00.json`;
+                const jsonBlob = new Blob([JSON.stringify(snapshotData, null, 2)], { type: 'application/json' });
+
+                // Check if file already exists in storage before uploading
+                console.log(`🔍 Checking if file exists in storage: ${fileName}`);
+                const { data: existingFiles, error: listError } = await supabaseStorage.storage
+                    .from('table-snapshots')
+                    .list('', { limit: 100 });
+                
+                if (listError) {
+                    console.warn('⚠️ Could not list storage files:', listError);
+                } else {
+                    const fileExists = existingFiles?.some(file => file.name === fileName);
+                    if (fileExists) {
+                        console.warn(`⚠️ File already exists in storage: ${fileName}`);
+                        console.log('🔄 Trying to remove existing file first...');
+                        
+                        // Try to remove the existing file
+                        const { error: removeError } = await supabaseStorage.storage
+                            .from('table-snapshots')
+                            .remove([fileName]);
+                        
+                        if (removeError) {
+                            console.error('❌ Error removing existing file:', removeError);
+                            // If we can't remove it, try with a different filename
+                            const timestamp = Date.now();
+                            const newFileName = `staff_table_${dateString}_${timestamp}.json`;
+                            console.log(`🔄 Using alternative filename: ${newFileName}`);
+                            fileName = newFileName;
+                        } else {
+                            console.log('✅ Existing file removed successfully');
+                        }
+                    }
+                }
+
+                // Upload the JSON file to storage using service role key
+                console.log(`📤 Uploading file: ${fileName}`);
+                const { data: uploadData, error: uploadError } = await supabaseStorage.storage
+                    .from('table-snapshots')
+                    .upload(fileName, jsonBlob);
+
+                if (uploadError) {
+                    console.error('❌ Error uploading file to storage:', uploadError);
+                    throw new Error(`Failed to upload file: ${uploadError.message}`);
+                }
+
+                console.log('✅ File uploaded successfully:', uploadData);
+
+                // Now create the database record
+                const { error } = await supabase
+                    .from('table_snapshots_index')
+                    .insert({
+                        snapshot_date: dateString,
+                        object_path: fileName,
+                        row_count: actualRowCount,
+                        file_size_bytes: jsonBlob.size,
+                        metadata: JSON.stringify({
+                            table: 'staffTable',
+                            version: '1.0.0',
+                            description: 'Demo snapshot for testing'
+                        })
+                    });
+                
+                if (error) {
+                    console.error('❌ Error creating snapshot:', error);
+                    
+                    // If it's still a key error, try with a timestamp
+                    if (error.code === '23505') {
+                        console.log('🔄 Trying with unique timestamp...');
+                        const timestamp = Date.now();
+                        const uniqueDate = new Date(timestamp);
+                        const uniqueDateString = uniqueDate.toISOString().split('T')[0];
+                        
+                        const { error: retryError } = await supabase
+                            .from('table_snapshots_index')
+                            .insert({
+                                snapshot_date: uniqueDateString,
+                                object_path: `staff_table_${uniqueDateString}_${timestamp}.json`,
+                                row_count: 3,
+                                file_size_bytes: 1500,
+                                metadata: JSON.stringify({
+                                    table: 'staffTable',
+                                    version: '1.0.0',
+                                    description: 'Demo snapshot for testing'
+                                })
+                            });
+                        
+                        if (retryError) {
+                            console.error('❌ Retry error:', retryError);
+                        } else {
+                            console.log(`✅ Snapshot created with unique date: ${uniqueDateString}`);
+                            await loadAvailableSnapshots();
+                            // Update the calendar display
+                            populateSnapshotCalendar();
+                        }
+                    }
+                } else {
+                    console.log(`✅ Demo snapshot created successfully! Date: ${dateString}`);
+                    // Reload snapshots after creation
+                    await loadAvailableSnapshots();
+                    // Update the calendar display
+                    populateSnapshotCalendar();
+                }
+                
+            } catch (err) {
+                console.error('❌ Exception error:', err);
+            }
+        }
+        
         // Load available snapshots from the database
         async function loadAvailableSnapshots() {
             try {
@@ -4603,6 +4978,12 @@
                 
                 if (testError) {
                     console.error('❌ Database connection error:', testError);
+                    // Try to create a demo snapshot if database is empty
+                    if (testError.code === 'PGRST116') { // No rows returned
+                        console.log('📊 Database is empty, creating demo snapshot...');
+                        await createDemoSnapshot();
+                        return;
+                    }
                     return;
                 }
                 
@@ -4610,7 +4991,7 @@
                 
                 const { data, error } = await supabase
                     .from('table_snapshots_index')
-                    .select('snapshot_date, created_at, row_count')
+                    .select('snapshot_date, created_at, row_count, object_path')
                     .order('snapshot_date', { ascending: false });
                 
                 if (error) {
@@ -4623,7 +5004,17 @@
                 window.availableSnapshots = availableSnapshots;
                 
                 console.log(`📸 Loaded ${availableSnapshots.length} available snapshots:`, availableSnapshots);
-                updateHistoryNavigation();
+                
+                // If no snapshots exist, create a demo one
+                if (availableSnapshots.length === 0) {
+                    console.log('📊 No snapshots found, creating demo snapshot...');
+                    await createDemoSnapshot();
+                } else {
+                    updateHistoryNavigation();
+                    // Update the calendar display
+                    populateSnapshotCalendar();
+                }
+                
             } catch (error) {
                 console.error('❌ Error in loadAvailableSnapshots:', error);
             }
@@ -4646,9 +5037,127 @@
                 if (backBtn) backBtn.disabled = currentSnapshotIndex <= 0;
                 if (nextBtn) nextBtn.disabled = currentSnapshotIndex >= availableSnapshots.length - 1;
             }
+            
+            // Update calendar button text if calendar is open
+            const calendarBtnText = document.getElementById('calendar-btn-text');
+            if (calendarBtnText) {
+                calendarBtnText.textContent = `Calendrier (${availableSnapshots.length})`;
+            }
         }
         
-        // Enter snapshot mode for a specific date
+        // Check and fix inconsistencies between database and storage
+        async function checkAndFixInconsistencies() {
+            try {
+                console.log('🔍 Checking for inconsistencies between database and storage...');
+                
+                // Get database snapshots
+                const { data: dbSnapshots, error: dbError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*');
+                
+                if (dbError) {
+                    console.error('❌ Error checking database:', dbError);
+                    return;
+                }
+                
+                // Get storage files using service role key
+                const { data: storageFiles, error: storageError } = await supabaseStorage.storage
+                    .from('table-snapshots')
+                    .list('', { limit: 100 });
+                
+                if (storageError) {
+                    console.error('❌ Error checking storage:', storageError);
+                    return;
+                }
+                
+                console.log(`📊 Database: ${dbSnapshots?.length || 0} snapshots`);
+                console.log(`📁 Storage: ${storageFiles?.length || 0} files`);
+                
+                // Check for orphaned database records (no corresponding file)
+                const orphanedRecords = [];
+                for (const snapshot of dbSnapshots || []) {
+                    const fileExists = storageFiles?.some(file => file.name === snapshot.object_path);
+                    if (!fileExists) {
+                        orphanedRecords.push(snapshot);
+                        console.warn(`⚠️ Orphaned record: ${snapshot.snapshot_date} -> ${snapshot.object_path}`);
+                    }
+                }
+                
+                // Check for orphaned storage files (no corresponding database record)
+                const orphanedFiles = [];
+                for (const file of storageFiles || []) {
+                    if (file.name.includes('staff_table_')) {
+                        const recordExists = dbSnapshots?.some(s => s.object_path === file.name);
+                        if (!recordExists) {
+                            orphanedFiles.push(file);
+                            console.warn(`⚠️ Orphaned file: ${file.name}`);
+                        }
+                    }
+                }
+                
+                if (orphanedRecords.length > 0 || orphanedFiles.length > 0) {
+                    console.log(`🔧 Found ${orphanedRecords.length} orphaned records and ${orphanedFiles.length} orphaned files`);
+                    showMessage(`Incohérences détectées. Utilisez le bouton "Nettoyer" pour corriger.`, 'warning');
+                } else {
+                    console.log('✅ No inconsistencies found');
+                    showMessage('Aucune incohérence détectée', 'success');
+                }
+                
+            } catch (err) {
+                console.error('❌ Error checking inconsistencies:', err);
+            }
+        }
+        
+                // Clean database and create fresh snapshot
+        async function cleanDatabaseAndCreateSnapshot() {
+            try {
+                console.log('🧹 Cleaning database and creating fresh snapshot...');
+                
+                // Check current state
+                const { data: current, error: checkError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*');
+                
+                if (checkError) {
+                    console.error('❌ Error checking current state:', checkError);
+                    return;
+                }
+                
+                console.log(`📊 Current state: ${current?.length || 0} snapshots`);
+                
+                if (current && current.length > 0) {
+                    // Delete all existing snapshots
+                    const { error: deleteError } = await supabase
+                        .from('table_snapshots_index')
+                        .delete()
+                        .neq('id', '00000000-0000-0000-0000-000000000000');
+                    
+                    if (deleteError) {
+                        console.error('❌ Error deleting snapshots:', deleteError);
+                        return;
+                    }
+                    
+                    console.log('✅ All snapshots deleted');
+                }
+                
+                // Create new snapshot with unique date
+                await createDemoSnapshot();
+                
+                // Reload snapshots after cleanup
+                await loadAvailableSnapshots();
+                
+                // Update the calendar display
+                populateSnapshotCalendar();
+                
+                showMessage('Base de données nettoyée et nouveau snapshot créé', 'success');
+                
+            } catch (err) {
+                console.error('❌ Error cleaning database:', err);
+                showMessage('Erreur lors du nettoyage de la base', 'error');
+            }
+        }
+        
+                // Enter snapshot mode for a specific date
         async function enterSnapshotMode(date) {
             if (snapshotMode === 'snapshot' && currentSnapshotDate === date) {
                 return; // Already in this snapshot
@@ -4664,8 +5173,33 @@
                     return;
                 }
                 
-                // Get snapshot data from storage
-                const { data: snapshotData, error } = await supabase.storage
+                // Check if the file exists in storage first
+                console.log(`🔍 Checking if file exists: ${snapshotInfo.object_path}`);
+                
+                const { data: fileList, error: listError } = await supabaseStorage.storage
+                    .from('table-snapshots')
+                    .list('', { limit: 100 });
+                
+                if (listError) {
+                    console.warn('⚠️ Could not list storage files:', listError);
+                } else {
+                    const fileExists = fileList?.some(file => file.name === snapshotInfo.object_path);
+                    if (!fileExists) {
+                        console.warn(`⚠️ File not found in storage: ${snapshotInfo.object_path}`);
+                        console.log('📁 Available files:', fileList?.map(f => f.name));
+                        
+                        // Try to find a similar file or suggest cleanup
+                        const similarFiles = fileList?.filter(f => f.name.includes('staff_table_'));
+                        if (similarFiles && similarFiles.length > 0) {
+                            console.log('📋 Similar files found:', similarFiles.map(f => f.name));
+                            showMessage(`Fichier snapshot introuvable. Utilisez le bouton "Nettoyer" pour corriger.`, 'warning');
+                            return;
+                        }
+                    }
+                }
+                
+                // Get snapshot data from storage using service role key
+                const { data: snapshotData, error } = await supabaseStorage.storage
                     .from('table-snapshots')
                     .download(snapshotInfo.object_path);
                 
@@ -4778,6 +5312,98 @@
             const nextDate = dates[nextIndex];
             
             enterSnapshotMode(nextDate);
+        }
+        
+        // Toggle snapshot calendar dropdown
+        function toggleSnapshotCalendar() {
+            const dropdown = document.getElementById('snapshot-calendar-dropdown');
+            const isVisible = !dropdown.classList.contains('hidden');
+            
+            if (isVisible) {
+                dropdown.classList.add('hidden');
+            } else {
+                // Populate and show calendar
+                populateSnapshotCalendar();
+                dropdown.classList.remove('hidden');
+            }
+        }
+        
+        // Populate snapshot calendar with available dates
+        function populateSnapshotCalendar() {
+            const datesList = document.getElementById('snapshot-dates-list');
+            const calendarBtnText = document.getElementById('calendar-btn-text');
+            
+            if (!datesList) return;
+            
+            // Clear existing content
+            datesList.innerHTML = '';
+            
+            if (availableSnapshots.length === 0) {
+                datesList.innerHTML = `
+                    <div class="p-3 text-center text-gray-500 text-sm">
+                        <i class="fa-solid fa-calendar-xmark w-5 h-5 mx-auto mb-2"></i>
+                        Aucun snapshot disponible
+                    </div>
+                `;
+                calendarBtnText.textContent = 'Calendrier (0)';
+                return;
+            }
+            
+            // Update button text with count
+            calendarBtnText.textContent = `Calendrier (${availableSnapshots.length})`;
+            
+            // Group snapshots by month/year for better organization
+            const groupedSnapshots = {};
+            availableSnapshots.forEach(snapshot => {
+                const date = new Date(snapshot.snapshot_date);
+                const monthYear = date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' });
+                
+                if (!groupedSnapshots[monthYear]) {
+                    groupedSnapshots[monthYear] = [];
+                }
+                groupedSnapshots[monthYear].push(snapshot);
+            });
+            
+            // Create calendar entries
+            Object.entries(groupedSnapshots).forEach(([monthYear, snapshots]) => {
+                // Month header
+                const monthHeader = document.createElement('div');
+                monthHeader.className = 'px-2 py-1 bg-gray-100 text-xs font-semibold text-gray-700 rounded mb-2';
+                monthHeader.textContent = monthYear;
+                datesList.appendChild(monthHeader);
+                
+                // Dates in this month
+                snapshots.forEach(snapshot => {
+                    const dateItem = document.createElement('div');
+                    dateItem.className = 'px-3 py-2 hover:bg-blue-50 cursor-pointer rounded text-sm transition-colors';
+                    
+                    const isCurrent = snapshotMode === 'snapshot' && currentSnapshotDate === snapshot.snapshot_date;
+                    if (isCurrent) {
+                        dateItem.className += ' bg-blue-100 border-l-4 border-blue-500';
+                    }
+                    
+                    const date = new Date(snapshot.snapshot_date);
+                    const formattedDate = date.toLocaleDateString('fr-FR', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short'
+                    });
+                    
+                    dateItem.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <span class="${isCurrent ? 'font-semibold text-blue-700' : 'text-gray-700'}">${formattedDate}</span>
+                            <span class="text-xs text-gray-500">${snapshot.row_count} lignes</span>
+                        </div>
+                    `;
+                    
+                    dateItem.onclick = () => {
+                        enterSnapshotMode(snapshot.snapshot_date);
+                        toggleSnapshotCalendar(); // Close dropdown
+                    };
+                    
+                    datesList.appendChild(dateItem);
+                });
+            });
         }
         
         // Update snapshot banner
@@ -5012,6 +5638,11 @@
                 // Ensure snapshot banner is hidden by default
                 updateSnapshotBanner();
                 
+                // Update calendar display after loading snapshots
+                setTimeout(() => {
+                    populateSnapshotCalendar();
+                }, 500);
+                
                 // Apply saved history bar visibility preference
                 updateHistoryBarVisibility();
                 
@@ -5052,6 +5683,18 @@
                         }, 100);
                     }
                 }, 1000);
+                
+                // Add click outside handler for calendar dropdown
+                document.addEventListener('click', (e) => {
+                    const calendarBtn = document.getElementById('snapshot-calendar-btn');
+                    const calendarDropdown = document.getElementById('snapshot-calendar-dropdown');
+                    
+                    if (calendarDropdown && !calendarDropdown.classList.contains('hidden')) {
+                        if (!calendarBtn?.contains(e.target) && !calendarDropdown?.contains(e.target)) {
+                            calendarDropdown.classList.add('hidden');
+                        }
+                    }
+                });
             } else {
                 document.getElementById('login-container').classList.remove('hidden');
             }
@@ -5166,7 +5809,7 @@
                 if (imageToDelete.id) {
                     try {
                         const { error } = await supabase
-                            .from('patientImages')
+                            .from('gallery_images')
                             .delete()
                             .eq('id', imageToDelete.id);
                         
@@ -5229,7 +5872,7 @@
                     if (image.id) {
                         try {
                             const { error } = await supabase
-                                .from('patientImages')
+                                .from('gallery_images')
                                 .delete()
                                 .eq('id', image.id);
                             
@@ -5273,16 +5916,16 @@
             try {
                 // Créer une entrée dans la table des images
                 const { error } = await supabase
-                    .from('patientImages')
+                    .from('gallery_images')
                     .upsert({
                         id: imageData.id,
-                        patientName: imageData.patientName,
-                        imageName: imageData.name,
-                        imageData: imageData.data,
-                        imageType: imageData.type,
-                        imageSize: imageData.size,
-                        uploadDate: imageData.uploadDate,
-                        lastSync: new Date().toISOString()
+                        patient_name: imageData.patientName,
+                        image_name: imageData.name,
+                        image_data: imageData.data,
+                        image_type: imageData.type,
+                        image_size: imageData.size,
+                        upload_date: imageData.uploadDate,
+                        last_sync: new Date().toISOString()
                     });
                 
                 if (error) {
@@ -5385,9 +6028,9 @@
             
             try {
                 const { data, error } = await supabase
-                    .from('patientImages')
+                    .from('gallery_images')
                     .select('*')
-                    .order('uploadDate', { ascending: false });
+                    .order('upload_date', { ascending: false });
                 
                 if (error) {
                     console.error('Erreur lors du chargement des images:', error);
@@ -5398,17 +6041,17 @@
                     // Réorganiser les images par patient
                     const newPatientImages = {};
                     data.forEach(image => {
-                        if (!newPatientImages[image.patientName]) {
-                            newPatientImages[image.patientName] = [];
+                        if (!newPatientImages[image.patient_name]) {
+                            newPatientImages[image.patient_name] = [];
                         }
-                        newPatientImages[image.patientName].push({
+                        newPatientImages[image.patient_name].push({
                             id: image.id,
-                            name: image.imageName,
-                            data: image.imageData,
-                            type: image.imageType,
-                            size: image.imageSize,
-                            uploadDate: image.uploadDate,
-                            patientName: image.patientName
+                            name: image.image_name,
+                            data: image.image_data,
+                            type: image.image_type,
+                            size: image.image_size,
+                            uploadDate: image.upload_date,
+                            patientName: image.patient_name
                         });
                     });
                     
@@ -5563,6 +6206,13 @@
         window.returnToToday = returnToToday; // Use the existing function instead
         window.goToPreviousSnapshot = goToPreviousSnapshot;
         window.goToNextSnapshot = goToNextSnapshot;
+        window.createDemoSnapshot = createDemoSnapshot;
+        window.cleanDatabaseAndCreateSnapshot = cleanDatabaseAndCreateSnapshot;
+        window.checkAndFixInconsistencies = checkAndFixInconsistencies;
+        window.toggleSnapshotCalendar = toggleSnapshotCalendar;
+        window.populateSnapshotCalendar = populateSnapshotCalendar;
+        window.refreshSnapshotCalendar = refreshSnapshotCalendar;
+        window.cleanStorageAndDatabase = cleanStorageAndDatabase;
         window.openDatePicker = openDatePicker;
         window.formatDateForDisplay = formatDateForDisplay;
         window.disableTableEditing = disableTableEditing;
