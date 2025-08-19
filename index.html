@@ -680,6 +680,19 @@
             min-width: fit-content;
         }
         
+        /* Minimal toggle button styling */
+        #history-toggle-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        #history-toggle-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        #history-toggle-btn:active {
+            transform: scale(0.95);
+        }
+        
         /* History bar container styling */
         #history-bar-container {
             flex: 1;
@@ -965,9 +978,8 @@
         <div class="flex justify-between items-center mb-3">
             <!-- Toggle button container -->
             <div class="flex justify-start">
-                <button id="history-toggle-btn" onclick="toggleHistoryBarSimple()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 transition-colors text-sm">
-                    <i id="history-toggle-icon" class="fa-solid fa-chevron-down mr-1"></i>
-                    Masquer l'historique
+                <button id="history-toggle-btn" onclick="toggleHistoryBarSimple()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white p-1.5 rounded hover:bg-gray-500 transition-colors w-8 h-8 flex items-center justify-center">
+                    <i id="history-toggle-icon" class="fa-solid fa-chevron-down w-4 h-4"></i>
                 </button>
             </div>
             
@@ -5592,8 +5604,11 @@
                 historyBarContainer.classList.add('hidden');
                 historyBarContainer.style.display = 'none';
                 
-                // Update button text and icon
-                toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-up mr-1"></i>Afficher l\'historique';
+                // Update button icon only
+                const toggleIcon = toggleBtn.querySelector('i');
+                if (toggleIcon) {
+                    toggleIcon.className = 'fa-solid fa-chevron-up w-4 h-4';
+                }
                 
                 console.log('✅ History bar container hidden');
             } else {
@@ -5601,8 +5616,11 @@
                 historyBarContainer.classList.remove('hidden');
                 historyBarContainer.style.display = 'block';
                 
-                // Update button text and icon
-                toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-down mr-1"></i>Masquer l\'historique';
+                // Update button icon only
+                const toggleIcon = toggleBtn.querySelector('i');
+                if (toggleIcon) {
+                    toggleIcon.className = 'fa-solid fa-chevron-down w-4 h-4';
+                }
                 
                 console.log('✅ History bar container shown');
             }
