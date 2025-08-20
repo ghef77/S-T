@@ -5039,20 +5039,42 @@
             tableClone.style.display = 'table';
             document.body.appendChild(tableClone);
             
+            // ✅ S'assurer que TOUTES les lignes sont visibles dans la copie
+            const allRows = tbodyClone.querySelectorAll('tr');
+            allRows.forEach(row => {
+                row.style.display = 'table-row !important';
+                row.style.visibility = 'visible !important';
+                row.style.opacity = '1 !important';
+                row.style.height = 'auto !important';
+                row.style.minHeight = '50px !important';
+                // ✅ Forcer l'affichage de toutes les lignes
+                row.style.overflow = 'visible !important';
+                row.style.clip = 'auto !important';
+            });
+            
             // ✅ Calculer la largeur totale réelle du tableau
             const totalWidth = Array.from(tableClone.querySelectorAll('th')).reduce((total, th) => {
                 return total + (th.offsetWidth || 200); // Largeur minimale de 200px par colonne
             }, 0);
             
-            const totalHeight = Array.from(tableClone.querySelectorAll('tr')).reduce((total, tr) => {
-                return total + (tr.offsetHeight || 50); // Hauteur minimale de 50px par ligne
-            }, 0);
+            // ✅ Calculer la hauteur totale de TOUTES les lignes
+            const totalHeight = Array.from(allRows).reduce((total, tr) => {
+                const rowHeight = tr.offsetHeight || 50;
+                return total + rowHeight;
+            }, 0) + 100; // +100px pour les en-têtes
             
             // ✅ S'assurer que toutes les colonnes sont visibles
             tableClone.style.width = `${totalWidth}px`;
             tableClone.style.minWidth = `${totalWidth}px`;
             tableClone.style.maxWidth = `${totalWidth}px`;
             tableClone.style.tableLayout = 'fixed';
+            
+            // ✅ S'assurer que le tableau affiche TOUTES les lignes
+            tableClone.style.height = `${totalHeight}px`;
+            tableClone.style.minHeight = `${totalHeight}px`;
+            tableClone.style.maxHeight = `${totalHeight}px`;
+            tableClone.style.overflow = 'visible !important';
+            tableClone.style.clip = 'auto !important';
             
             // ✅ Capture de la copie corrigée
             html2canvas(tableClone, {
@@ -5081,6 +5103,26 @@
                         clonedTable.style.minWidth = `${totalWidth}px`;
                         clonedTable.style.maxWidth = `${totalWidth}px`;
                         clonedTable.style.tableLayout = 'fixed';
+                        clonedTable.style.height = `${totalHeight}px`;
+                        clonedTable.style.minHeight = `${totalHeight}px`;
+                        clonedTable.style.maxHeight = `${totalHeight}px`;
+                        clonedTable.style.overflow = 'visible !important';
+                        clonedTable.style.clip = 'auto !important';
+                        
+                        // ✅ Forcer l'affichage de toutes les lignes dans le clone
+                        const clonedTbody = clonedDoc.querySelector('tbody');
+                        if (clonedTbody) {
+                            const clonedRows = clonedTbody.querySelectorAll('tr');
+                            clonedRows.forEach(row => {
+                                row.style.display = 'table-row !important';
+                                row.style.visibility = 'visible !important';
+                                row.style.opacity = '1 !important';
+                                row.style.height = 'auto !important';
+                                row.style.minHeight = '50px !important';
+                                row.style.overflow = 'visible !important';
+                                row.style.clip = 'auto !important';
+                            });
+                        }
                     }
                 }
             }).then(canvas => { 
