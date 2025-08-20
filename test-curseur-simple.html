@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Simple Curseur</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-cell { 
+            border: 2px solid #007bff; 
+            padding: 15px; 
+            margin: 20px; 
+            min-height: 60px;
+            background: #f8f9fa;
+            font-size: 16px;
+        }
+        .focus-restored {
+            background-color: #d4edda !important;
+            border: 3px solid #28a745 !important;
+            box-shadow: 0 0 15px rgba(40, 167, 69, 0.4);
+            animation: focusRestored 2s ease-in-out;
+        }
+        @keyframes focusRestored {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .log { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            margin: 20px; 
+            border-radius: 8px;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+        }
+        .success { color: #28a745; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .info { color: #17a2b8; font-weight: bold; }
+        button { 
+            padding: 12px 20px; 
+            margin: 8px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-warning { background-color: #ffc107; color: black; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Simple de Restauration du Curseur</h1>
+    
+    <div class="test-cell" contenteditable="true" data-original-value="Cliquez ici et tapez du texte">
+        Cliquez ici et tapez du texte
+    </div>
+    
+    <div style="margin: 20px;">
+        <button onclick="testCapture()" class="btn-primary">📝 Test Capture Position</button>
+        <button onclick="testRestoration()" class="btn-success">🔄 Test Restauration</button>
+        <button onclick="testComplet()" class="btn-warning">🚀 Test Complet</button>
+        <button onclick="clearLog()" class="btn-warning">🗑️ Effacer Log</button>
+    </div>
+    
+    <div class="log" id="log">
+        <div class="info">🚀 Test initialisé - Cliquez dans la cellule et utilisez les boutons de test</div>
+    </div>
+    
+    <script>
+        let logCount = 0;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            logCount++;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '<div class="info">🚀 Test initialisé - Cliquez dans la cellule et utilisez les boutons de test</div>';
+            logCount = 0;
+        }
+        
+        // Fonction getCursorPosition améliorée
+        function getCursorPosition(element) {
+            if (!element || element.contentEditable !== 'true') {
+                log('⚠️ getCursorPosition: élément non éditable', 'warning');
+                return 0;
+            }
+            
+            try {
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    
+                    if (element.contains(range.startContainer)) {
+                        const preCaretRange = range.cloneRange();
+                        preCaretRange.selectNodeContents(element);
+                        preCaretRange.setEnd(range.endContainer, range.endOffset);
+                        const position = preCaretRange.toString().length;
+                        log(`✅ Position capturée: ${position}`, 'success');
+                        return position;
+                    } else {
+                        log('⚠️ Sélection en dehors de l\'élément', 'warning');
+                        return 0;
+                    }
+                } else {
+                    log('⚠️ Aucune sélection active', 'warning');
+                    return 0;
+                }
+            } catch (error) {
+                log(`❌ Erreur capture: ${error.message}`, 'error');
+                return 0;
+            }
+        }
+        
+        // Fonction restoreFocusAfterAutosave améliorée
+        function restoreFocusAfterAutosave(focusState) {
+            if (!focusState || !focusState.element) {
+                log('⚠️ focusState invalide', 'warning');
+                return;
+            }
+
+            try {
+                log('🔄 Début restauration focus...', 'info');
+                
+                // Restaurer le focus
+                focusState.element.focus();
+                log('✅ Focus restauré', 'success');
+                
+                // Restaurer la position du curseur
+                if (focusState.position !== null && focusState.position !== undefined) {
+                    const range = document.createRange();
+                    const selection = window.getSelection();
+                    
+                    if (focusState.element.firstChild) {
+                        const safeOffset = Math.min(focusState.position, focusState.element.textContent.length);
+                        
+                        try {
+                            range.setStart(focusState.element.firstChild, safeOffset);
+                            range.collapse(true);
+                            
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                            
+                            log(`✅ Curseur restauré à la position ${safeOffset}`, 'success');
+                        } catch (rangeError) {
+                            log(`⚠️ Erreur curseur: ${rangeError.message}`, 'warning');
+                            // Fallback: fin du texte
+                            try {
+                                range.selectNodeContents(focusState.element);
+                                range.collapse(false);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                                log('✅ Curseur placé à la fin (fallback)', 'success');
+                            } catch (fallbackError) {
+                                log(`❌ Erreur fallback: ${fallbackError.message}`, 'error');
+                            }
+                        }
+                    } else {
+                        log('⚠️ Pas de firstChild, fallback', 'warning');
+                        try {
+                            range.selectNodeContents(focusState.element);
+                            range.collapse(false);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                            log('✅ Contenu sélectionné (fallback)', 'success');
+                        } catch (fallbackError) {
+                            log(`❌ Erreur fallback: ${fallbackError.message}`, 'error');
+                        }
+                    }
+                } else {
+                    log('⚠️ Position non disponible, placement à la fin', 'warning');
+                    try {
+                        const range = document.createRange();
+                        const selection = window.getSelection();
+                        range.selectNodeContents(focusState.element);
+                        range.collapse(false);
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                        log('✅ Curseur placé à la fin', 'success');
+                    } catch (fallbackError) {
+                        log(`❌ Erreur fallback: ${fallbackError.message}`, 'error');
+                    }
+                }
+                
+                // Feedback visuel
+                focusState.element.classList.add('focus-restored');
+                setTimeout(() => {
+                    focusState.element.classList.remove('focus-restored');
+                }, 2000);
+                
+                // Scroll
+                focusState.element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                
+                log('✅ Restauration terminée avec succès', 'success');
+                
+            } catch (error) {
+                log(`❌ Erreur restauration: ${error.message}`, 'error');
+            }
+        }
+        
+        function testCapture() {
+            log('🧪 Test de capture de position...', 'info');
+            
+            const cell = document.querySelector('.test-cell');
+            if (!cell) {
+                log('❌ Cellule de test non trouvée', 'error');
+                return;
+            }
+            
+            cell.focus();
+            
+            // Placer le curseur au milieu
+            const textLength = cell.textContent.length;
+            const middlePosition = Math.floor(textLength / 2);
+            
+            try {
+                const range = document.createRange();
+                const selection = window.getSelection();
+                
+                if (cell.firstChild) {
+                    range.setStart(cell.firstChild, middlePosition);
+                    range.collapse(true);
+                    
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    
+                    log(`📍 Curseur placé à la position ${middlePosition}`, 'success');
+                    
+                    // Capturer la position
+                    const capturedPosition = getCursorPosition(cell);
+                    
+                    if (capturedPosition === middlePosition) {
+                        log('✅ Capture réussie !', 'success');
+                    } else {
+                        log(`❌ Position incorrecte: ${capturedPosition} au lieu de ${middlePosition}`, 'error');
+                    }
+                } else {
+                    log('❌ Pas de firstChild', 'error');
+                }
+            } catch (error) {
+                log(`❌ Erreur test: ${error.message}`, 'error');
+            }
+        }
+        
+        function testRestoration() {
+            log('🧪 Test de restauration...', 'info');
+            
+            const cell = document.querySelector('.test-cell');
+            if (!cell) {
+                log('❌ Cellule de test non trouvée', 'error');
+                return;
+            }
+            
+            // Créer un focusState de test
+            const focusState = {
+                element: cell,
+                position: 5
+            };
+            
+            log('📝 focusState créé avec position 5', 'info');
+            
+            // Tester la restauration
+            restoreFocusAfterAutosave(focusState);
+        }
+        
+        function testComplet() {
+            log('🚀 Test complet en cours...', 'info');
+            
+            const cell = document.querySelector('.test-cell');
+            if (!cell) {
+                log('❌ Cellule de test non trouvée', 'error');
+                return;
+            }
+            
+            cell.focus();
+            
+            // Placer le curseur à une position spécifique
+            const targetPosition = 3;
+            try {
+                const range = document.createRange();
+                const selection = window.getSelection();
+                
+                if (cell.firstChild) {
+                    range.setStart(cell.firstChild, targetPosition);
+                    range.collapse(true);
+                    
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    
+                    log(`📍 Curseur placé à la position ${targetPosition}`, 'success');
+                    
+                    // Capturer l'état du focus
+                    const focusState = {
+                        element: cell,
+                        position: getCursorPosition(cell)
+                    };
+                    
+                    log(`📝 Focus capturé: position ${focusState.position}`, 'success');
+                    
+                    // Simuler la sauvegarde
+                    log('💾 Simulation de sauvegarde...', 'info');
+                    
+                    setTimeout(() => {
+                        log('✅ Sauvegarde simulée terminée', 'success');
+                        
+                        // Restaurer le focus
+                        log('🔄 Restauration du focus...', 'info');
+                        restoreFocusAfterAutosave(focusState);
+                    }, 500);
+                    
+                } else {
+                    log('❌ Pas de firstChild', 'error');
+                }
+            } catch (error) {
+                log(`❌ Erreur test complet: ${error.message}`, 'error');
+            }
+        }
+        
+        // Initialisation
+        log('✅ Test initialisé avec succès', 'success');
+        log('📋 Instructions:', 'info');
+        log('   1. Cliquez dans la cellule de test', 'info');
+        log('   2. Utilisez les boutons pour tester', 'info');
+        log('   3. Vérifiez que le curseur est restauré', 'info');
+    </script>
+</body>
+</html>
