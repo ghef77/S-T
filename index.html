@@ -12,6 +12,8 @@
     <!-- Tailwind CSS CDN for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+
+    
     <style>
         /* CSS Variables for consistent theming */
         :root {
@@ -1251,12 +1253,8 @@
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
         const supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
         
-        // Create a separate Supabase client for storage operations with service role key
-        const supabaseStorage = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseServiceKey);
-        
         // Make Supabase globally available
         window.supabase = supabase;
-        window.supabaseStorage = supabaseStorage;
         window.supabaseConfig = supabaseConfig;
         
         // Global state management
@@ -1487,7 +1485,7 @@
                 // Clean: Removed debug log
                 
                 // Then, clean the storage bucket
-                const { data: storageFiles, error: listError } = await supabaseStorage.storage
+                const { data: storageFiles, error: listError } = await supabase.storage
                     .from('table-snapshots')
                     .list('', { limit: 1000 });
                 
@@ -1500,7 +1498,7 @@
                     const fileNames = storageFiles.map(file => file.name);
                     // Clean: Removed debug log
                     
-                    const { error: removeError } = await supabaseStorage.storage
+                    const { error: removeError } = await supabase.storage
                         .from('table-snapshots')
                         .remove(fileNames);
                     
@@ -4588,11 +4586,88 @@
             await fetchInitialData(); 
         }
         
-        // REMOVED: Duplicate handleRealtimeUpdate function - using supabase-connection.js version
-        // This function was causing conflicts and potential infinite loops
+        // Handle realtime updates from Supabase
+        function handleRealtimeUpdate(payload) {
+            console.log('🔄 Realtime update received:', payload);
+            
+            // Avoid update loops
+            if (window.isLocalSaveInProgress) {
+                console.log('⚠️ Realtime update ignored (local save in progress)');
+                return;
+            }
 
-        // REMOVED: Duplicate setupRealtimeSubscription function - using supabase-connection.js version
-        // This function was causing conflicts and potential infinite loops
+            // Process update based on event type
+            switch (payload.eventType) {
+                case 'INSERT':
+                    console.log('➕ New row inserted via realtime');
+                    break;
+                case 'UPDATE':
+                    console.log('✏️ Row updated via realtime');
+                    break;
+                case 'DELETE':
+                    console.log('🗑️ Row deleted via realtime');
+                    break;
+            }
+
+            // Refresh data from Supabase after a short delay
+            setTimeout(() => {
+                if (typeof loadFromSupabase === 'function') {
+                    loadFromSupabase().then(data => {
+                        if (data && data.length > 0) {
+                            console.log('✅ Data refreshed from Supabase');
+                            updateStatus('Données synchronisées', 'success');
+                        }
+                    }).catch(error => {
+                        console.error('❌ Error refreshing data:', error);
+                        updateStatus('Erreur de synchronisation', 'error');
+                    });
+                }
+            }, 1000);
+        }
+
+        // Setup realtime subscription for live data synchronization
+        function setupRealtimeSubscription() {
+            try {
+                if (realtimeSubscription) {
+                    console.log('🔄 Cleaning up existing realtime subscription...');
+                    supabase.removeChannel(realtimeSubscription);
+                }
+
+                console.log('🔄 Setting up realtime subscription...');
+                
+                realtimeSubscription = supabase.channel('table-changes')
+                    .on('postgres_changes', { 
+                        event: 'INSERT', 
+                        schema: 'public', 
+                        table: 'staffTable' 
+                    }, handleRealtimeUpdate)
+                    .on('postgres_changes', { 
+                        event: 'UPDATE', 
+                        schema: 'public', 
+                        table: 'staffTable' 
+                    }, handleRealtimeUpdate)
+                    .on('postgres_changes', { 
+                        event: 'DELETE', 
+                        schema: 'public', 
+                        table: 'staffTable' 
+                    }, handleRealtimeUpdate)
+                    .subscribe(status => {
+                        console.log('📡 Realtime subscription status:', status);
+                        if (status === 'SUBSCRIBED') {
+                            console.log('✅ Realtime synchronization activated');
+                            updateStatus('Synchronisation temps réel activée', 'success');
+                        } else if (status === 'CHANNEL_ERROR') {
+                            console.log('❌ Realtime synchronization error');
+                            updateStatus('Erreur de synchronisation', 'error');
+                        }
+                    });
+                    
+                console.log('✅ Realtime subscription configured');
+            } catch (error) {
+                console.error('❌ Error setting up realtime subscription:', error);
+                updateStatus('Erreur de configuration temps réel', 'error');
+            }
+        }
 
 
 
@@ -5360,7 +5435,7 @@
                     for (const snapshot of toDelete) {
                         try {
                             // Supprimer du stockage Supabase
-                            const { error: storageError } = await supabaseStorage.storage
+                            const { error: storageError } = await supabase.storage
                                 .from('table-snapshots')
                                 .remove([snapshot.object_path]);
                             
@@ -5677,7 +5752,7 @@
 
                 // Check if file already exists in storage before uploading
                 // Clean: Removed debug log
-                const { data: existingFiles, error: listError } = await supabaseStorage.storage
+                const { data: existingFiles, error: listError } = await supabase.storage
                     .from('table-snapshots')
                     .list('', { limit: 100 });
                 
@@ -5690,7 +5765,7 @@
                         // Clean: Removed debug log
                         
                         // Try to remove the existing file
-                        const { error: removeError } = await supabaseStorage.storage
+                        const { error: removeError } = await supabase.storage
                             .from('table-snapshots')
                             .remove([fileName]);
                         
@@ -5707,9 +5782,9 @@
                     }
                 }
 
-                // Upload the JSON file to storage using service role key
+                // Upload the JSON file to storage
                 // Clean: Removed debug log
-                const { data: uploadData, error: uploadError } = await supabaseStorage.storage
+                const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('table-snapshots')
                     .upload(fileName, jsonBlob);
 
@@ -5787,9 +5862,16 @@
         // Load available snapshots from the database
         async function loadAvailableSnapshots() {
             try {
-                // Clean: Removed debug log
+                console.log('🔄 loadAvailableSnapshots: Début du chargement...');
+                
+                // Vérifier que supabase est initialisé
+                if (!supabase) {
+                    console.error('❌ Client Supabase non initialisé');
+                    return;
+                }
                 
                 // First, test the database connection
+                console.log('🔄 Test de connexion à la table table_snapshots_index...');
                 const { data: testData, error: testError } = await supabase
                     .from('table_snapshots_index')
                     .select('*')
@@ -5797,50 +5879,67 @@
                 
                 if (testError) {
                     console.error('❌ Database connection error:', testError);
-                    // Try to create a demo snapshot if database is empty
+                    
+                    // Analyser le type d'erreur
                     if (testError.code === 'PGRST116') { // No rows returned
-                        // Clean: Removed debug log
+                        console.log('⚠️ Table vide, création d\'un snapshot de démonstration...');
                         await createDemoSnapshot();
                         return;
+                    } else if (testError.code === 'PGRST301') { // Table doesn't exist
+                        console.error('❌ Table table_snapshots_index n\'existe pas. Vérifiez la configuration SQL.');
+                        showMessage('❌ Table des snapshots manquante. Vérifiez la configuration Supabase.', 'error');
+                        return;
+                    } else if (testError.code === 'PGRST301' || testError.message.includes('permission')) {
+                        console.error('❌ Problème de permissions. Vérifiez les politiques RLS.');
+                        showMessage('❌ Problème de permissions. Vérifiez les politiques RLS Supabase.', 'error');
+                        return;
                     }
+                    
+                    showMessage('❌ Erreur de connexion à la base de données: ' + testError.message, 'error');
                     return;
                 }
                 
-                                    // Clean: Removed debug log
+                console.log('✅ Connexion à la table réussie, testData:', testData);
                 
+                console.log('🔄 Chargement de tous les snapshots...');
                 const { data, error } = await supabase
                     .from('table_snapshots_index')
-                    .select('snapshot_date, created_at, row_count, object_path')
+                    .select('snapshot_date, created_at, row_count, object_path, file_size_bytes')
                     .order('snapshot_date', { ascending: false });
                 
                 if (error) {
                     console.error('❌ Error loading snapshots:', error);
+                    showMessage('❌ Erreur lors du chargement des snapshots: ' + error.message, 'error');
                     return;
                 }
+                
+                console.log('✅ Snapshots chargés depuis la base:', data);
                 
                 availableSnapshots = data || [];
                 // Update global variable
                 window.availableSnapshots = availableSnapshots;
                 
-                // Clean: Removed debug log
+                console.log(`📊 ${availableSnapshots.length} snapshots disponibles:`, availableSnapshots);
                 
                 // If no snapshots exist, create a demo one
                 if (availableSnapshots.length === 0) {
-                    // Clean: Removed debug log
+                    console.log('⚠️ Aucun snapshot trouvé, création d\'un snapshot de démonstration...');
                     await createDemoSnapshot();
                 } else {
+                    console.log('✅ Snapshots trouvés, mise à jour de l\'interface...');
                     updateHistoryNavigation();
                     // Update the calendar display
                     populateSnapshotCalendar();
                 }
                 
-                        // MONITORING : Vérifier la santé du stockage après chargement
-        await monitorStorageHealth();
+                // MONITORING : Vérifier la santé du stockage après chargement
+                await monitorStorageHealth();
         
-    } catch (error) {
-        console.error('❌ Error in loadAvailableSnapshots:', error);
-    }
-}
+            } catch (error) {
+                console.error('❌ Error in loadAvailableSnapshots:', error);
+                showMessage('❌ Erreur inattendue lors du chargement des snapshots: ' + error.message, 'error');
+            }
+        }
 
         // Fonction utilitaire pour forcer le nettoyage manuel
         async function forceStorageCleanup() {
@@ -5932,10 +6031,10 @@
                     return;
                 }
                 
-                // Get storage files using service role key
-                const { data: storageFiles, error: storageError } = await supabaseStorage.storage
-                    .from('table-snapshots')
-                    .list('', { limit: 100 });
+                // Get storage files
+                        const { data: storageFiles, error: storageError } = await supabase.storage
+            .from('table-snapshots')
+            .list('', { limit: 100 });
                 
                 if (storageError) {
                     console.error('❌ Error checking storage:', storageError);
@@ -6047,9 +6146,9 @@
                 // Check if the file exists in storage first
                 // Clean: Removed debug log
                 
-                const { data: fileList, error: listError } = await supabaseStorage.storage
-                    .from('table-snapshots')
-                    .list('', { limit: 100 });
+                        const { data: fileList, error: listError } = await supabase.storage
+            .from('table-snapshots')
+            .list('', { limit: 100 });
                 
                 if (listError) {
                     console.warn('⚠️ Could not list storage files:', listError);
@@ -6069,10 +6168,10 @@
                     }
                 }
                 
-                // Get snapshot data from storage using service role key
-                const { data: snapshotData, error } = await supabaseStorage.storage
-                    .from('table-snapshots')
-                    .download(snapshotInfo.object_path);
+                // Get snapshot data from storage
+                        const { data: snapshotData, error } = await supabase.storage
+            .from('table-snapshots')
+            .download(snapshotInfo.object_path);
                 
                 if (error) {
                     throw new Error(`Failed to download snapshot: ${error.message}`);

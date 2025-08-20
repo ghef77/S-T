@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Mobile History Bar</title>
+    <script src="https://kit.fontawesome.com/your-fontawesome-kit.js" crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .history-controls-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border: 2px solid #e5e7eb;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+        
+        .toggle-button-container {
+            width: 1rem;
+            height: 1rem;
+        }
+        
+        #history-toggle-btn {
+            background-color: #9ca3af;
+            color: white;
+            padding: 0;
+            border: none;
+            border-radius: 4px;
+            width: 1rem;
+            height: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        
+        #history-toggle-btn:hover {
+            background-color: #6b7280;
+            transform: scale(1.05);
+        }
+        
+        #history-toggle-btn:active {
+            transform: scale(0.95);
+        }
+        
+        #history-toggle-btn i {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            line-height: 1 !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        #history-bar-container {
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        #history-bar-container > div {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            background-color: #dbeafe;
+            border: 1px solid #93c5fd;
+            border-radius: 8px;
+            max-width: 50%;
+            min-width: fit-content;
+        }
+        
+        .history-button {
+            background-color: #3b82f6;
+            color: white;
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            min-height: 32px;
+            min-width: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .history-button:hover {
+            background-color: #2563eb;
+        }
+        
+        .history-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .test-info {
+            background: #e0f2fe;
+            border: 1px solid #0288d1;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .test-info h3 {
+            margin: 0 0 10px 0;
+            color: #0277bd;
+        }
+        
+        .test-info ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .test-info li {
+            margin-bottom: 5px;
+        }
+        
+        .debug-info {
+            background: #fff3e0;
+            border: 1px solid #ff9800;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .debug-info h4 {
+            margin: 0 0 10px 0;
+            color: #f57c00;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .history-controls-row {
+                flex-direction: row;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            
+            #history-toggle-btn {
+                min-width: 1.5rem;
+                min-height: 1.5rem;
+                z-index: 10;
+            }
+            
+            #history-bar-container button {
+                min-height: 2.5rem;
+                min-width: 2.5rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #history-bar-container {
+                width: 100% !important;
+                max-width: none !important;
+            }
+            
+            #history-bar-container > div {
+                width: 100% !important;
+                max-width: none !important;
+                justify-content: center;
+            }
+            
+            #history-bar-container .flex.flex-wrap {
+                flex-direction: column;
+                align-items: center;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test Mobile History Bar</h1>
+        
+        <div class="test-info">
+            <h3>📱 Test Instructions:</h3>
+            <ul>
+                <li><strong>Redimensionnez votre navigateur</strong> pour simuler un petit écran</li>
+                <li><strong>Cliquez sur le bouton toggle</strong> (petit bouton gris avec +)</li>
+                <li><strong>Vérifiez que la barre d'historique</strong> s'affiche/se cache correctement</li>
+                <li><strong>Testez sur mobile réel</strong> si possible</li>
+            </ul>
+        </div>
+        
+        <!-- History Controls Row - Toggle button and history buttons on same level -->
+        <div class="history-controls-row">
+            <!-- Toggle button container -->
+            <div class="toggle-button-container">
+                <button id="history-toggle-btn" onclick="toggleHistoryBarSimple()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique">
+                    <i id="history-toggle-icon" class="fa-solid fa-plus w-2 h-2 flex items-center justify-center text-center leading-none"></i>
+                </button>
+            </div>
+
+            <!-- History Bar Container - This is what gets toggled -->
+            <div id="history-bar-container" class="hidden">
+                <!-- All buttons in one responsive row with reduced width -->
+                <div class="flex flex-wrap items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 w-1/2">
+                    <!-- Navigation buttons - Hidden on small screens -->
+                    <div class="hidden md:flex items-center gap-2">
+                        <button class="history-button" disabled title="Snapshot précédent">
+                            <i class="fa-solid fa-chevron-left w-3 h-3 mr-1"></i>
+                            Précédent
+                        </button>
+            
+                        <button class="history-button" title="Choisir une date de snapshot">
+                            <span>Données en direct</span>
+                            <i class="fa-solid fa-calendar ml-1 w-3 h-3"></i>
+                        </button>
+            
+                        <button class="history-button" disabled title="Snapshot suivant">
+                            <i class="fa-solid fa-chevron-right w-3 h-3 ml-1"></i>
+                            Suivant
+                        </button>
+                    </div>
+                    
+                    <!-- Action buttons - Always visible, smaller on mobile -->
+                    <button class="history-button" title="Actualiser le tableau">
+                        <i class="fa-solid fa-arrows-rotate mr-1 w-3 h-3"></i>
+                        <span class="hidden sm:inline">Actualiser</span>
+                        <span class="sm:hidden">Act</span>
+                    </button>
+                    
+                    <!-- Calendar button -->
+                    <button class="history-button" title="Choisir une date de snapshot">
+                        <i class="fa-solid fa-calendar-days mr-1 w-3 h-3"></i>
+                        <span class="hidden sm:inline">Calendrier</span>
+                        <span class="sm:hidden">Cal</span>
+                    </button>
+
+                    <!-- Current Snapshot Date Display -->
+                    <div style="display: flex; align-items: center; gap: 4px; padding: 4px 8px; background-color: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; color: #374151; font-size: 12px; font-weight: 500; margin-left: 8px;">
+                        <i class="fa-solid fa-calendar-day w-3 h-3" style="color: #2563eb;"></i>
+                        <span>Données en direct</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="debug-info">
+            <h4>🔍 Debug Info:</h4>
+            <div id="debug-output">Cliquez sur le bouton toggle pour voir les informations de debug...</div>
+        </div>
+    </div>
+
+    <script>
+        // Simple and robust history bar toggle function
+        function toggleHistoryBarSimple() {
+            const historyBarContainer = document.getElementById('history-bar-container');
+            const toggleBtn = document.getElementById('history-toggle-btn');
+            const toggleIcon = document.getElementById('history-toggle-icon');
+            const debugOutput = document.getElementById('debug-output');
+            
+            if (!historyBarContainer || !toggleBtn || !toggleIcon) {
+                debugOutput.innerHTML = '❌ Required elements not found';
+                return;
+            }
+            
+            // Check current state - more robust detection
+            const isCurrentlyVisible = !historyBarContainer.classList.contains('hidden') && 
+                                    historyBarContainer.style.display !== 'none' && 
+                                    historyBarContainer.offsetHeight > 0;
+            
+            debugOutput.innerHTML = `
+                <strong>État actuel:</strong> ${isCurrentlyVisible ? 'Visible' : 'Caché'}<br>
+                <strong>Classes:</strong> ${historyBarContainer.className}<br>
+                <strong>Style display:</strong> ${historyBarContainer.style.display}<br>
+                <strong>Offset height:</strong> ${historyBarContainer.offsetHeight}<br>
+                <strong>Largeur écran:</strong> ${window.innerWidth}px<br>
+                <strong>Hauteur écran:</strong> ${window.innerHeight}px<br>
+                <strong>User Agent:</strong> ${navigator.userAgent}
+            `;
+            
+            if (isCurrentlyVisible) {
+                // Hide history bar container
+                historyBarContainer.classList.add('hidden');
+                historyBarContainer.style.display = 'none';
+                
+                // Update button icon to show it can open
+                toggleIcon.className = 'fa-solid fa-plus w-2 h-2 flex items-center justify-center text-center leading-none';
+                
+                console.log('🔽 History bar hidden');
+            } else {
+                // Show history bar container
+                historyBarContainer.classList.remove('hidden');
+                historyBarContainer.style.display = 'flex';
+                
+                // Update button icon to show it can close
+                toggleIcon.className = 'fa-solid fa-minus w-2 h-2 flex items-center justify-center text-center leading-none';
+                
+                console.log('🔼 History bar shown');
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const historyBarContainer = document.getElementById('history-bar-container');
+            const toggleIcon = document.getElementById('history-toggle-icon');
+            
+            if (historyBarContainer && toggleIcon) {
+                // Ensure the bar is hidden by default
+                historyBarContainer.classList.add('hidden');
+                historyBarContainer.style.display = 'none';
+                
+                // Ensure the icon is in "plus" mode (closed)
+                toggleIcon.className = 'fa-solid fa-plus w-2 h-2 flex items-center justify-center text-center leading-none';
+            }
+        });
+    </script>
+</body>
+</html>

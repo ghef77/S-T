@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Snapshots - Diagnostic</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Diagnostic des Snapshots Supabase</h1>
+    
+    <div class="test-section info">
+        <h3>Configuration</h3>
+        <p><strong>URL:</strong> <span id="supabase-url">Chargement...</span></p>
+        <p><strong>Clé anonyme:</strong> <span id="supabase-key">Chargement...</span></p>
+    </div>
+
+    <div class="test-section">
+        <h3>Tests de Connexion</h3>
+        <button onclick="testConnection()">🔌 Tester la connexion</button>
+        <button onclick="testTableAccess()">📊 Tester l'accès à la table</button>
+        <button onclick="testSnapshotTable()">📸 Tester la table des snapshots</button>
+        <button onclick="testStorageAccess()">🗄️ Tester l'accès au stockage</button>
+        <div id="connection-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Données des Snapshots</h3>
+        <button onclick="loadSnapshots()">📥 Charger les snapshots</button>
+        <button onclick="checkStorageBucket()">🔍 Vérifier le bucket de stockage</button>
+        <div id="snapshots-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Logs de Diagnostic</h3>
+        <button onclick="clearLogs()">🗑️ Effacer les logs</button>
+        <div id="diagnostic-logs"></div>
+    </div>
+
+    <script>
+        // Configuration Supabase
+        const supabaseConfig = { 
+            supabaseUrl: 'https://fiecugxopjxzqfdnaqsu.supabase.co', 
+            supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw'
+        };
+
+        let supabase;
+
+        // Initialisation
+        async function initSupabase() {
+            try {
+                log('🔄 Initialisation du client Supabase...');
+                log('URL: ' + supabaseConfig.supabaseUrl);
+                log('Clé: ' + supabaseConfig.supabaseAnonKey.substring(0, 20) + '...');
+                
+                // Vérifier que createClient est disponible
+                if (typeof createClient === 'undefined') {
+                    throw new Error('createClient n\'est pas défini. Vérifiez que le script Supabase est chargé.');
+                }
+                
+                supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
+                
+                // Test de connexion immédiat
+                const { data, error } = await supabase.from('staffTable').select('count').limit(1);
+                if (error) {
+                    throw new Error('Test de connexion échoué: ' + error.message);
+                }
+                
+                document.getElementById('supabase-url').textContent = supabaseConfig.supabaseUrl;
+                document.getElementById('supabase-key').textContent = supabaseConfig.supabaseAnonKey.substring(0, 20) + '...';
+                
+                log('✅ Client Supabase initialisé et testé avec succès');
+                return true;
+            } catch (error) {
+                log('❌ Erreur lors de l\'initialisation: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        // Test de connexion de base
+        async function testConnection() {
+            try {
+                log('🔄 Test de connexion de base...');
+                const { data, error } = await supabase.from('staffTable').select('count').limit(1);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                log('✅ Connexion de base réussie', 'success');
+                document.getElementById('connection-results').innerHTML = '<div class="log success">✅ Connexion de base réussie</div>';
+            } catch (error) {
+                log('❌ Erreur de connexion: ' + error.message, 'error');
+                document.getElementById('connection-results').innerHTML = '<div class="log error">❌ Erreur de connexion: ' + error.message + '</div>';
+            }
+        }
+
+        // Test d'accès à la table principale
+        async function testTableAccess() {
+            try {
+                log('🔄 Test d\'accès à la table staffTable...');
+                const { data, error } = await supabase.from('staffTable').select('*').limit(5);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                log(`✅ Accès à staffTable réussi - ${data.length} lignes trouvées`, 'success');
+                document.getElementById('connection-results').innerHTML += '<div class="log success">✅ Accès à staffTable réussi - ' + data.length + ' lignes trouvées</div>';
+            } catch (error) {
+                log('❌ Erreur d\'accès à staffTable: ' + error.message, 'error');
+                document.getElementById('connection-results').innerHTML += '<div class="log error">❌ Erreur d\'accès à staffTable: ' + error.message + '</div>';
+            }
+        }
+
+        // Test d'accès à la table des snapshots
+        async function testSnapshotTable() {
+            try {
+                log('🔄 Test d\'accès à la table table_snapshots_index...');
+                const { data, error } = await supabase.from('table_snapshots_index').select('*');
+                
+                if (error) {
+                    throw error;
+                }
+                
+                log(`✅ Accès à table_snapshots_index réussi - ${data.length} snapshots trouvés`, 'success');
+                document.getElementById('connection-results').innerHTML += '<div class="log success">✅ Accès à table_snapshots_index réussi - ' + data.length + ' snapshots trouvés</div>';
+                
+                if (data.length > 0) {
+                    log('📋 Détails des snapshots:');
+                    data.forEach((snapshot, index) => {
+                        log(`  ${index + 1}. Date: ${snapshot.snapshot_date}, Lignes: ${snapshot.row_count}, Taille: ${snapshot.file_size_bytes} bytes`);
+                    });
+                }
+            } catch (error) {
+                log('❌ Erreur d\'accès à table_snapshots_index: ' + error.message, 'error');
+                document.getElementById('connection-results').innerHTML += '<div class="log error">❌ Erreur d\'accès à table_snapshots_index: ' + error.message + '</div>';
+            }
+        }
+
+        // Test d'accès au stockage
+        async function testStorageAccess() {
+            try {
+                log('🔄 Test d\'accès au bucket de stockage...');
+                const { data, error } = await supabase.storage.from('table-snapshots').list('', { limit: 10 });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                log(`✅ Accès au stockage réussi - ${data.length} fichiers trouvés`, 'success');
+                document.getElementById('connection-results').innerHTML += '<div class="log success">✅ Accès au stockage réussi - ' + data.length + ' fichiers trouvés</div>';
+                
+                if (data.length > 0) {
+                    log('📁 Fichiers dans le bucket:');
+                    data.forEach((file, index) => {
+                        log(`  ${index + 1}. ${file.name} (${file.metadata?.size || 'Taille inconnue'} bytes)`);
+                    });
+                }
+            } catch (error) {
+                log('❌ Erreur d\'accès au stockage: ' + error.message, 'error');
+                document.getElementById('connection-results').innerHTML += '<div class="log error">❌ Erreur d\'accès au stockage: ' + error.message + '</div>';
+            }
+        }
+
+        // Charger les snapshots
+        async function loadSnapshots() {
+            try {
+                log('🔄 Chargement des snapshots...');
+                const { data, error } = await supabase
+                    .from('table_snapshots_index')
+                    .select('snapshot_date, created_at, row_count, object_path, file_size_bytes')
+                    .order('snapshot_date', { ascending: false });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                log(`✅ ${data.length} snapshots chargés`, 'success');
+                
+                let resultsHtml = `<div class="log success">✅ ${data.length} snapshots chargés</div>`;
+                
+                if (data.length > 0) {
+                    resultsHtml += '<div class="log">';
+                    data.forEach((snapshot, index) => {
+                        const date = new Date(snapshot.snapshot_date);
+                        const formattedDate = date.toLocaleDateString('fr-FR');
+                        resultsHtml += `<div><strong>${index + 1}.</strong> Date: ${formattedDate}, Lignes: ${snapshot.row_count}, Taille: ${(snapshot.file_size_bytes / 1024).toFixed(2)} KB</div>`;
+                    });
+                    resultsHtml += '</div>';
+                } else {
+                    resultsHtml += '<div class="log info">Aucun snapshot trouvé dans la base de données</div>';
+                }
+                
+                document.getElementById('snapshots-results').innerHTML = resultsHtml;
+                
+            } catch (error) {
+                log('❌ Erreur lors du chargement des snapshots: ' + error.message, 'error');
+                document.getElementById('snapshots-results').innerHTML = '<div class="log error">❌ Erreur lors du chargement des snapshots: ' + error.message + '</div>';
+            }
+        }
+
+        // Vérifier le bucket de stockage
+        async function checkStorageBucket() {
+            try {
+                log('🔄 Vérification du bucket de stockage...');
+                
+                // Lister les fichiers dans le bucket snapshots
+                const { data: files, error: filesError } = await supabase.storage
+                    .from('table-snapshots')
+                    .list('', { limit: 100 });
+                
+                if (filesError) {
+                    throw filesError;
+                }
+                
+                log(`✅ Bucket snapshots accessible - ${files.length} fichiers trouvés`, 'success');
+                
+                let resultsHtml = `<div class="log success">✅ Bucket snapshots accessible - ${files.length} fichiers trouvés</div>`;
+                
+                if (files.length > 0) {
+                    resultsHtml += '<div class="log">';
+                    files.forEach((file, index) => {
+                        const size = file.metadata?.size ? (file.metadata.size / 1024).toFixed(2) + ' KB' : 'Taille inconnue';
+                        resultsHtml += `<div><strong>${index + 1}.</strong> ${file.name} (${size})</div>`;
+                    });
+                    resultsHtml += '</div>';
+                } else {
+                    resultsHtml += '<div class="log info">Aucun fichier trouvé dans le bucket snapshots</div>';
+                }
+                
+                document.getElementById('snapshots-results').innerHTML += resultsHtml;
+                
+            } catch (error) {
+                log('❌ Erreur lors de la vérification du bucket: ' + error.message, 'error');
+                document.getElementById('snapshots-results').innerHTML += '<div class="log error">❌ Erreur lors de la vérification du bucket: ' + error.message + '</div>';
+            }
+        }
+
+        // Fonction utilitaire pour logger
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('diagnostic-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log ${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        // Effacer les logs
+        function clearLogs() {
+            document.getElementById('diagnostic-logs').innerHTML = '';
+        }
+
+        // Initialisation au chargement de la page
+        window.addEventListener('load', async () => {
+            log('🚀 Page de diagnostic chargée');
+            await initSupabase();
+        });
+    </script>
+</body>
+</html>
