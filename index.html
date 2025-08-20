@@ -4574,17 +4574,54 @@
             isDirty = false;
             
             try {
-                // Utiliser upsert pour toutes les opérations pour éviter les conflits de clé primaire
+                // ✅ CORRECTION: Utiliser une approche d'upsert plus robuste
                 if (rowsForSync.length > 0) {
-                    const { error: upsertError } = await supabase
-                        .from(supabaseConfig.tableName)
-                        .upsert(rowsForSync, { 
-                            onConflict: supabaseConfig.primaryKeyColumn,
-                            ignoreDuplicates: false
-                        });
-                    if (upsertError) {
-                        console.error('❌ Erreur upsert:', upsertError);
-                        throw upsertError;
+                    try {
+                        // ✅ Première tentative: upsert avec gestion d'erreur
+                        const { error: upsertError } = await supabase
+                            .from(supabaseConfig.tableName)
+                            .upsert(rowsForSync, { 
+                                onConflict: 'No', // ✅ Utiliser le nom de colonne exact
+                                ignoreDuplicates: false
+                            });
+                        
+                        if (upsertError) {
+                            console.error('❌ Erreur upsert:', upsertError);
+                            
+                            // ✅ Fallback: essayer avec une approche différente
+                            log('⚠️ Upsert échoué, tentative avec approche alternative...', 'warning');
+                            
+                            // Essayer avec insert + update séparés
+                            for (const row of rowsForSync) {
+                                const { error: insertError } = await supabase
+                                    .from(supabaseConfig.tableName)
+                                    .insert(row)
+                                    .select();
+                                
+                                if (insertError && insertError.code === '23505') { // Violation de contrainte unique
+                                    // Ligne existe déjà, faire un update
+                                    const { error: updateError } = await supabase
+                                        .from(supabaseConfig.tableName)
+                                        .update(row)
+                                        .eq('No', row.No);
+                                    
+                                    if (updateError) {
+                                        console.error('❌ Erreur update:', updateError);
+                                        throw updateError;
+                                    }
+                                } else if (insertError) {
+                                    console.error('❌ Erreur insert:', insertError);
+                                    throw insertError;
+                                }
+                            }
+                            
+                            log('✅ Sauvegarde réussie avec approche alternative', 'success');
+                        } else {
+                            log('✅ Upsert réussi', 'success');
+                        }
+                    } catch (error) {
+                        console.error('❌ Erreur lors de la sauvegarde:', error);
+                        throw error;
                     }
                 }
 
