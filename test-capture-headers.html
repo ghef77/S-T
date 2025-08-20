@@ -266,12 +266,14 @@
             
             log('✅ Copie du tableau corrigée, ajout au DOM...', 'success');
             
-            // ✅ Ajouter la copie au DOM temporairement (cachée)
+            // ✅ Ajouter la copie au DOM temporairement (hors de l'écran mais visible)
             tableClone.style.position = 'absolute';
             tableClone.style.left = '-9999px';
             tableClone.style.top = '0px';
-            tableClone.style.zIndex = '-1';
-            tableClone.style.visibility = 'hidden';
+            tableClone.style.zIndex = '10000';
+            tableClone.style.visibility = 'visible';
+            tableClone.style.opacity = '1';
+            tableClone.style.display = 'table';
             document.body.appendChild(tableClone);
             
             log('✅ Copie ajoutée au DOM, début de la capture...', 'success');
@@ -286,7 +288,21 @@
                 scrollY: 0,
                 width: table.scrollWidth,
                 height: table.scrollHeight,
-                logging: false
+                logging: false,
+                // ✅ Options supplémentaires pour garantir la capture
+                ignoreElements: (element) => {
+                    // Ignorer les éléments qui pourraient interférer
+                    return element === table || element.closest('#test-table') === table;
+                },
+                onclone: (clonedDoc) => {
+                    // S'assurer que la copie est bien visible dans le document cloné
+                    const clonedTable = clonedDoc.querySelector('table');
+                    if (clonedTable) {
+                        clonedTable.style.visibility = 'visible';
+                        clonedTable.style.opacity = '1';
+                        clonedTable.style.display = 'table';
+                    }
+                }
             }).then(canvas => { 
                 log('✅ Capture réussie !', 'success');
                 
