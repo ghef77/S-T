@@ -5249,6 +5249,9 @@
                     const modal = document.getElementById('confirmation-modal');
                     if (modal && !modal.classList.contains('hidden')) return;
                     
+                    // ✅ CORRECTION: Éviter le double traitement des touches de navigation
+                    if (e.defaultPrevented) return;
+                    
                     const row = active.parentElement;
                     const idx = Array.from(row.cells).indexOf(active);
                     let next = null;
