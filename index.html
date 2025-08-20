@@ -1835,18 +1835,35 @@
                     }
                 }
                 
-                // Special handling for row deletions - restore rows in place
+                // ✅ CORRECTION: Special handling for row deletions - restore rows in place WITHOUT DUPLICATION
                 if (lastOperation.type === OPERATION_TYPES.ROW_DELETE && lastOperation.data) {
-                    const { deletedRows, rowData, rowNumbers } = lastOperation.data;
-                    // Clean: Removed debug log
+                    const { deletedRows, rowData, rowNumbers, rowKeys } = lastOperation.data;
+                    log(`🔄 Tentative de restauration de ${deletedRows} ligne(s) supprimée(s)`, 'info');
                     
                     if (rowData && rowData.length > 0) {
                         const tbody = document.getElementById('table-body');
                         const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
                         
                         rowData.forEach((rowDataItem, index) => {
+                            // ✅ VÉRIFICATION ANTI-DUPLICATION: Vérifier si la ligne existe déjà
+                            const existingRowKey = rowKeys ? rowKeys[index] : null;
+                            if (existingRowKey) {
+                                const existingRow = document.querySelector(`tr[data-key="${existingRowKey}"]`);
+                                if (existingRow) {
+                                    log(`⚠️ LIGNE DÉJÀ PRÉSENTE - ÉVITER LA DUPLICATION: Clé ${existingRowKey}`, 'warning');
+                                    return; // Skip this row to prevent duplication
+                                }
+                            }
+                            
+                            log(`✅ Restauration de la ligne ${rowNumbers ? rowNumbers[index] : 'N/A'} (clé: ${existingRowKey})`, 'info');
+                            
                             const newRow = document.createElement('tr');
                             newRow.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+                            
+                            // Set the data-key attribute to prevent future duplications
+                            if (existingRowKey) {
+                                newRow.dataset.key = existingRowKey;
+                            }
                             
                             // Create row number cell
                             const numCell = document.createElement('td');
@@ -1884,7 +1901,7 @@
                         });
                         
                         updateRowCount();
-                        // Clean: Removed debug log
+                        log(`✅ ${deletedRows} ligne(s) restaurée(s) sans duplication`, 'success');
                     }
                 }
                 

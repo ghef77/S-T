@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Correction Duplication Undo Suppression</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { 
+            background: #f8f9fa; 
+            padding: 20px; 
+            margin: 20px; 
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .log { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            margin: 20px; 
+            border-radius: 8px;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+        }
+        .success { color: #28a745; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .info { color: #17a2b8; font-weight: bold; }
+        button { 
+            padding: 12px 20px; 
+            margin: 8px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-warning { background-color: #ffc107; color: black; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .selected-row {
+            background-color: #e3f2fd !important;
+        }
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .undo-btn {
+            background-color: #ffc107;
+            color: black;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Correction Duplication Undo Suppression</h1>
+    
+    <div class="instructions">
+        <h3>📋 Test de la Correction de la Duplication</h3>
+        <p><strong>Problème :</strong> Quand on efface une ligne et fait undo, la ligne revient mais elle est dupliquée.</p>
+        <p><strong>Objectif :</strong> Vérifier que la correction empêche la duplication lors de l'undo de suppression.</p>
+        <ol>
+            <li>Vérifiez l'état initial du tableau</li>
+            <li>Supprimez une ligne</li>
+            <li>Faites undo pour restaurer la ligne</li>
+            <li>Vérifiez qu'il n'y a pas de duplication</li>
+        </ol>
+    </div>
+    
+    <div class="test-section">
+        <h3>📊 Tableau de Test</h3>
+        <table id="test-table">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Action</th>
+                    <th>Nom</th>
+                    <th>Email</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+            <tbody id="test-tbody">
+                <tr data-key="1">
+                    <td>1</td>
+                    <td><button class="delete-btn" onclick="deleteRow(this)">🗑️</button></td>
+                    <td>Jean Dupont</td>
+                    <td>jean@email.com</td>
+                    <td>Actif</td>
+                </tr>
+                <tr data-key="2">
+                    <td>2</td>
+                    <td><button class="delete-btn" onclick="deleteRow(this)">🗑️</button></td>
+                    <td>Marie Martin</td>
+                    <td>marie@email.com</td>
+                    <td>Actif</td>
+                </tr>
+                <tr data-key="3">
+                    <td>3</td>
+                    <td><button class="delete-btn" onclick="deleteRow(this)">🗑️</button></td>
+                    <td>Pierre Durand</td>
+                    <td>pierre@email.com</td>
+                    <td>Inactif</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="test-section">
+        <h3>🎮 Actions de Test</h3>
+        <button onclick="testDeleteAndUndo()" class="btn-primary">🧪 Test Suppression + Undo</button>
+        <button onclick="testMultipleDeletions()" class="btn-warning">🔄 Test Multiples Suppressions</button>
+        <button onclick="resetTable()" class="btn-success">🔄 Réinitialiser Tableau</button>
+        <button onclick="clearLog()" class="btn-danger">🗑️ Effacer Log</button>
+    </div>
+    
+    <div class="test-section">
+        <h3>📈 Historique des Opérations</h3>
+        <div id="operation-history">
+            <p><strong>Opérations :</strong> <span id="op-count">0</span></p>
+            <p><strong>Lignes supprimées :</strong> <span id="deleted-count">0</span></p>
+            <p><strong>Lignes restaurées :</strong> <span id="restored-count">0</span></p>
+        </div>
+    </div>
+    
+    <div class="log" id="log">
+        <div class="info">🚀 Test de correction duplication undo initialisé</div>
+    </div>
+    
+    <script>
+        // ✅ SIMULATION DU SYSTÈME UNDO/REDO
+        let operationHistory = [];
+        let redoHistory = [];
+        let deletedRowsData = [];
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '<div class="info">🚀 Test de correction duplication undo initialisé</div>';
+        }
+        
+        function updateOperationCounts() {
+            document.getElementById('op-count').textContent = operationHistory.length;
+            document.getElementById('deleted-count').textContent = deletedRowsData.length;
+            document.getElementById('restored-count').textContent = operationHistory.filter(op => op.type === 'restore').length;
+        }
+        
+        // ✅ FONCTION DE SUPPRESSION DE LIGNE (SIMULÉE)
+        function deleteRow(button) {
+            const row = button.closest('tr');
+            const rowKey = row.dataset.key;
+            const rowNumber = row.querySelector('td:first-child').textContent;
+            
+            log(`🗑️ Suppression de la ligne ${rowNumber} (clé: ${rowKey})`, 'warning');
+            
+            // ✅ CAPTURER LES DONNÉES AVANT SUPPRESSION
+            const rowData = {
+                key: rowKey,
+                number: rowNumber,
+                cells: Array.from(row.querySelectorAll('td')).slice(2).map(td => td.textContent),
+                headers: ['Nom', 'Email', 'Statut']
+            };
+            
+            // ✅ ENREGISTRER L'OPÉRATION DE SUPPRESSION
+            const deleteOperation = {
+                type: 'delete',
+                timestamp: Date.now(),
+                data: {
+                    deletedRows: 1,
+                    rowKeys: [rowKey],
+                    rowData: [rowData],
+                    rowNumbers: [parseInt(rowNumber)]
+                }
+            };
+            
+            operationHistory.push(deleteOperation);
+            deletedRowsData.push(rowData);
+            
+            // ✅ SUPPRIMER LA LIGNE DU DOM
+            row.remove();
+            
+            // ✅ RENUMÉROTER LES LIGNES
+            renumberRows();
+            
+            log(`✅ Ligne ${rowNumber} supprimée et opération enregistrée`, 'success');
+            updateOperationCounts();
+        }
+        
+        // ✅ FONCTION UNDO CORRIGÉE (SANS DUPLICATION)
+        function undo() {
+            if (operationHistory.length === 0) {
+                log('⚠️ Aucune opération à annuler', 'warning');
+                return;
+            }
+            
+            const lastOperation = operationHistory.pop();
+            
+            if (lastOperation.type === 'delete') {
+                log(`🔄 Tentative de restauration de la ligne supprimée...`, 'info');
+                
+                // ✅ VÉRIFIER SI LA LIGNE EXISTE DÉJÀ (ANTI-DUPLICATION)
+                const existingRow = document.querySelector(`tr[data-key="${lastOperation.data.rowKeys[0]}"]`);
+                if (existingRow) {
+                    log(`⚠️ LIGNE DÉJÀ PRÉSENTE - ÉVITER LA DUPLICATION`, 'warning');
+                    log(`   - Clé existante: ${lastOperation.data.rowKeys[0]}`, 'warning');
+                    log(`   - Numéro de ligne: ${lastOperation.data.rowNumbers[0]}`, 'warning');
+                    return;
+                }
+                
+                // ✅ RESTAURER LA LIGNE UNIQUEMENT SI ELLE N'EXISTE PAS
+                const rowData = lastOperation.data.rowData[0];
+                const tbody = document.getElementById('test-tbody');
+                
+                // ✅ CRÉER LA NOUVELLE LIGNE
+                const newRow = document.createElement('tr');
+                newRow.dataset.key = rowData.key;
+                newRow.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+                
+                // ✅ CELLULE NUMÉRO
+                const numCell = document.createElement('td');
+                numCell.textContent = rowData.number;
+                newRow.appendChild(numCell);
+                
+                // ✅ CELLULE ACTION (bouton supprimer)
+                const actionCell = document.createElement('td');
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.textContent = '🗑️';
+                deleteBtn.onclick = function() { deleteRow(this); };
+                actionCell.appendChild(deleteBtn);
+                newRow.appendChild(actionCell);
+                
+                // ✅ CELLULES DE DONNÉES
+                rowData.cells.forEach(cellText => {
+                    const cell = document.createElement('td');
+                    cell.textContent = cellText;
+                    newRow.appendChild(cell);
+                });
+                
+                // ✅ INSÉRER À LA POSITION ORIGINALE
+                const targetPosition = Math.min(parseInt(rowData.number) - 1, tbody.children.length);
+                if (targetPosition >= 0) {
+                    tbody.insertBefore(newRow, tbody.children[targetPosition]);
+                } else {
+                    tbody.appendChild(newRow);
+                }
+                
+                // ✅ RENUMÉROTER APRÈS RESTAURATION
+                renumberRows();
+                
+                // ✅ ENREGISTRER L'OPÉRATION DE RESTAURATION
+                const restoreOperation = {
+                    type: 'restore',
+                    timestamp: Date.now(),
+                    data: {
+                        restoredRows: 1,
+                        rowKey: rowData.key,
+                        rowNumber: rowData.number
+                    }
+                };
+                
+                operationHistory.push(restoreOperation);
+                
+                log(`✅ Ligne ${rowData.number} restaurée SANS DUPLICATION`, 'success');
+                log(`   - Clé: ${rowData.key}`, 'info');
+                log(`   - Position: ${targetPosition + 1}`, 'info');
+                
+            } else {
+                log(`⚠️ Type d'opération non géré: ${lastOperation.type}`, 'warning');
+            }
+            
+            updateOperationCounts();
+        }
+        
+        // ✅ FONCTION DE RENUMÉROTATION
+        function renumberRows() {
+            const rows = document.querySelectorAll('#test-tbody tr');
+            rows.forEach((row, index) => {
+                const numCell = row.querySelector('td:first-child');
+                if (numCell) {
+                    numCell.textContent = index + 1;
+                }
+            });
+        }
+        
+        // ✅ TEST COMPLET SUPPRESSION + UNDO
+        function testDeleteAndUndo() {
+            log('🧪 Test complet: Suppression + Undo', 'info');
+            
+            if (deletedRowsData.length === 0) {
+                log('⚠️ Aucune ligne supprimée à restaurer', 'warning');
+                return;
+            }
+            
+            log('🔄 Exécution de l\'undo...', 'info');
+            undo();
+            
+            // ✅ VÉRIFICATION ANTI-DUPLICATION
+            const allRows = document.querySelectorAll('#test-tbody tr');
+            const uniqueKeys = new Set();
+            let hasDuplication = false;
+            
+            allRows.forEach(row => {
+                const key = row.dataset.key;
+                if (uniqueKeys.has(key)) {
+                    hasDuplication = true;
+                    log(`❌ DUPLICATION DÉTECTÉE: Clé ${key} apparaît plusieurs fois`, 'error');
+                } else {
+                    uniqueKeys.add(key);
+                }
+            });
+            
+            if (!hasDuplication) {
+                log('✅ Aucune duplication détectée - Test réussi', 'success');
+            } else {
+                log('❌ Duplication détectée - Test échoué', 'error');
+            }
+        }
+        
+        // ✅ TEST DE MULTIPLES SUPPRESSIONS
+        function testMultipleDeletions() {
+            log('🧪 Test de multiples suppressions', 'info');
+            
+            const rows = document.querySelectorAll('#test-tbody tr');
+            if (rows.length === 0) {
+                log('⚠️ Aucune ligne à supprimer', 'warning');
+                return;
+            }
+            
+            // Supprimer toutes les lignes
+            rows.forEach(row => {
+                const deleteBtn = row.querySelector('.delete-btn');
+                if (deleteBtn) {
+                    deleteBtn.click();
+                }
+            });
+            
+            log(`✅ ${rows.length} lignes supprimées`, 'success');
+            
+            // Restaurer toutes les lignes
+            for (let i = 0; i < rows.length; i++) {
+                setTimeout(() => {
+                    undo();
+                }, i * 200);
+            }
+            
+            log('🔄 Restauration de toutes les lignes en cours...', 'info');
+        }
+        
+        // ✅ RÉINITIALISATION DU TABLEAU
+        function resetTable() {
+            log('🔄 Réinitialisation du tableau...', 'info');
+            
+            // Vider l'historique
+            operationHistory = [];
+            deletedRowsData = [];
+            
+            // Restaurer le tableau original
+            const tbody = document.getElementById('test-tbody');
+            tbody.innerHTML = `
+                <tr data-key="1">
+                    <td>1</td>
+                    <td><button class="delete-btn" onclick="deleteRow(this)">🗑️</button></td>
+                    <td>Jean Dupont</td>
+                    <td>jean@email.com</td>
+                    <td>Actif</td>
+                </tr>
+                <tr data-key="2">
+                    <td>2</td>
+                    <td><button class="delete-btn" onclick="deleteRow(this)">🗑️</button></td>
+                    <td>Marie Martin</td>
+                    <td>marie@email.com</td>
+                    <td>Actif</td>
+                </tr>
+                <tr data-key="3">
+                    <td>3</td>
+                    <td><button class="delete-btn" onclick="deleteRow(this)">🗑️</button></td>
+                    <td>Pierre Durand</td>
+                    <td>pierre@email.com</td>
+                    <td>Inactif</td>
+                </tr>
+            `;
+            
+            updateOperationCounts();
+            log('✅ Tableau réinitialisé', 'success');
+        }
+        
+        // ✅ AJOUTER BOUTON UNDO AU TABLEAU
+        function addUndoButton() {
+            const thead = document.querySelector('#test-table thead tr');
+            const undoHeader = document.createElement('th');
+            undoHeader.innerHTML = '<button class="undo-btn" onclick="undo()">↶ Undo</button>';
+            thead.appendChild(undoHeader);
+            
+            // Ajouter cellule vide pour chaque ligne
+            const rows = document.querySelectorAll('#test-tbody tr');
+            rows.forEach(row => {
+                const undoCell = document.createElement('td');
+                undoCell.innerHTML = '<button class="undo-btn" onclick="undo()">↶</button>';
+                row.appendChild(undoCell);
+            });
+        }
+        
+        // Initialisation
+        log('✅ Test de correction duplication undo initialisé avec succès', 'success');
+        log('🎯 Objectif: Vérifier que l\'undo de suppression ne crée pas de duplications', 'success');
+        log('💡 Correction: Vérification de l\'existence avant restauration', 'info');
+        
+        // Ajouter le bouton undo
+        addUndoButton();
+        
+        // Afficher l'état initial
+        log('📊 État initial:', 'info');
+        log('   - 3 lignes de test configurées', 'info');
+        log('   - Système undo/redo simulé', 'info');
+        log('   - Vérification anti-duplication implémentée', 'info');
+        log('   - Boutons undo ajoutés au tableau', 'info');
+        
+        log('💡 Instructions de test:', 'info');
+        log('   1. Supprimez une ligne avec le bouton 🗑️', 'info');
+        log('   2. Cliquez sur Undo pour la restaurer', 'info');
+        log('   3. Vérifiez qu\'il n\'y a pas de duplication', 'info');
+        
+        updateOperationCounts();
+    </script>
+</body>
+</html>
