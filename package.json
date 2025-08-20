@@ -1,0 +1,23 @@
+{
+  "name": "snapshot-test-suite",
+  "version": "1.0.0",
+  "description": "Suite de tests pour vérifier la fonction de snapshot automatique à 10h00",
+  "main": "test-snapshot-cron.js",
+  "scripts": {
+    "test": "node test-snapshot-cron.js",
+    "test:html": "open test-snapshot-function.html",
+    "install-deps": "npm install"
+  },
+  "dependencies": {
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "supabase",
+    "snapshot",
+    "cron",
+    "testing"
+  ],
+  "author": "Georges Bassil",
+  "license": "MIT"
+}

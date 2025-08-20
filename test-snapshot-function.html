@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Fonction Snapshot - Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-warning { background-color: #ffc107; color: black; }
+        .log { background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test de la Fonction Snapshot Supabase</h1>
+    
+    <div class="test-section info">
+        <h3>📋 Informations de Configuration</h3>
+        <p><strong>URL Supabase:</strong> <span id="supabase-url">Chargement...</span></p>
+        <p><strong>Fonction Snapshot:</strong> <span id="function-url">Chargement...</span></p>
+        <p><strong>Configuration Cron:</strong> <code>0 10 * * *</code> (10h00 tous les jours, Europe/Paris)</p>
+    </div>
+
+    <div class="test-section">
+        <h3>🔧 Tests de Connexion</h3>
+        <button onclick="testSupabaseConnection()" class="btn-primary">Test Connexion Supabase</button>
+        <button onclick="testSnapshotFunction()" class="btn-success">Test Fonction Snapshot</button>
+        <button onclick="checkExistingSnapshots()" class="btn-warning">Vérifier Snapshots Existants</button>
+        <button onclick="clearLogs()" class="btn-warning">Effacer Logs</button>
+    </div>
+
+    <div class="test-section">
+        <h3>📊 Résultats des Tests</h3>
+        <div id="test-results" class="log">Aucun test exécuté...</div>
+    </div>
+
+    <div class="test-section">
+        <h3>📝 Logs Détaillés</h3>
+        <div id="detailed-logs" class="log">Logs détaillés...</div>
+    </div>
+
+    <script>
+        // Configuration Supabase
+        const supabaseUrl = 'https://fiecugxopjxzqfdnaqsu.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw';
+        
+        // Initialiser Supabase
+        let supabase;
+        let snapshotFunctionUrl;
+        
+        // Fonction d'initialisation
+        function initializeSupabase() {
+            try {
+                supabase = createClient(supabaseUrl, supabaseAnonKey);
+                snapshotFunctionUrl = `${supabaseUrl}/functions/v1/snapshot_staff_table`;
+                
+                // Afficher les informations de configuration
+                document.getElementById('supabase-url').textContent = supabaseUrl;
+                document.getElementById('function-url').textContent = snapshotFunctionUrl;
+                
+                console.log('✅ Supabase initialisé avec succès');
+                return true;
+            } catch (error) {
+                console.error('❌ Erreur d\'initialisation Supabase:', error);
+                return false;
+            }
+        }
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            
+            // Ajouter aux logs détaillés
+            const detailedLogs = document.getElementById('detailed-logs');
+            detailedLogs.innerHTML += logEntry + '\n';
+            
+            // Ajouter aux résultats des tests
+            const testResults = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = type;
+            resultDiv.textContent = logEntry;
+            testResults.appendChild(resultDiv);
+            
+            console.log(logEntry);
+        }
+        
+        function clearLogs() {
+            document.getElementById('test-results').innerHTML = 'Logs effacés...';
+            document.getElementById('detailed-logs').innerHTML = 'Logs détaillés...';
+        }
+        
+        async function testSupabaseConnection() {
+            log('🔄 Test de la connexion Supabase...');
+            
+            try {
+                const { data, error } = await supabase.from('staffTable').select('count').limit(1);
+                
+                if (error) {
+                    throw new Error(`Erreur de connexion: ${error.message}`);
+                }
+                
+                log('✅ Connexion Supabase établie avec succès', 'success');
+                return true;
+            } catch (error) {
+                log(`❌ Erreur de connexion Supabase: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function testSnapshotFunction() {
+            log('🔄 Test de la fonction snapshot...');
+            
+            try {
+                // Appeler la fonction snapshot
+                const response = await fetch(snapshotFunctionUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${supabaseAnonKey}`
+                    },
+                    body: JSON.stringify({ test: true })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`✅ Fonction snapshot appelée avec succès: ${JSON.stringify(result)}`, 'success');
+                
+                if (result.success) {
+                    log(`📊 Snapshot créé pour: ${result.data.snapshotDate}`, 'success');
+                    log(`📈 Lignes: ${result.data.rowCount}, Taille: ${result.data.fileSize} bytes`, 'success');
+                } else {
+                    log(`⚠️ Fonction exécutée mais échec: ${result.error}`, 'error');
+                }
+                
+                return result;
+            } catch (error) {
+                log(`❌ Erreur lors de l'appel de la fonction snapshot: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        async function checkExistingSnapshots() {
+            log('🔄 Vérification des snapshots existants...');
+            
+            try {
+                // Vérifier le bucket de stockage
+                const { data: storageData, error: storageError } = await supabase.storage
+                    .from('table-snapshots')
+                    .list('', { limit: 100 });
+                
+                if (storageError) {
+                    throw new Error(`Erreur de stockage: ${storageError.message}`);
+                }
+                
+                log(`📁 Bucket de stockage accessible, ${storageData.length} éléments trouvés`, 'success');
+                
+                // Vérifier la table d'index
+                const { data: indexData, error: indexError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*')
+                    .order('snapshot_date', { ascending: false })
+                    .limit(10);
+                
+                if (indexError) {
+                    log(`⚠️ Table d'index non accessible: ${indexError.message}`, 'error');
+                } else {
+                    log(`📊 Table d'index accessible, ${indexData.length} snapshots indexés`, 'success');
+                    
+                    if (indexData.length > 0) {
+                        log('📅 Derniers snapshots:', 'info');
+                        indexData.forEach((snapshot, index) => {
+                            const date = new Date(snapshot.snapshot_date).toLocaleDateString('fr-FR');
+                            log(`   ${index + 1}. ${date} - ${snapshot.row_count} lignes, ${(snapshot.file_size_bytes / 1024).toFixed(2)} KB`, 'info');
+                        });
+                    }
+                }
+                
+                return { storageData, indexData };
+            } catch (error) {
+                log(`❌ Erreur lors de la vérification des snapshots: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        // Test automatique au chargement
+        window.addEventListener('load', async () => {
+            log('🚀 Démarrage des tests automatiques...');
+            
+            // Initialiser Supabase d'abord
+            const initOk = initializeSupabase();
+            if (!initOk) {
+                log('❌ Échec de l\'initialisation Supabase', 'error');
+                return;
+            }
+            
+            // Test de connexion automatique
+            const connectionOk = await testSupabaseConnection();
+            
+            if (connectionOk) {
+                // Vérifier les snapshots existants
+                await checkExistingSnapshots();
+            }
+            
+            log('✅ Tests automatiques terminés');
+        });
+    </script>
+</body>
+</html>

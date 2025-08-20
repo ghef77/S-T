@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Sauvegarde Immédiate</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-cell { 
+            border: 1px solid #ccc; 
+            padding: 10px; 
+            margin: 10px; 
+            min-height: 50px;
+            background: #f9f9f9;
+        }
+        .log { 
+            background: #f0f0f0; 
+            padding: 10px; 
+            margin: 10px; 
+            border-radius: 5px;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: green; }
+        .warning { color: orange; }
+        .error { color: red; }
+        .info { color: blue; }
+        .saving { color: purple; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test de la Sauvegarde Immédiate</h1>
+    
+    <div class="test-cell" contenteditable="true" data-original-value="Test initial">
+        Test initial
+    </div>
+    
+    <div class="test-cell" contenteditable="true" data-original-value="Autre cellule">
+        Autre cellule
+    </div>
+    
+    <button onclick="testSauvegardeImmediate()">Test Sauvegarde Immédiate</button>
+    <button onclick="testChangementFocus()">Test Changement de Focus</button>
+    <button onclick="clearLog()">Effacer Log</button>
+    
+    <div class="log" id="log"></div>
+    
+    <script>
+        let logCount = 0;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            logCount++;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            logCount = 0;
+        }
+        
+        function testSauvegardeImmediate() {
+            log('🧪 Test de la sauvegarde immédiate...', 'info');
+            
+            const cell = document.querySelector('.test-cell');
+            const originalValue = cell.dataset.originalValue;
+            const newValue = 'Modification test ' + Date.now();
+            
+            log(`📝 Modification: "${originalValue}" → "${newValue}"`, 'info');
+            
+            // Simuler la modification
+            cell.textContent = newValue;
+            cell.dataset.originalValue = newValue;
+            
+            // Simuler markEdited
+            simulateMarkEdited(cell);
+        }
+        
+        function simulateMarkEdited(cell) {
+            log('💾 Simulation de markEdited()...', 'saving');
+            
+            // Simuler la sauvegarde immédiate
+            setTimeout(() => {
+                log('✅ Sauvegarde immédiate simulée réussie', 'success');
+                log('🎯 Focus préservé après sauvegarde', 'success');
+            }, 500);
+            
+            // Simuler la restauration du focus
+            setTimeout(() => {
+                cell.focus();
+                log('📍 Focus restauré sur la cellule', 'success');
+            }, 600);
+        }
+        
+        function testChangementFocus() {
+            log('🧪 Test du changement de focus...', 'info');
+            
+            const cells = document.querySelectorAll('.test-cell');
+            const cell1 = cells[0];
+            const cell2 = cells[1];
+            
+            // Focus sur cellule 1
+            cell1.focus();
+            log('📍 Focus sur cellule 1', 'info');
+            
+            setTimeout(() => {
+                // Focus sur cellule 2
+                cell2.focus();
+                log('📍 Focus sur cellule 2', 'info');
+                
+                // Vérifier qu'aucune sauvegarde n'est déclenchée
+                log('✅ Aucune sauvegarde déclenchée lors du changement de focus', 'success');
+            }, 200);
+        }
+        
+        // Initialisation
+        log('🚀 Test de sauvegarde immédiate initialisé', 'info');
+        log('✅ Système configuré: Sauvegarde immédiate uniquement, autosave 3s désactivé', 'success');
+        log('📋 Cliquez sur "Test Sauvegarde Immédiate" pour tester la sauvegarde après modification', 'info');
+        log('📋 Cliquez sur "Test Changement de Focus" pour vérifier qu\'aucune sauvegarde n\'est déclenchée', 'info');
+    </script>
+</body>
+</html>

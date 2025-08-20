@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Autosave</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-panel { 
+            background: #f0f0f0; 
+            padding: 15px; 
+            margin: 10px; 
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .status { 
+            padding: 5px; 
+            margin: 2px; 
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .status.true { background: #d4edda; color: #155724; }
+        .status.false { background: #f8d7da; color: #721c24; }
+        .status.undefined { background: #fff3cd; color: #856404; }
+        .log { 
+            background: #000; 
+            color: #0f0; 
+            padding: 10px; 
+            margin: 10px; 
+            border-radius: 5px;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        button { 
+            margin: 5px; 
+            padding: 8px 16px; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Autosave</h1>
+    
+    <div class="debug-panel">
+        <h3>État des Variables Critiques</h3>
+        <div id="debug-status"></div>
+    </div>
+    
+    <div class="debug-panel">
+        <h3>Actions de Test</h3>
+        <button onclick="testMarkEdited()">Test markEdited()</button>
+        <button onclick="testAutosaveConditions()">Test Conditions Autosave</button>
+        <button onclick="forceAutosave()">Forcer Autosave</button>
+        <button onclick="clearLog()">Effacer Log</button>
+    </div>
+    
+    <div class="debug-panel">
+        <h3>Log de Debug</h3>
+        <div class="log" id="debug-log"></div>
+    </div>
+    
+    <script>
+        let logCount = 0;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            logCount++;
+        }
+        
+        function clearLog() {
+            document.getElementById('debug-log').innerHTML = '';
+            logCount = 0;
+        }
+        
+        function updateDebugStatus() {
+            const statusDiv = document.getElementById('debug-status');
+            
+            // Récupérer les variables depuis la fenêtre principale
+            const mainWindow = window.opener || window;
+            
+            try {
+                const status = {
+                    'isTyping': mainWindow.isTyping,
+                    'isDirty': mainWindow.isDirty,
+                    'isSyncing': mainWindow.isSyncing,
+                    'isPerformingUndoRedo': mainWindow.isPerformingUndoRedo,
+                    'lastEditAt': mainWindow.lastEditAt ? new Date(mainWindow.lastEditAt).toLocaleTimeString() : 'undefined',
+                    'AUTOSAVE_DELAY_MS': mainWindow.AUTOSAVE_DELAY_MS,
+                    'suppressAutosaveUntil': mainWindow.suppressAutosaveUntil ? new Date(mainWindow.suppressAutosaveUntil).toLocaleTimeString() : 'undefined',
+                    'currentOperation': mainWindow.currentOperation ? mainWindow.currentOperation.type : 'undefined',
+                    'autosaveTicker': !!mainWindow.autosaveTicker,
+                    'syncTimer': !!mainWindow._syncTimer
+                };
+                
+                let html = '';
+                for (const [key, value] of Object.entries(status)) {
+                    const valueClass = value === true ? 'true' : (value === false ? 'false' : 'undefined');
+                    html += `<div class="status ${valueClass}"><strong>${key}:</strong> ${value}</div>`;
+                }
+                
+                statusDiv.innerHTML = html;
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status undefined">Erreur: ${error.message}</div>`;
+            }
+        }
+        
+        function testMarkEdited() {
+            log('🧪 Test de markEdited()...');
+            
+            try {
+                const mainWindow = window.opener || window;
+                
+                if (typeof mainWindow.markEdited === 'function') {
+                    log('✅ Fonction markEdited() trouvée');
+                    
+                    // Simuler une modification
+                    mainWindow.isDirty = false;
+                    mainWindow.lastEditAt = null;
+                    
+                    log('📝 Avant markEdited():');
+                    log(`   isDirty: ${mainWindow.isDirty}`);
+                    log(`   lastEditAt: ${mainWindow.lastEditAt}`);
+                    
+                    // Appeler markEdited
+                    mainWindow.markEdited();
+                    
+                    log('📝 Après markEdited():');
+                    log(`   isDirty: ${mainWindow.isDirty}`);
+                    log(`   lastEditAt: ${mainWindow.lastEditAt ? new Date(mainWindow.lastEditAt).toLocaleTimeString() : 'undefined'}`);
+                    
+                } else {
+                    log('❌ Fonction markEdited() non trouvée');
+                }
+                
+            } catch (error) {
+                log(`❌ Erreur lors du test: ${error.message}`);
+            }
+        }
+        
+        function testAutosaveConditions() {
+            log('🧪 Test des conditions d\'autosave...');
+            
+            try {
+                const mainWindow = window.opener || window;
+                
+                if (!mainWindow) {
+                    log('❌ Fenêtre principale non accessible');
+                    return;
+                }
+                
+                const conditions = {
+                    'isTyping': mainWindow.isTyping,
+                    'isPerformingUndoRedo': mainWindow.isPerformingUndoRedo,
+                    'lastEditAt < AUTOSAVE_DELAY_MS': mainWindow.lastEditAt ? (Date.now() - mainWindow.lastEditAt < mainWindow.AUTOSAVE_DELAY_MS) : 'undefined',
+                    'isDirty': mainWindow.isDirty,
+                    'suppressAutosaveUntil': mainWindow.suppressAutosaveUntil ? (Date.now() < mainWindow.suppressAutosaveUntil) : false,
+                    'currentOperation': mainWindow.currentOperation && mainWindow.currentOperation.type
+                };
+                
+                log('📊 Conditions d\'autosave:');
+                for (const [condition, value] of Object.entries(conditions)) {
+                    const status = value ? '❌ BLOQUE' : '✅ AUTORISE';
+                    log(`   ${condition}: ${value} - ${status}`);
+                }
+                
+                // Vérifier si toutes les conditions sont remplies
+                const allConditionsMet = Object.values(conditions).every(condition => !condition);
+                log(`🎯 Résultat: ${allConditionsMet ? '✅ Autosave AUTORISÉ' : '❌ Autosave BLOQUÉ'}`);
+                
+            } catch (error) {
+                log(`❌ Erreur lors du test: ${error.message}`);
+            }
+        }
+        
+        function forceAutosave() {
+            log('🚀 Tentative de forçage de l\'autosave...');
+            
+            try {
+                const mainWindow = window.opener || window;
+                
+                if (typeof mainWindow.syncToMaster === 'function') {
+                    log('✅ Fonction syncToMaster() trouvée');
+                    
+                    // Forcer les conditions
+                    mainWindow.isTyping = false;
+                    mainWindow.isDirty = true;
+                    mainWindow.lastEditAt = Date.now() - mainWindow.AUTOSAVE_DELAY_MS - 1000;
+                    
+                    log('📝 Conditions forcées:');
+                    log(`   isTyping: ${mainWindow.isTyping}`);
+                    log(`   isDirty: ${mainWindow.isDirty}`);
+                    log(`   lastEditAt: ${new Date(mainWindow.lastEditAt).toLocaleTimeString()}`);
+                    
+                    // Appeler syncToMaster
+                    mainWindow.syncToMaster(false).then(() => {
+                        log('✅ syncToMaster() exécuté avec succès');
+                    }).catch((error) => {
+                        log(`❌ Erreur syncToMaster(): ${error.message}`);
+                    });
+                    
+                } else {
+                    log('❌ Fonction syncToMaster() non trouvée');
+                }
+                
+            } catch (error) {
+                log(`❌ Erreur lors du forçage: ${error.message}`);
+            }
+        }
+        
+        // Mise à jour automatique du statut
+        setInterval(updateDebugStatus, 1000);
+        
+        // Initialisation
+        log('🚀 Debug Autosave initialisé');
+        log('Ouvrez ce fichier dans une fenêtre popup de votre application principale');
+        log('Utilisez les boutons pour tester les différentes fonctions');
+        
+        // Première mise à jour
+        updateDebugStatus();
+    </script>
+</body>
+</html>

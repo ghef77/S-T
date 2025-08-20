@@ -974,6 +974,20 @@
                 height: 32px !important;
                 flex-shrink: 0 !important;
             }
+            
+            /* Styles pour la restauration du focus après autosave */
+            #data-table td.focus-restored {
+                background-color: #d4edda !important;
+                border: 2px solid #28a745 !important;
+                box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+                animation: focusRestored 2s ease-in-out;
+            }
+            
+            @keyframes focusRestored {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.02); }
+                100% { transform: scale(1); }
+            }
         }
     </style>
 </head>
@@ -3221,6 +3235,82 @@
             } catch(_) {}
         }
 
+        // Fonction pour obtenir la position du curseur
+        function getCursorPosition(element) {
+            if (!element || element.contentEditable !== 'true') {
+                return null;
+            }
+            
+            try {
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    const preCaretRange = range.cloneRange();
+                    preCaretRange.selectNodeContents(element);
+                    preCaretRange.setEnd(range.endContainer, range.endOffset);
+                    return preCaretRange.toString().length;
+                }
+            } catch (error) {
+                console.warn('⚠️ Erreur lors de la récupération de la position du curseur:', error);
+            }
+            
+            return null;
+        }
+
+        // Fonction pour restaurer le focus après autosave
+        function restoreFocusAfterAutosave(focusState) {
+            if (!focusState || !focusState.element) {
+                log('⚠️ restoreFocusAfterAutosave: focusState invalide');
+                return;
+            }
+
+            try {
+                // Marquer que nous restaurons le focus pour éviter les conflits
+                const wasRestoringFocus = window._isRestoringFocus;
+                window._isRestoringFocus = true;
+                
+                // Restaurer le focus sur l'élément
+                focusState.element.focus();
+                
+                // Restaurer la position du curseur si disponible
+                if (focusState.position !== null && focusState.position !== undefined) {
+                    const range = document.createRange();
+                    const selection = window.getSelection();
+                    
+                    if (focusState.element.firstChild) {
+                        const safeOffset = Math.min(focusState.position, focusState.element.textContent.length);
+                        range.setStart(focusState.element.firstChild, safeOffset);
+                        range.collapse(true);
+                        
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                        log(`✅ Curseur restauré à la position ${safeOffset}`);
+                    }
+                }
+                
+                // Ajouter une classe visuelle pour indiquer la restauration
+                focusState.element.classList.add('focus-restored');
+                setTimeout(() => {
+                    focusState.element.classList.remove('focus-restored');
+                }, 2000);
+                
+                // S'assurer que l'élément est visible
+                focusState.element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                
+                // Restaurer l'état de _isRestoringFocus après un délai
+                setTimeout(() => {
+                    window._isRestoringFocus = wasRestoringFocus;
+                }, 100);
+                
+                log('✅ Focus restauré après autosave');
+                
+            } catch (error) {
+                log(`❌ Erreur lors de la restauration du focus: ${error.message}`);
+                // Restaurer l'état de _isRestoringFocus en cas d'erreur
+                window._isRestoringFocus = false;
+            }
+        }
+
         function focusCellFromInfo(info) {
             if (!info) return false;
             
@@ -3586,19 +3676,10 @@
                     const normalizedCurrent = currentValue.trim();
                     const normalizedOriginal = originalValue.trim();
                     
+                    // Vérification simplifiée : seulement si les valeurs normalisées sont identiques
                     if (normalizedCurrent === normalizedOriginal) {
                         log('🚫 markEdited supprimé - changement de focus détecté (espaces normalisés), pas de vraie modification');
                         return;
-                    }
-                    
-                    // Vérification supplémentaire pour les différences très petites
-                    if (Math.abs(normalizedCurrent.length - normalizedOriginal.length) <= 1) {
-                        // Si la différence est très petite, vérifier plus en détail
-                        if (normalizedCurrent === normalizedOriginal || 
-                            normalizedCurrent === normalizedOriginal.replace(/\s+/g, ' ')) {
-                            log('🚫 markEdited supprimé - changement de focus détecté (formatage), pas de vraie modification');
-                            return;
-                        }
                     }
                     
                     log(`✅ Modification détectée: "${originalValue}" → "${currentValue}"`);
@@ -3610,16 +3691,31 @@
             isDirty = true; 
             isTyping = true; 
             
-            // Ne pas réinitialiser lastEditAt à chaque frappe - seulement la première fois
-            if (!lastEditAt || Date.now() - lastEditAt > 1000) {
-                lastEditAt = Date.now();
-                log('🕐 Démarrage du compte à rebours autosave (3s)');
-            } else {
-                log('⏱️ Compte à rebours autosave en cours...');
-            }
+            // SAUVEGARDE IMMÉDIATE après la modification
+            log('💾 Sauvegarde immédiate après modification...');
             
+            // Capturer l'état du focus avant la sauvegarde
+            const focusState = activeElement && activeElement.tagName === 'TD' ? {
+                element: activeElement,
+                position: getCursorPosition(activeElement)
+            } : null;
+            
+            // Sauvegarder immédiatement
+            syncToMaster(false).then(() => {
+                log('✅ Sauvegarde immédiate réussie');
+                
+                // Restaurer le focus après la sauvegarde
+                if (focusState && focusState.element) {
+                    setTimeout(() => {
+                        restoreFocusAfterAutosave(focusState);
+                    }, 100);
+                }
+            }).catch((error) => {
+                log(`❌ Erreur lors de la sauvegarde immédiate: ${error.message}`);
+            });
+            
+            // Réinitialiser le timer de frappe
             if (typingTimer) clearTimeout(typingTimer);
-            scheduleAutosaveCountdown();
             typingTimer = setTimeout(() => { isTyping = false; }, 1200);
         }
 
@@ -6915,7 +7011,7 @@
                 fetchInitialData(); 
                 setupRealtimeSubscription(); 
                 startPeriodicSync(); 
-                scheduleAutosaveCountdown();
+                // scheduleAutosaveCountdown() - DÉSACTIVÉ - Sauvegarde immédiate uniquement
                 
                 // Initialize snapshot system
                 loadAvailableSnapshots();
@@ -7661,7 +7757,7 @@
             }
         }
         
-        // Enhanced periodic sync with conflict prevention
+        // Enhanced periodic sync with conflict prevention - AUTOSAVE AUTOMATIQUE DÉSACTIVÉ
         function startPeriodicSyncEnhanced() {
             try {
                 // Cleanup existing timer
@@ -7677,61 +7773,10 @@
                     return;
                 }
                 
-                window._syncTimer = setInterval(async () => {
-                    try {
-                        // Enhanced conflict prevention
-                        if (isTyping || isPerformingUndoRedo) {
-                            return;
-                        }
-                        
-                        if (Date.now() - lastEditAt < AUTOSAVE_DELAY_MS) {
-                            return;
-                        }
-                        
-                        const modal = document.getElementById('confirmation-modal');
-                        if (modal && !modal.classList.contains('hidden')) {
-                            return;
-                        }
-                        
-                        if (isSyncing || !isDirty) {
-                            return;
-                        }
-                        
-                        // Check suppression windows
-                        if (Date.now() < suppressAutosaveUntil) {
-                            return;
-                        }
-                        
-                        // Check pending operations
-                        if (currentOperation && currentOperation.type) {
-                            return;
-                        }
-                        
-                        // Capturer l'état du focus avant la sauvegarde
-                        const activeElement = document.activeElement;
-                        const focusState = activeElement && activeElement.tagName === 'TD' ? {
-                            element: activeElement,
-                            position: getCursorPosition(activeElement)
-                        } : null;
-                        
-                        isSyncing = true;
-                        log('Auto-sync (500ms poll, 3s idle) vers Supabase…');
-                        await syncToMaster(false);
-                        
-                        // Restaurer le focus après la sauvegarde automatique
-                        if (focusState && focusState.element) {
-                            setTimeout(() => {
-                                restoreFocusAfterAutosave(focusState);
-                            }, 100);
-                        }
-                    } catch (error) {
-                        console.error('❌ Error in periodic sync:', error);
-                    } finally {
-                        isSyncing = false;
-                    }
-                }, 500);
+                // AUTOSAVE AUTOMATIQUE DÉSACTIVÉ - Seule la sauvegarde immédiate est active
+                log('🚫 Autosave automatique désactivé - Sauvegarde immédiate uniquement');
                 
-                console.log('✅ Enhanced periodic sync started successfully');
+                console.log('✅ Enhanced periodic sync started successfully (autosave désactivé)');
             } catch (error) {
                 console.error('❌ Error starting enhanced periodic sync:', error);
             }
