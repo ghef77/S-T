@@ -1101,10 +1101,10 @@
         </div>
 
         <div id="button-bar" class="flex flex-nowrap items-center gap-1 mb-3 p-1 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto">
-            <button onclick='saveManually()' title="Sauvegarder (Cmd+S / Ctrl+S)" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
+            <button onclick='saveManually()' title="Sauvegarder (Cmd+Z/Ctrl+Z ou Cmd+S/Ctrl+S)" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
                 <i class="fa-solid fa-save w-3.5 h-3.5"></i>
             </button>
-            <button id="undo-button" onclick="undo()" disabled title="Annuler (Cmd+Z / Ctrl+Z)" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
+            <button id="undo-button" onclick="undo()" disabled title="Annuler (Cmd+Y / Ctrl+Y)" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
                 <i class="fa-solid fa-rotate-left w-3.5 h-3.5"></i>
             </button>
             <button id="redo-button" onclick="redo()" disabled title="Rétablir (Cmd+Shift+Z / Ctrl+Y)" aria-label="Rétablir" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
@@ -4764,7 +4764,26 @@
             
             // Global keyboard shortcuts
             document.addEventListener('keydown', function (e) {
-                // Manual save shortcut: Cmd+S (Mac) or Ctrl+S (Windows/Linux)
+                // Manual save shortcut: Cmd+Z (Mac) or Ctrl+Z (Windows/Linux)
+                if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+                    e.preventDefault(); // Prevent browser undo dialog
+                    
+                    // Only trigger if not in password input
+                    const passwordInput = document.getElementById('password');
+                    if (passwordInput && document.activeElement === passwordInput) {
+                        return;
+                    }
+                    
+                    // Only trigger if not in table cells (to avoid interfering with cell editing)
+                    if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+                        return;
+                    }
+                    
+                    console.log('💾 Raccourci clavier de sauvegarde manuelle activé (Cmd+Z/Ctrl+Z)');
+                    saveManually();
+                }
+                
+                // Alternative save shortcut: Cmd+S (Mac) or Ctrl+S (Windows/Linux)
                 if ((e.metaKey || e.ctrlKey) && e.key === 's') {
                     e.preventDefault(); // Prevent browser save dialog
                     
@@ -4779,8 +4798,33 @@
                         return;
                     }
                     
-                    console.log('💾 Raccourci clavier de sauvegarde manuelle activé');
+                    console.log('💾 Raccourci clavier de sauvegarde manuelle activé (Cmd+S/Ctrl+S)');
                     saveManually();
+                }
+                
+                // Undo shortcut: Cmd+Y (Mac) or Ctrl+Y (Windows/Linux)
+                if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
+                    e.preventDefault(); // Prevent browser history dialog
+                    
+                    // Only trigger if not in password input
+                    const passwordInput = document.getElementById('password');
+                    if (passwordInput && document.activeElement === passwordInput) {
+                        return;
+                    }
+                    
+                    // Only trigger if not in table cells (to avoid interfering with cell editing)
+                    if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+                        return;
+                    }
+                    
+                    // Check if undo is available
+                    if (typeof undo === 'function' && operationHistory && operationHistory.length > 0) {
+                        console.log('↩️ Raccourci clavier undo activé (Cmd+Y/Ctrl+Y)');
+                        undo();
+                    } else {
+                        console.log('⚠️ Undo non disponible - aucune action à annuler');
+                        showMessage('Aucune action à annuler', 'info');
+                    }
                 }
             });
             
@@ -7334,13 +7378,15 @@
             try {
                 console.log('⌨️ Testing keyboard shortcuts...');
                 
-                // Test manual save shortcut
-                console.log('💾 Manual save shortcut: Cmd+S (Mac) / Ctrl+S (Windows/Linux)');
-                console.log('✅ Shortcut should trigger saveManually() function');
+                // Test manual save shortcuts
+                console.log('💾 Manual save shortcuts:');
+                console.log('   - Cmd+Z (Mac) / Ctrl+Z (Windows/Linux)');
+                console.log('   - Cmd+S (Mac) / Ctrl+S (Windows/Linux)');
+                console.log('✅ Both shortcuts should trigger saveManually() function');
                 
-                // Test undo/redo shortcuts
-                console.log('↩️ Undo shortcut: Cmd+Z (Mac) / Ctrl+Z (Windows/Linux)');
-                console.log('↪️ Redo shortcut: Cmd+Shift+Z (Mac) / Ctrl+Y (Windows/Linux)');
+                // Test undo shortcut
+                console.log('↩️ Undo shortcut: Cmd+Y (Mac) / Ctrl+Y (Windows/Linux)');
+                console.log('✅ Shortcut should trigger undo() function');
                 
                 // Test other shortcuts
                 console.log('⌨️ Other shortcuts:');
@@ -7350,9 +7396,8 @@
                 
                 console.log('✅ Keyboard shortcuts test completed');
                 return {
-                    manualSave: 'Cmd+S (Mac) / Ctrl+S (Windows/Linux)',
-                    undo: 'Cmd+Z (Mac) / Ctrl+Z (Windows/Linux)',
-                    redo: 'Cmd+Shift+Z (Mac) / Ctrl+Y (Windows/Linux)',
+                    manualSave: ['Cmd+Z (Mac) / Ctrl+Z (Windows/Linux)', 'Cmd+S (Mac) / Ctrl+S (Windows/Linux)'],
+                    undo: 'Cmd+Y (Mac) / Ctrl+Y (Windows/Linux)',
                     addRow: 'Enter',
                     deleteRow: 'Ctrl+D',
                     navigation: 'Arrow keys'
@@ -7368,9 +7413,9 @@
         window.showKeyboardShortcutsHelp = function() {
             try {
                 const shortcuts = [
-                    { key: 'Cmd+S / Ctrl+S', action: 'Sauvegarde manuelle', description: 'Équivalent au clic sur le bouton Sauvegarder' },
-                    { key: 'Cmd+Z / Ctrl+Z', action: 'Annuler', description: 'Annuler la dernière action' },
-                    { key: 'Cmd+Shift+Z / Ctrl+Y', action: 'Rétablir', description: 'Rétablir l\'action annulée' },
+                    { key: 'Cmd+Z / Ctrl+Z', action: 'Sauvegarde manuelle', description: 'Équivalent au clic sur le bouton Sauvegarder' },
+                    { key: 'Cmd+S / Ctrl+S', action: 'Sauvegarde manuelle', description: 'Alternative pour la sauvegarde manuelle' },
+                    { key: 'Cmd+Y / Ctrl+Y', action: 'Annuler', description: 'Annuler la dernière action (équivalent au bouton Annuler)' },
                     { key: 'Enter', action: 'Nouvelle ligne', description: 'Ajouter une nouvelle ligne au tableau' },
                     { key: 'Ctrl+D', action: 'Supprimer ligne', description: 'Supprimer la ligne sélectionnée' },
                     { key: 'Flèches', action: 'Navigation', description: 'Se déplacer entre les cellules' }
