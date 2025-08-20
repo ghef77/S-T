@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Persistance du Curseur - Pas de Disparition</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-cell { 
+            border: 2px solid #007bff; 
+            padding: 15px; 
+            margin: 20px; 
+            min-height: 60px;
+            background: #f8f9fa;
+            font-size: 16px;
+        }
+        .log { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            margin: 20px; 
+            border-radius: 8px;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+        }
+        .success { color: #28a745; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .info { color: #17a2b8; font-weight: bold; }
+        .saving { color: #6f42c1; font-weight: bold; }
+        button { 
+            padding: 12px 20px; 
+            margin: 8px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+        .status {
+            background: #fff3cd;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #ffc107;
+        }
+        .highlight {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Persistance du Curseur - Pas de Disparition</h1>
+    
+    <div class="instructions">
+        <h3>📋 Test de la Persistance du Curseur</h3>
+        <p><strong>Objectif :</strong> Vérifier que le curseur reste visible et fonctionnel après la restauration, sans disparaître.</p>
+        <ol>
+            <li>Cliquez dans une cellule et placez le curseur à une position spécifique</li>
+            <li>Cliquez sur "Sauvegarde Automatique" pour simuler la sauvegarde</li>
+            <li>Vérifiez que la cellule et le curseur sont restaurés</li>
+            <li>Vérifiez que le curseur reste visible et ne disparaît pas</li>
+            <li>Tapez du texte pour confirmer que le curseur fonctionne</li>
+        </ol>
+    </div>
+    
+    <div class="status" id="status">
+        <strong>État :</strong> Prêt pour le test de persistance du curseur
+    </div>
+    
+    <div class="highlight">
+        <h4>🎯 Test Principal :</h4>
+        <p>1. <strong>Modifiez</strong> une cellule (tapez du texte, placez le curseur au milieu)</p>
+        <p>2. <strong>Cliquez</strong> sur "Sauvegarde Automatique"</p>
+        <p>3. <strong>Vérifiez</strong> que la cellule et le curseur sont restaurés</p>
+        <p>4. <strong>Confirmez</strong> que le curseur reste visible et fonctionnel</p>
+        <p>5. <strong>Tapez du texte</strong> pour tester la fonctionnalité du curseur</p>
+    </div>
+    
+    <div class="test-cell" contenteditable="true" data-label="Nom" data-original-value="Cellule Nom - Test">
+        Cellule Nom - Test
+    </div>
+    
+    <div class="test-cell" contenteditable="true" data-label="Prénom" data-original-value="Cellule Prénom - Test">
+        Cellule Prénom - Test
+    </div>
+    
+    <div class="test-cell" contenteditable="true" data-label="Email" data-original-value="Cellule Email - Test">
+        Cellule Email - Test
+    </div>
+    
+    <div style="margin: 20px;">
+        <button onclick="testAutosave()" class="btn-primary">💾 Sauvegarde Automatique</button>
+        <button onclick="testCursorPersistence()" class="btn-success">🧪 Test Persistance Curseur</button>
+        <button onclick="clearLog()" class="btn-success">🗑️ Effacer Log</button>
+        <button onclick="showCapturedState()" class="btn-success">📊 État Capturé</button>
+    </div>
+    
+    <div class="log" id="log">
+        <div class="info">🚀 Test de persistance du curseur initialisé</div>
+    </div>
+    
+    <script>
+        // ✅ SYSTÈME DE CAPTURE ET RESTAURATION DU FOCUS (AVEC PERSISTANCE)
+        let capturedFocusState = null;
+        let testResults = {
+            captures: 0,
+            restorations: 0,
+            successes: 0,
+            cursorPersistence: 0
+        };
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '<div class="info">🚀 Test de persistance du curseur initialisé</div>';
+        }
+        
+        function updateStatus(message) {
+            document.getElementById('status').innerHTML = `<strong>État :</strong> ${message}`;
+        }
+        
+        // ✅ FONCTION DE CAPTURE DU FOCUS (comme dans index.html)
+        function captureFocusBeforeSave() {
+            const activeElement = document.activeElement;
+            
+            if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+                capturedFocusState = {
+                    element: activeElement,
+                    position: getCaretOffsetWithin(activeElement),
+                    timestamp: Date.now(),
+                    rowIndex: 0, // Pour le test
+                    colLabel: activeElement.getAttribute('data-label') || ''
+                };
+                
+                log(`📝 Cellule sélectionnée capturée avant sauvegarde: ${capturedFocusState.colLabel}, position ${capturedFocusState.position}`, 'info');
+                testResults.captures++;
+                updateStatus(`Captures: ${testResults.captures}, Restaurations: ${testResults.restorations}, Succès: ${testResults.successes}, Persistance: ${testResults.cursorPersistence}`);
+                return true;
+            } else {
+                log('⚠️ Aucune cellule active trouvée pour capture avant sauvegarde', 'warning');
+                return false;
+            }
+        }
+        
+        // ✅ FONCTION DE RESTAURATION DU FOCUS (AVEC PERSISTANCE)
+        function restoreFocusAfterSave() {
+            if (!capturedFocusState || !capturedFocusState.element) {
+                log('⚠️ Aucune cellule sélectionnée à restaurer après sauvegarde', 'warning');
+                return false;
+            }
+            
+            log(`🔄 Restauration de la cellule sélectionnée après sauvegarde: ${capturedFocusState.colLabel}`, 'info');
+            testResults.restorations++;
+            
+            try {
+                // Restaurer le focus sur la cellule
+                capturedFocusState.element.focus();
+                log(`✅ Focus restauré sur la cellule: ${capturedFocusState.colLabel}`, 'success');
+                
+                // Restaurer la position du curseur
+                if (capturedFocusState.position !== null && capturedFocusState.position !== undefined) {
+                    try {
+                        setCaretAt(capturedFocusState.element, capturedFocusState.position);
+                        log(`✅ Curseur restauré à la position ${capturedFocusState.position} dans ${capturedFocusState.colLabel}`, 'success');
+                        
+                        // Vérifier que la restauration a fonctionné
+                        const currentPosition = getCaretOffsetWithin(capturedFocusState.element);
+                        if (currentPosition === capturedFocusState.position) {
+                            log('✅ Vérification: Curseur bien restauré à la bonne position', 'success');
+                            testResults.successes++;
+                            
+                            // ✅ VÉRIFICATION DE PERSISTANCE: Attendre et vérifier que le curseur est toujours là
+                            setTimeout(() => {
+                                const persistentPosition = getCaretOffsetWithin(capturedFocusState.element);
+                                if (persistentPosition === capturedFocusState.position) {
+                                    log('✅ PERSISTANCE: Curseur toujours visible après 500ms', 'success');
+                                    testResults.cursorPersistence++;
+                                    updateStatus(`Test réussi! Captures: ${testResults.captures}, Restaurations: ${testResults.restorations}, Succès: ${testResults.successes}, Persistance: ${testResults.cursorPersistence}`);
+                                } else {
+                                    log('⚠️ PROBLÈME: Curseur a disparu après 500ms', 'warning');
+                                }
+                            }, 500);
+                            
+                            return true;
+                        } else {
+                            log(`⚠️ Vérification échouée: position ${currentPosition} au lieu de ${capturedFocusState.position}`, 'warning');
+                            return false;
+                        }
+                        
+                    } catch (caretError) {
+                        log(`⚠️ Erreur lors de la restauration du curseur: ${caretError.message}`, 'warning');
+                        // Fallback: placer le curseur à la fin
+                        try {
+                            setCaretAt(capturedFocusState.element, null);
+                            log(`✅ Curseur placé à la fin (fallback) dans ${capturedFocusState.colLabel}`, 'success');
+                            return true;
+                        } catch (fallbackError) {
+                            log(`❌ Erreur fallback: ${fallbackError.message}`, 'error');
+                            return false;
+                        }
+                    }
+                } else {
+                    log(`⚠️ Position du curseur non disponible dans ${capturedFocusState.colLabel}, placement à la fin`, 'warning');
+                    // Placer le curseur à la fin
+                    try {
+                        setCaretAt(capturedFocusState.element, null);
+                        log(`✅ Curseur placé à la fin dans ${capturedFocusState.colLabel}`, 'success');
+                        return true;
+                    } catch (fallbackError) {
+                        log(`❌ Erreur fallback: ${fallbackError.message}`, 'error');
+                        return false;
+                    }
+                }
+                
+            } catch (error) {
+                log(`❌ Erreur lors de la restauration de la cellule sélectionnée: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // ✅ SIMULATION DE LA SAUVEGARDE AUTOMATIQUE
+        async function testAutosave() {
+            log('🧪 Test de sauvegarde automatique...', 'info');
+            
+            // ✅ CORRECTION: Utiliser l'état déjà capturé automatiquement
+            if (!capturedFocusState) {
+                log('❌ Test échoué: Aucune cellule n\'a été modifiée et capturée', 'error');
+                log('💡 Conseil: Modifiez d\'abord une cellule (tapez du texte, placez le curseur)', 'info');
+                return;
+            }
+            
+            log(`✅ Cellule capturée trouvée: ${capturedFocusState.colLabel}`, 'success');
+            
+            // Étape 2: Simuler la sauvegarde
+            log('💾 Sauvegarde automatique en cours...', 'saving');
+            updateStatus('Sauvegarde en cours...');
+            
+            // Simuler le temps de sauvegarde
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            log('✅ Sauvegarde automatique réussie !', 'success');
+            updateStatus('Sauvegarde réussie, restauration en cours...');
+            
+            // Étape 3: Restaurer la cellule sélectionnée après la sauvegarde
+            setTimeout(() => {
+                const success = restoreFocusAfterSave();
+                if (success) {
+                    log('🎉 Test de sauvegarde automatique RÉUSSI !', 'success');
+                    updateStatus(`Test réussi! Captures: ${testResults.captures}, Restaurations: ${testResults.restorations}, Succès: ${testResults.successes}, Persistance: ${testResults.cursorPersistence}`);
+                } else {
+                    log('❌ Test de sauvegarde automatique ÉCHOUÉ', 'error');
+                    updateStatus('Test échoué - Vérifiez les logs');
+                }
+            }, 100);
+        }
+        
+        // ✅ TEST SPÉCIAL: Vérifier la persistance du curseur
+        function testCursorPersistence() {
+            if (!capturedFocusState || !capturedFocusState.element) {
+                log('❌ Test de persistance échoué: Aucune cellule capturée', 'error');
+                return;
+            }
+            
+            log('🧪 Test de persistance du curseur...', 'info');
+            
+            // Vérifier la position actuelle
+            const currentPosition = getCaretOffsetWithin(capturedFocusState.element);
+            log(`📊 Position actuelle du curseur: ${currentPosition}`, 'info');
+            
+            // Vérifier que le focus est toujours là
+            if (document.activeElement === capturedFocusState.element) {
+                log('✅ Focus toujours actif sur la cellule', 'success');
+            } else {
+                log('⚠️ Focus perdu sur la cellule', 'warning');
+            }
+            
+            // Vérifier que le curseur est visible
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                log('✅ Curseur visible et sélection active', 'success');
+            } else {
+                log('⚠️ Curseur non visible ou sélection perdue', 'warning');
+            }
+            
+            // Test de frappe pour confirmer la fonctionnalité
+            log('💡 Test de frappe pour confirmer la fonctionnalité du curseur...', 'info');
+            capturedFocusState.element.focus();
+            setCaretAt(capturedFocusState.element, capturedFocusState.position);
+            
+            updateStatus(`Test de persistance terminé - Vérifiez que le curseur est visible et fonctionnel`);
+        }
+        
+        // Afficher l'état capturé
+        function showCapturedState() {
+            log('📊 État de focus capturé:', 'info');
+            if (capturedFocusState) {
+                log(`   Cellule: ${capturedFocusState.colLabel}`, 'info');
+                log(`   Position: ${capturedFocusState.position}`, 'info');
+                log(`   Timestamp: ${new Date(capturedFocusState.timestamp).toLocaleTimeString()}`, 'info');
+                log(`   Élément: ${capturedFocusState.element.textContent.substring(0, 30)}...`, 'info');
+            } else {
+                log('   Aucun état capturé', 'info');
+            }
+        }
+        
+        // ✅ FONCTIONS UTILITAIRES (simulées comme dans index.html)
+        
+        // Fonction pour obtenir la position du curseur
+        function getCaretOffsetWithin(element) {
+            if (!element || element.contentEditable !== 'true') {
+                return 0;
+            }
+            
+            try {
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    
+                    if (element.contains(range.startContainer)) {
+                        const preCaretRange = range.cloneRange();
+                        preCaretRange.selectNodeContents(element);
+                        preCaretRange.setEnd(range.endContainer, range.endOffset);
+                        const position = preCaretRange.toString().length;
+                        return position;
+                    }
+                }
+            } catch (error) {
+                log(`❌ Erreur lors de la capture de la position: ${error.message}`, 'error');
+            }
+            
+            return 0;
+        }
+        
+        // Fonction pour placer le curseur à une position spécifique
+        function setCaretAt(element, position) {
+            if (!element || element.contentEditable !== 'true') {
+                return false;
+            }
+            
+            try {
+                const range = document.createRange();
+                const selection = window.getSelection();
+                
+                if (element.firstChild) {
+                    const safeOffset = position !== null && position !== undefined 
+                        ? Math.min(position, element.textContent.length) 
+                        : element.textContent.length;
+                    
+                    range.setStart(element.firstChild, safeOffset);
+                    range.collapse(true);
+                    
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    
+                    return true;
+                } else {
+                    // Si pas de firstChild, placer à la fin
+                    range.selectNodeContents(element);
+                    range.collapse(false);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    return true;
+                }
+            } catch (error) {
+                log(`❌ Erreur lors du placement du curseur: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // Gestion des événements pour chaque cellule
+        function setupCellEvents() {
+            const cells = document.querySelectorAll('.test-cell');
+            
+            cells.forEach((cell, index) => {
+                let hasBeenModified = false;
+                
+                // ✅ Événement input (pendant la frappe) - CAPTURE AUTOMATIQUE
+                cell.addEventListener('input', () => {
+                    log(`📝 Input détecté sur ${cell.getAttribute('data-label')}`, 'info');
+                    
+                    // ✅ CAPTURE AUTOMATIQUE DÈS LA MODIFICATION (comme dans l'app principale)
+                    if (!hasBeenModified) {
+                        hasBeenModified = true;
+                        
+                        // ✅ CAPTURER L'ÉTAT DE FOCUS AUTOMATIQUEMENT
+                        capturedFocusState = {
+                            element: cell,
+                            position: getCaretOffsetWithin(cell),
+                            timestamp: Date.now(),
+                            rowIndex: 0, // Pour le test
+                            colLabel: cell.getAttribute('data-label') || ''
+                        };
+                        
+                        log(`📝 Modification détectée sur ${cell.getAttribute('data-label')}`, 'info');
+                        log(`📝 État de focus capturé automatiquement: ${capturedFocusState.colLabel}, position ${capturedFocusState.position}`, 'success');
+                        
+                        // Mettre à jour les statistiques
+                        testResults.captures++;
+                        updateStatus(`Captures: ${testResults.captures}, Restaurations: ${testResults.restorations}, Succès: ${testResults.successes}, Persistance: ${testResults.cursorPersistence}`);
+                        
+                    } else {
+                        // ✅ Mettre à jour la position si la cellule est toujours active
+                        if (document.activeElement === cell) {
+                            capturedFocusState.position = getCaretOffsetWithin(cell);
+                            log(`📝 Position mise à jour: ${capturedFocusState.position}`, 'info');
+                        }
+                    }
+                });
+                
+                // Événement focus
+                cell.addEventListener('focus', () => {
+                    log(`📍 Focus sur ${cell.getAttribute('data-label')}`, 'info');
+                });
+                
+                // Événement blur
+                cell.addEventListener('blur', () => {
+                    log(`🚪 Blur sur ${cell.getAttribute('data-label')}`, 'info');
+                    hasBeenModified = false;
+                });
+            });
+        }
+        
+        // Initialisation
+        log('✅ Test de persistance du curseur initialisé avec succès', 'success');
+        log('🎯 Objectif: Capture avant sauvegarde, restauration après, curseur persistant', 'success');
+        log('💡 Le curseur doit rester visible et fonctionnel après restauration', 'info');
+        
+        // Configurer les événements
+        setupCellEvents();
+        
+        // Afficher l'état initial
+        log('📊 État initial:', 'info');
+        log('   - 3 cellules de test configurées', 'info');
+        log('   - Système de capture intégré (captureFocusBeforeSave)', 'info');
+        log('   - Système de restauration intégré (restoreFocusAfterSave)', 'info');
+        log('   - Test de persistance du curseur', 'info');
+        log('   - Vérification automatique des positions restaurées', 'info');
+        
+        updateStatus('Prêt pour le test - Cliquez dans une cellule et placez le curseur');
+    </script>
+</body>
+</html>

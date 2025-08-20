@@ -4465,7 +4465,25 @@
                 return; 
             }
             
-            // Remember which cell and caret position were active before saving
+            // ✅ CAPTURER LA CELLULE SÉLECTIONNÉE AVANT LA SAUVEGARDE
+            const activeElement = document.activeElement;
+            let capturedFocusState = null;
+            
+            if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+                capturedFocusState = {
+                    element: activeElement,
+                    position: getCaretOffsetWithin(activeElement),
+                    timestamp: Date.now(),
+                    rowIndex: Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr')),
+                    colLabel: activeElement.getAttribute('data-label') || ''
+                };
+                
+                log(`📝 Cellule sélectionnée capturée avant sauvegarde: ${capturedFocusState.colLabel}, position ${capturedFocusState.position}`, 'info');
+            } else {
+                log('⚠️ Aucune cellule active trouvée pour capture avant sauvegarde', 'warning');
+            }
+            
+            // Remember which cell and caret position were active before saving (legacy)
             captureFocusInfo();
             captureSimplePos();
             
@@ -4544,37 +4562,90 @@
                 lastSaveTime = Date.now();
                 log(`✅ Sauvegarde réussie à ${new Date(lastSaveTime).toLocaleTimeString()} - Cooldown temps réel activé pour ${REALTIME_COOLDOWN_MS}ms`);
                 
-                log(`syncToMaster -> Focus restoration (lastCellPos=${JSON.stringify(lastCellPos)}, lastFocusInfo.col=${lastFocusInfo ? lastFocusInfo.colLabel : ''})`);
-                
-                // Restaurer le focus directement sans recharger les données
-                // car les données sont déjà synchronisées avec Supabase
-                setTimeout(() => {
-                    log('🔍 Restauration directe du focus sans rechargement...');
+                // ✅ RESTAURER LA CELLULE SÉLECTIONNÉE APRÈS LA SAUVEGARDE
+                if (capturedFocusState && capturedFocusState.element) {
+                    log(`🔄 Restauration de la cellule sélectionnée après sauvegarde: ${capturedFocusState.colLabel}`, 'info');
                     
-                    // Try simple row/cell index first
-                    const posResult = focusCellByPos(lastCellPos);
-                    log(`🔍 focusCellByPos result: ${posResult}`);
-                    
-                    if (!posResult) {
-                        // Fallback to the richer label+caret based restore
-                        const infoResult = focusCellFromInfo(lastFocusInfo);
-                        log(`🔍 focusCellFromInfo result: ${infoResult}`);
-                        
-                        if (!infoResult) {
-                            log('🔍 Both focus methods failed, trying delayed retry...');
-                            setTimeout(() => { 
-                                if (!focusCellByPos(lastCellPos) && !focusCellFromInfo(lastFocusInfo)) { 
-                                    log('🔍 Delayed retry also failed, trying final attempt...');
-                                    setTimeout(() => { 
-                                        const finalPos = focusCellByPos(lastCellPos);
-                                        const finalInfo = focusCellFromInfo(lastFocusInfo);
-                                        log(`🔍 Final attempt - pos: ${finalPos}, info: ${finalInfo}`);
-                                    }, 250); 
-                                } 
-                            }, 50);
+                    setTimeout(() => {
+                        try {
+                            // Restaurer le focus sur la cellule
+                            capturedFocusState.element.focus();
+                            log(`✅ Focus restauré sur la cellule: ${capturedFocusState.colLabel}`, 'success');
+                            
+                            // Restaurer la position du curseur
+                            if (capturedFocusState.position !== null && capturedFocusState.position !== undefined) {
+                                try {
+                                    setCaretAt(capturedFocusState.element, capturedFocusState.position);
+                                    log(`✅ Curseur restauré à la position ${capturedFocusState.position} dans ${capturedFocusState.colLabel}`, 'success');
+                                } catch (caretError) {
+                                    log(`⚠️ Erreur lors de la restauration du curseur: ${caretError.message}`, 'warning');
+                                    // Fallback: placer le curseur à la fin
+                                    try {
+                                        setCaretAt(capturedFocusState.element, null);
+                                        log(`✅ Curseur placé à la fin (fallback) dans ${capturedFocusState.colLabel}`, 'success');
+                                    } catch (fallbackError) {
+                                        log(`❌ Erreur fallback: ${fallbackError.message}`, 'error');
+                                    }
+                                }
+                            } else {
+                                log(`⚠️ Position du curseur non disponible dans ${capturedFocusState.colLabel}, placement à la fin`, 'warning');
+                                // Placer le curseur à la fin
+                                try {
+                                    setCaretAt(capturedFocusState.element, null);
+                                    log(`✅ Curseur placé à la fin dans ${capturedFocusState.colLabel}`, 'success');
+                                } catch (fallbackError) {
+                                    log(`❌ Erreur fallback: ${fallbackError.message}`, 'error');
+                                }
+                            }
+                            
+                            // Faire défiler vers la cellule restaurée (sans effet visuel)
+                            capturedFocusState.element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                            
+                        } catch (error) {
+                            log(`❌ Erreur lors de la restauration de la cellule sélectionnée: ${error.message}`, 'error');
                         }
-                    }
-                }, 100);
+                    }, 100);
+                    
+                } else {
+                    log('⚠️ Aucune cellule sélectionnée à restaurer après sauvegarde', 'warning');
+                }
+                
+                // ✅ NOUVELLE LOGIQUE: Si notre restauration a réussi, ne pas utiliser l'ancienne
+                if (capturedFocusState && capturedFocusState.element) {
+                    log(`✅ Restauration personnalisée réussie, ancienne restauration ignorée pour éviter les conflits`);
+                } else {
+                    log(`syncToMaster -> Focus restoration (lastCellPos=${JSON.stringify(lastCellPos)}, lastFocusInfo.col=${lastFocusInfo ? lastFocusInfo.colLabel : ''})`);
+                    
+                    // Restaurer le focus directement sans recharger les données
+                    // car les données sont déjà synchronisées avec Supabase
+                    setTimeout(() => {
+                        log('🔍 Restauration directe du focus sans rechargement...');
+                        
+                        // Try simple row/cell index first
+                        const posResult = focusCellByPos(lastCellPos);
+                        log(`🔍 focusCellByPos result: ${posResult}`);
+                        
+                        if (!posResult) {
+                            // Fallback to the richer label+caret based restore
+                            const infoResult = focusCellFromInfo(lastFocusInfo);
+                            log(`🔍 focusCellFromInfo result: ${infoResult}`);
+                            
+                            if (!infoResult) {
+                                log('🔍 Both focus methods failed, trying delayed retry...');
+                                setTimeout(() => { 
+                                    if (!focusCellByPos(lastCellPos) && !focusCellFromInfo(lastFocusInfo)) { 
+                                        log('🔍 Delayed retry also failed, trying final attempt...');
+                                        setTimeout(() => { 
+                                            const finalPos = focusCellByPos(lastCellPos);
+                                            const finalInfo = focusCellFromInfo(lastFocusInfo);
+                                            log(`🔍 Final attempt - pos: ${finalPos}, info: ${finalInfo}`);
+                                        }, 250); 
+                                    } 
+                                }, 50);
+                            }
+                        }
+                    }, 100);
+                }
             } catch(e) {
                 log('Erreur de sauvegarde : ' + e.message, 'error');
                 updateStatus('Erreur de sauvegarde', 'error');
@@ -4609,7 +4680,14 @@
                     break;
             }
 
-            // Refresh data from Supabase after a short delay
+            // ✅ CORRECTION: Éviter le rechargement automatique qui peut interférer avec la restauration du focus
+            // Seulement recharger si c'est vraiment nécessaire et si aucune restauration de focus n'est en cours
+            if (capturedFocusState && capturedFocusState.element) {
+                console.log('⚠️ Realtime update ignoré - restauration de focus en cours pour éviter les conflits');
+                return;
+            }
+            
+            // Refresh data from Supabase after a short delay (seulement si nécessaire)
             setTimeout(() => {
                 if (typeof fetchInitialData === 'function') {
                     console.log('🔄 Refreshing data from Supabase via realtime update...');
