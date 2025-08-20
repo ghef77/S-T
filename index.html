@@ -4611,16 +4611,17 @@
 
             // Refresh data from Supabase after a short delay
             setTimeout(() => {
-                if (typeof loadFromSupabase === 'function') {
-                    loadFromSupabase().then(data => {
-                        if (data && data.length > 0) {
-                            console.log('✅ Data refreshed from Supabase');
-                            updateStatus('Données synchronisées', 'success');
-                        }
+                if (typeof fetchInitialData === 'function') {
+                    console.log('🔄 Refreshing data from Supabase via realtime update...');
+                    fetchInitialData().then(() => {
+                        console.log('✅ Data refreshed from Supabase via realtime');
+                        updateStatus('Données synchronisées via temps réel', 'success');
                     }).catch(error => {
-                        console.error('❌ Error refreshing data:', error);
-                        updateStatus('Erreur de synchronisation', 'error');
+                        console.error('❌ Error refreshing data via realtime:', error);
+                        updateStatus('Erreur de synchronisation temps réel', 'error');
                     });
+                } else {
+                    console.warn('⚠️ fetchInitialData function not available for realtime sync');
                 }
             }, 1000);
         }
