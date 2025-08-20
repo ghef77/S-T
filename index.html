@@ -4563,6 +4563,14 @@
             });
             showStatusIndicator(`🗑️ Suppression de ${rows.length} ligne(s)...`, 'deleting');
             
+            // ✅ BLOQUER LE REAL-TIME SYNC PENDANT LA SUPPRESSION
+            const originalRealtimeSubscription = realtimeSubscription;
+            if (realtimeSubscription) {
+                log('⚠️ Blocage du real-time sync pendant la suppression...', 'warning');
+                realtimeSubscription.unsubscribe();
+                realtimeSubscription = null;
+            }
+            
             // ✅ ANIMATION DE SUPPRESSION POUR CHAQUE LIGNE
             rows.forEach(row => {
                 row.classList.add('row-deleting');
@@ -4615,6 +4623,15 @@
                     
                     // ✅ MASQUER L'INDICATEUR DE SUPPRESSION
                     hideStatusIndicator();
+                    
+                    // ✅ RÉACTIVER LE REAL-TIME SYNC APRÈS LA SUPPRESSION
+                    setTimeout(() => {
+                        if (originalRealtimeSubscription && !realtimeSubscription) {
+                            log('🔄 Réactivation du real-time sync après suppression...', 'info');
+                            // Réactiver la synchronisation temps réel
+                            setupRealtimeSync();
+                        }
+                    }, 1000); // Délai de sécurité après suppression
                 }, 500); // Durée de l'animation
                 
                 // Rebuild color map after deletions and renumbering
@@ -4958,6 +4975,12 @@
             // ✅ CORRECTION: Bloquer la synchronisation temps réel pendant undo/redo
             if (isPerformingUndoRedo) {
                 console.log('⚠️ Realtime update ignoré (opération undo/redo en cours)');
+                return;
+            }
+            
+            // ✅ CORRECTION: Bloquer la synchronisation temps réel pendant les suppressions
+            if (document.querySelector('.row-deleting')) {
+                console.log('⚠️ Realtime update ignoré (suppression de ligne en cours)');
                 return;
             }
 
