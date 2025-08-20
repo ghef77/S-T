@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Synchronisation Temps Réel - Application Principale</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; max-height: 300px; overflow-y: auto; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 3px; font-weight: bold; }
+        .realtime-status { padding: 15px; margin: 15px 0; border-radius: 5px; font-weight: bold; text-align: center; }
+        .realtime-active { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .realtime-inactive { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        iframe { width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Test de la Synchronisation Temps Réel - Application Principale</h1>
+        <p class="info">Cette page teste la synchronisation temps réel dans l'application principale <code>index.html</code>.</p>
+        
+        <div class="realtime-status" id="realtime-status">
+            <h3>📡 Statut de la Synchronisation Temps Réel</h3>
+            <p id="realtime-status-text">Prêt pour le test...</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Test de l'Application Principale</h3>
+            <p><strong>Instructions :</strong></p>
+            <ol>
+                <li><strong>Ouvrez cette page sur deux appareils différents</strong></li>
+                <li><strong>Cliquez sur "Ouvrir l'Application Principale"</strong> sur les deux appareils</li>
+                <li><strong>Connectez-vous avec le mot de passe :</strong> <code>p123</code></li>
+                <li><strong>Appareil 1 :</strong> Modifiez une cellule du tableau</strong></li>
+                <li><strong>Appareil 2 :</strong> Vérifiez que la modification apparaît automatiquement</li>
+            </ol>
+            
+            <button onclick="openMainApp()" id="open-app-btn">🚀 Ouvrir l'Application Principale</button>
+            <button onclick="testRealtimeInMainApp()" id="test-realtime-btn" disabled>🔄 Tester la Synchronisation</button>
+            <div id="test-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📱 Application Principale (iframe)</h3>
+            <p><strong>Note :</strong> L'iframe peut ne pas fonctionner sur certains navigateurs. Utilisez le bouton "Ouvrir l'Application Principale" pour un test complet.</p>
+            <iframe id="main-app-frame" src="index.html" title="Application Principale"></iframe>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Logs de Test</h3>
+            <button onclick="clearLogs()">🗑️ Effacer les logs</button>
+            <div id="test-logs"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 Diagnostic de la Synchronisation</h3>
+            <p><strong>Messages de Succès Attendus dans la Console :</strong></p>
+            <div class="log">
+                <code>
+🔄 Setting up realtime subscription...<br>
+📡 Realtime subscription status: SUBSCRIBED<br>
+✅ Realtime synchronization activated<br>
+🔄 Realtime update received: {...}<br>
+🔄 Refreshing data from Supabase via realtime update...<br>
+✅ Data refreshed from Supabase via realtime
+                </code>
+            </div>
+            
+            <p><strong>Si ces messages n'apparaissent pas :</strong></p>
+            <ul>
+                <li>❌ <strong>Problème de connexion Supabase</strong> - Vérifiez la configuration</li>
+                <li>❌ <strong>Fonction setupRealtimeSubscription non appelée</strong> - Vérifiez l'initialisation</li>
+                <li>❌ <strong>Erreur dans handleRealtimeUpdate</strong> - Vérifiez les logs d'erreur</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>🚨 Résolution des Problèmes</h3>
+            <p><strong>Problème 1 :</strong> "Synchronisation temps réel ne fonctionne pas"</p>
+            <ul>
+                <li>✅ Vérifiez que <code>setupRealtimeSubscription()</code> est appelé</li>
+                <li>✅ Vérifiez que <code>handleRealtimeUpdate()</code> fonctionne</li>
+                <li>✅ Vérifiez que <code>fetchInitialData()</code> est disponible</li>
+            </ul>
+            
+            <p><strong>Problème 2 :</strong> "Erreur de connexion Supabase"</p>
+            <ul>
+                <li>✅ Vérifiez l'URL et la clé API dans la console</li>
+                <li>✅ Vérifiez que la table <code>staffTable</code> est accessible</li>
+                <li>✅ Vérifiez les politiques RLS</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let mainAppWindow = null;
+
+        // Ouvrir l'application principale dans une nouvelle fenêtre
+        function openMainApp() {
+            try {
+                log('🚀 Ouverture de l\'application principale...');
+                
+                // Ouvrir dans une nouvelle fenêtre
+                mainAppWindow = window.open('index.html', 'mainApp', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+                
+                if (mainAppWindow) {
+                    log('✅ Application principale ouverte dans une nouvelle fenêtre', 'success');
+                    document.getElementById('test-realtime-btn').disabled = false;
+                    document.getElementById('realtime-status-text').textContent = 'Application ouverte - Prêt pour le test de synchronisation';
+                    
+                    // Surveiller la fermeture de la fenêtre
+                    const checkClosed = setInterval(() => {
+                        if (mainAppWindow.closed) {
+                            clearInterval(checkClosed);
+                            log('⚠️ Fenêtre de l\'application principale fermée', 'warning');
+                            document.getElementById('test-realtime-btn').disabled = true;
+                            document.getElementById('realtime-status-text').textContent = 'Application fermée - Rouvrez pour tester';
+                        }
+                    }, 1000);
+                    
+                } else {
+                    log('❌ Impossible d\'ouvrir l\'application principale', 'error');
+                }
+                
+            } catch (error) {
+                log('❌ Erreur lors de l\'ouverture: ' + error.message, 'error');
+            }
+        }
+
+        // Tester la synchronisation temps réel dans l'application principale
+        function testRealtimeInMainApp() {
+            try {
+                if (!mainAppWindow || mainAppWindow.closed) {
+                    log('❌ L\'application principale n\'est pas ouverte', 'error');
+                    return;
+                }
+
+                log('🔄 Test de synchronisation temps réel dans l\'application principale...');
+                
+                // Instructions pour l'utilisateur
+                const instructions = `
+                    <div class="log info">
+                        <strong>Instructions de Test :</strong><br>
+                        1. <strong>Appareil 1 :</strong> Modifiez une cellule du tableau<br>
+                        2. <strong>Appareil 2 :</strong> Vérifiez que la modification apparaît automatiquement<br>
+                        3. <strong>Temps d'attente :</strong> 1-5 secondes pour la synchronisation<br>
+                        4. <strong>Si pas de synchronisation :</strong> Vérifiez la console de l'application principale
+                    </div>
+                `;
+                
+                document.getElementById('test-results').innerHTML = instructions;
+                
+                // Ouvrir la console de l'application principale
+                try {
+                    mainAppWindow.focus();
+                    log('✅ Application principale focalisée - Prêt pour le test', 'success');
+                } catch (error) {
+                    log('⚠️ Impossible de focaliser l\'application principale: ' + error.message, 'warning');
+                }
+                
+            } catch (error) {
+                log('❌ Erreur lors du test: ' + error.message, 'error');
+            }
+        }
+
+        // Fonction utilitaire pour logger
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('test-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log ${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        // Effacer les logs
+        function clearLogs() {
+            document.getElementById('test-logs').innerHTML = '';
+        }
+
+        // Initialisation
+        window.addEventListener('load', () => {
+            log('🚀 Page de test de l\'application principale chargée');
+            log('📋 Prêt pour tester la synchronisation temps réel');
+        });
+
+        // Surveiller les messages de l'iframe (si supporté)
+        window.addEventListener('message', (event) => {
+            if (event.origin === window.location.origin) {
+                log('📨 Message reçu de l\'application principale: ' + JSON.stringify(event.data), 'info');
+            }
+        });
+    </script>
+</body>
+</html>
