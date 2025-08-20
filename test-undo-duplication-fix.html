@@ -80,6 +80,115 @@
             border-radius: 4px;
             cursor: pointer;
         }
+        
+        /* ✅ INDICATEURS VISUELS POUR SUPPRESSION ET RESTAURATION */
+        .row-deleting {
+            animation: deleteRow 0.5s ease-out;
+            background-color: #ffebee !important;
+            border: 2px solid #f44336 !important;
+        }
+        
+        .row-restoring {
+            animation: restoreRow 0.6s ease-in;
+            background-color: #e8f5e8 !important;
+            border: 2px solid #4caf50 !important;
+        }
+        
+        .row-deleted {
+            opacity: 0.3;
+            background-color: #f5f5f5 !important;
+            text-decoration: line-through;
+            color: #999 !important;
+        }
+        
+        .row-restored {
+            animation: highlightRestored 1s ease-in-out;
+        }
+        
+        /* ✅ ANIMATIONS CSS */
+        @keyframes deleteRow {
+            0% { 
+                transform: scale(1);
+                opacity: 1;
+                background-color: #ffebee;
+            }
+            50% { 
+                transform: scale(0.95);
+                background-color: #ffcdd2;
+            }
+            100% { 
+                transform: scale(0.9);
+                opacity: 0.3;
+                background-color: #f5f5f5;
+            }
+        }
+        
+        @keyframes restoreRow {
+            0% { 
+                transform: scale(0.8);
+                opacity: 0;
+                background-color: #e8f5e8;
+            }
+            50% { 
+                transform: scale(1.05);
+                background-color: #c8e6c9;
+            }
+            100% { 
+                transform: scale(1);
+                opacity: 1;
+                background-color: #e8f5e8;
+            }
+        }
+        
+        @keyframes highlightRestored {
+            0% { 
+                background-color: #4caf50;
+                color: white;
+                transform: scale(1.02);
+            }
+            50% { 
+                background-color: #66bb6a;
+                transform: scale(1.05);
+            }
+            100% { 
+                background-color: #e8f5e8;
+                transform: scale(1);
+            }
+        }
+        
+        /* ✅ INDICATEURS DE STATUT */
+        .status-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .status-deleting {
+            background-color: #f44336;
+            border: 2px solid #d32f2f;
+        }
+        
+        .status-restoring {
+            background-color: #4caf50;
+            border: 2px solid #388e3c;
+        }
+        
+        @keyframes slideIn {
+            from { 
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to { 
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -182,13 +291,19 @@
             document.getElementById('restored-count').textContent = operationHistory.filter(op => op.type === 'restore').length;
         }
         
-        // ✅ FONCTION DE SUPPRESSION DE LIGNE (SIMULÉE)
+        // ✅ FONCTION DE SUPPRESSION DE LIGNE AVEC INDICATEURS VISUELS
         function deleteRow(button) {
             const row = button.closest('tr');
             const rowKey = row.dataset.key;
             const rowNumber = row.querySelector('td:first-child').textContent;
             
             log(`🗑️ Suppression de la ligne ${rowNumber} (clé: ${rowKey})`, 'warning');
+            
+            // ✅ INDICATEUR VISUEL DE SUPPRESSION
+            showStatusIndicator(`🗑️ Suppression de la ligne ${rowNumber}...`, 'deleting');
+            
+            // ✅ ANIMATION DE SUPPRESSION
+            row.classList.add('row-deleting');
             
             // ✅ CAPTURER LES DONNÉES AVANT SUPPRESSION
             const rowData = {
@@ -213,17 +328,22 @@
             operationHistory.push(deleteOperation);
             deletedRowsData.push(rowData);
             
-            // ✅ SUPPRIMER LA LIGNE DU DOM
-            row.remove();
-            
-            // ✅ RENUMÉROTER LES LIGNES
-            renumberRows();
-            
-            log(`✅ Ligne ${rowNumber} supprimée et opération enregistrée`, 'success');
-            updateOperationCounts();
+            // ✅ SUPPRIMER LA LIGNE DU DOM APRÈS ANIMATION
+            setTimeout(() => {
+                row.remove();
+                
+                // ✅ RENUMÉROTER LES LIGNES
+                renumberRows();
+                
+                // ✅ MASQUER L'INDICATEUR DE SUPPRESSION
+                hideStatusIndicator();
+                
+                log(`✅ Ligne ${rowNumber} supprimée et opération enregistrée`, 'success');
+                updateOperationCounts();
+            }, 500); // Durée de l'animation
         }
         
-        // ✅ FONCTION UNDO CORRIGÉE (SANS DUPLICATION)
+        // ✅ FONCTION UNDO CORRIGÉE AVEC INDICATEURS VISUELS (SANS DUPLICATION)
         function undo() {
             if (operationHistory.length === 0) {
                 log('⚠️ Aucune opération à annuler', 'warning');
@@ -235,12 +355,18 @@
             if (lastOperation.type === 'delete') {
                 log(`🔄 Tentative de restauration de la ligne supprimée...`, 'info');
                 
+                // ✅ INDICATEUR VISUEL DE RESTAURATION
+                showStatusIndicator(`🔄 Restauration de la ligne...`, 'restoring');
+                
                 // ✅ VÉRIFIER SI LA LIGNE EXISTE DÉJÀ (ANTI-DUPLICATION)
                 const existingRow = document.querySelector(`tr[data-key="${lastOperation.data.rowKeys[0]}"]`);
                 if (existingRow) {
                     log(`⚠️ LIGNE DÉJÀ PRÉSENTE - ÉVITER LA DUPLICATION`, 'warning');
                     log(`   - Clé existante: ${lastOperation.data.rowKeys[0]}`, 'warning');
                     log(`   - Numéro de ligne: ${lastOperation.data.rowNumbers[0]}`, 'warning');
+                    
+                    // ✅ MASQUER L'INDICATEUR DE RESTAURATION
+                    hideStatusIndicator();
                     return;
                 }
                 
@@ -251,20 +377,27 @@
                 // ✅ CRÉER LA NOUVELLE LIGNE
                 const newRow = document.createElement('tr');
                 newRow.dataset.key = rowData.key;
-                newRow.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
+                newRow.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer row-restoring';
                 
                 // ✅ CELLULE NUMÉRO
                 const numCell = document.createElement('td');
                 numCell.textContent = rowData.number;
                 newRow.appendChild(numCell);
                 
-                // ✅ CELLULE ACTION (bouton supprimer)
+                // ✅ CELLULE ACTION (bouton supprimer + undo)
                 const actionCell = document.createElement('td');
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn';
                 deleteBtn.textContent = '🗑️';
                 deleteBtn.onclick = function() { deleteRow(this); };
                 actionCell.appendChild(deleteBtn);
+                
+                const undoBtn = document.createElement('button');
+                undoBtn.className = 'undo-btn';
+                undoBtn.textContent = '↶';
+                undoBtn.onclick = function() { undo(); };
+                actionCell.appendChild(undoBtn);
+                
                 newRow.appendChild(actionCell);
                 
                 // ✅ CELLULES DE DONNÉES
@@ -284,6 +417,20 @@
                 
                 // ✅ RENUMÉROTER APRÈS RESTAURATION
                 renumberRows();
+                
+                // ✅ ANIMATION DE RESTAURATION COMPLÈTE
+                setTimeout(() => {
+                    newRow.classList.remove('row-restoring');
+                    newRow.classList.add('row-restored');
+                    
+                    // ✅ MASQUER L'INDICATEUR DE RESTAURATION
+                    hideStatusIndicator();
+                    
+                    // ✅ RETIRER LA CLASSE D'ANIMATION APRÈS COMPLÉTION
+                    setTimeout(() => {
+                        newRow.classList.remove('row-restored');
+                    }, 1000);
+                }, 600); // Durée de l'animation de restauration
                 
                 // ✅ ENREGISTRER L'OPÉRATION DE RESTAURATION
                 const restoreOperation = {
@@ -418,8 +565,31 @@
                 </tr>
             `;
             
+            // ✅ Ajouter les boutons undo aux nouvelles lignes
+            addUndoButton();
+            
             updateOperationCounts();
-            log('✅ Tableau réinitialisé', 'success');
+            log('✅ Tableau réinitialisé avec boutons undo', 'success');
+        }
+        
+        // ✅ FONCTIONS POUR LES INDICATEURS DE STATUT
+        function showStatusIndicator(message, type) {
+            // Supprimer l'ancien indicateur s'il existe
+            hideStatusIndicator();
+            
+            const indicator = document.createElement('div');
+            indicator.className = `status-indicator status-${type}`;
+            indicator.textContent = message;
+            indicator.id = 'status-indicator';
+            
+            document.body.appendChild(indicator);
+        }
+        
+        function hideStatusIndicator() {
+            const existingIndicator = document.getElementById('status-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
         }
         
         // ✅ AJOUTER BOUTON UNDO AU TABLEAU
