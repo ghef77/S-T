@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Préservation du Focus - Autosave</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-warning { background-color: #ffc107; color: black; }
+        .log { background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0; font-family: monospace; }
+        .test-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .test-table th, .test-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .test-table th { background-color: #f8f9fa; }
+        .editable-cell { background-color: #fff; cursor: text; transition: all 0.2s ease; }
+        .editable-cell:focus { background-color: #e3f2fd; outline: 2px solid #2196f3; box-shadow: 0 0 10px rgba(33, 150, 243, 0.3); }
+        .editable-cell:hover { background-color: #f5f5f5; }
+        .editable-cell.testing { background-color: #fff3cd; border: 2px solid #ffc107; }
+        .editable-cell.restored { background-color: #d4edda; border: 2px solid #28a745; animation: pulse 1s ease-in-out; }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test de Préservation du Focus après Autosave</h1>
+    
+    <div class="test-section info">
+        <h3>📋 Instructions de Test</h3>
+        <p>Ce test vérifie que le curseur reste dans la cellule éditée après la sauvegarde automatique.</p>
+        
+        <h4>🎯 Méthode Simple (Recommandée):</h4>
+        <ol>
+            <li><strong>Cliquez sur "🧪 Test Complet Automatique"</strong></li>
+            <li>Cliquez dans une cellule du tableau (Nom, Prénom, Email, etc.)</li>
+            <li>Tapez du texte (par exemple "Test focus")</li>
+            <li>Le test se lance automatiquement et simule l'autosave</li>
+        </ol>
+        
+        <h4>🔧 Méthode Manuelle:</h4>
+        <ol>
+            <li>Cliquez dans une cellule du tableau</li>
+            <li>Cliquez sur "📝 Test Capture Focus"</li>
+            <li>Cliquez sur "💾 Simuler Autosave"</li>
+            <li>Vérifiez que le curseur reste dans la cellule</li>
+        </ol>
+        
+        <p><strong>💡 Conseil:</strong> Commencez par le "Test Complet Automatique" pour une expérience fluide !</p>
+    </div>
+
+            <div class="test-section">
+            <h3>🔧 Tests de Focus</h3>
+            <button onclick="runCompleteTest()" class="btn-primary">🧪 Test Complet Automatique</button>
+            <button onclick="testFocusCapture()" class="btn-primary">📝 Test Capture Focus</button>
+            <button onclick="testFocusRestoration()" class="btn-success">🔄 Test Restauration Focus</button>
+            <button onclick="simulateAutosave()" class="btn-warning">💾 Simuler Autosave</button>
+            <button onclick="clearLogs()" class="btn-warning">🗑️ Effacer Logs</button>
+        </div>
+
+    <div class="test-section">
+        <h3>📊 Tableau de Test</h3>
+        <table class="test-table">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Nom</th>
+                    <th>Prénom</th>
+                    <th>Email</th>
+                    <th>Téléphone</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td class="editable-cell" contenteditable="true" data-label="Nom">Dupont</td>
+                    <td class="editable-cell" contenteditable="true" data-label="Prénom">Jean</td>
+                    <td class="editable-cell" contenteditable="true" data-label="Email">jean.dupont@email.com</td>
+                    <td class="editable-cell" contenteditable="true" data-label="Téléphone">0123456789</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td class="editable-cell" contenteditable="true" data-label="Nom">Martin</td>
+                    <td class="editable-cell" contenteditable="true" data-label="Prénom">Marie</td>
+                    <td class="editable-cell" contenteditable="true" data-label="Email">marie.martin@email.com</td>
+                    <td class="editable-cell" contenteditable="true" data-label="Téléphone">0987654321</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td class="editable-cell" contenteditable="true" data-label="Nom">Bernard</td>
+                    <td class="editable-cell" contenteditable="true" data-label="Prénom">Pierre</td>
+                    <td class="editable-cell" contenteditable="true" data-label="Email">pierre.bernard@email.com</td>
+                    <td class="editable-cell" contenteditable="true" data-label="Téléphone">0555666777</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="test-section">
+        <h3>📊 Résultats des Tests</h3>
+        <div id="test-results" class="log">Aucun test exécuté...</div>
+    </div>
+
+    <div class="test-section">
+        <h3>📝 Logs Détaillés</h3>
+        <div id="detailed-logs" class="log">Logs détaillés...</div>
+    </div>
+
+    <script>
+        // Variables globales pour simuler le système de focus
+        let lastFocusInfo = null;
+        let lastCellPos = null;
+        let isTyping = false;
+        let lastEditAt = Date.now();
+        
+        // Configuration d'autosave simulée
+        const AUTOSAVE_DELAY_MS = 3000; // 3 secondes
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            
+            // Ajouter aux logs détaillés
+            const detailedLogs = document.getElementById('detailed-logs');
+            detailedLogs.innerHTML += logEntry + '\n';
+            
+            // Ajouter aux résultats des tests
+            const testResults = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = type;
+            resultDiv.textContent = logEntry;
+            testResults.appendChild(resultDiv);
+            
+            console.log(logEntry);
+        }
+        
+        function clearLogs() {
+            document.getElementById('test-results').innerHTML = 'Logs effacés...';
+            document.getElementById('detailed-logs').innerHTML = 'Logs détaillés...';
+        }
+        
+        // Fonction pour capturer les informations de focus
+        function captureFocusInfo() {
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.classList.contains('editable-cell')) {
+                const row = activeElement.closest('tr');
+                const rowIndex = Array.from(row.parentNode.children).indexOf(row);
+                const cells = Array.from(row.children);
+                const cellIndex = cells.indexOf(activeElement);
+                const colLabel = activeElement.getAttribute('data-label');
+                
+                lastFocusInfo = {
+                    rowKey: `row-${rowIndex}`,
+                    rowIndex: rowIndex,
+                    colLabel: colLabel,
+                    caret: getCursorPosition(activeElement)
+                };
+                
+                lastCellPos = {
+                    rowIndex: rowIndex,
+                    cellIndex: cellIndex
+                };
+                
+                log(`📝 Focus capturé: Ligne ${rowIndex}, Cellule ${colLabel}, Position curseur: ${lastFocusInfo.caret}`, 'success');
+                
+                return true;
+            }
+            return false;
+        }
+        
+        // Fonction pour obtenir la position du curseur
+        function getCursorPosition(element) {
+            if (!element || element.contentEditable !== 'true') {
+                return null;
+            }
+            
+            try {
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    const preCaretRange = range.cloneRange();
+                    preCaretRange.selectNodeContents(element);
+                    preCaretRange.setEnd(range.endContainer, range.endOffset);
+                    return preCaretRange.toString().length;
+                }
+            } catch (error) {
+                console.warn('⚠️ Erreur lors de la récupération de la position du curseur:', error);
+            }
+            
+            return null;
+        }
+        
+        // Fonction pour restaurer le focus
+        function restoreFocus() {
+            if (!lastFocusInfo || !lastCellPos) {
+                log('⚠️ Aucune information de focus à restaurer', 'warning');
+                return false;
+            }
+            
+            try {
+                const tbody = document.querySelector('.test-table tbody');
+                const targetRow = tbody.children[lastCellPos.rowIndex];
+                
+                if (!targetRow) {
+                    log('❌ Ligne cible non trouvée', 'error');
+                    return false;
+                }
+                
+                const targetCell = targetRow.children[lastCellPos.cellIndex];
+                
+                if (!targetCell) {
+                    log('❌ Cellule cible non trouvée', 'error');
+                    return false;
+                }
+                
+                // Restaurer le focus
+                targetCell.focus();
+                
+                // Restaurer la position du curseur
+                if (lastFocusInfo.caret !== null) {
+                    const range = document.createRange();
+                    const selection = window.getSelection();
+                    
+                    if (targetCell.firstChild) {
+                        range.setStart(targetCell.firstChild, Math.min(lastFocusInfo.caret, targetCell.textContent.length));
+                        range.collapse(true);
+                    } else {
+                        range.selectNodeContents(targetCell);
+                        range.collapse(true);
+                    }
+                    
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    log(`✅ Curseur restauré à la position ${lastFocusInfo.caret}`, 'success');
+                } else {
+                    // Placer le curseur à la fin
+                    const range = document.createRange();
+                    const selection = window.getSelection();
+                    range.selectNodeContents(targetCell);
+                    range.collapse(false);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    log('✅ Curseur placé à la fin du texte', 'success');
+                }
+                
+                log(`✅ Focus restauré: Ligne ${lastCellPos.rowIndex}, Cellule ${lastFocusInfo.colLabel}`, 'success');
+                return true;
+                
+            } catch (error) {
+                log(`❌ Erreur lors de la restauration du focus: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // Test de capture du focus
+        function testFocusCapture() {
+            log('🧪 Test de capture du focus...');
+            
+            // Vérifier d'abord si une cellule est focalisée
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.classList.contains('editable-cell')) {
+                // Ajouter une classe visuelle pour indiquer que la cellule est en cours de test
+                activeElement.classList.add('testing');
+                
+                const focusInfo = captureFocusInfo();
+                if (focusInfo && focusInfo.colLabel && focusInfo.rowIndex !== undefined) {
+                    log('✅ Test de capture réussi', 'success');
+                    log(`📍 Cellule: ${focusInfo.colLabel}, Ligne: ${focusInfo.rowIndex}, Curseur: ${focusInfo.caret || 'fin du texte'}`, 'info');
+                    
+                    // Retirer la classe de test après un délai
+                    setTimeout(() => activeElement.classList.remove('testing'), 2000);
+                    return true;
+                } else {
+                    log('❌ Test de capture échoué - Erreur interne', 'error');
+                    log('🔍 Détails de debug:', 'info');
+                    console.log('focusInfo:', focusInfo);
+                    
+                    // Retirer la classe de test
+                    activeElement.classList.remove('testing');
+                    return false;
+                }
+            } else {
+                log('⚠️ Aucune cellule focalisée - Cliquez d\'abord dans une cellule du tableau', 'warning');
+                log('💡 Conseil: Cliquez dans une cellule (Nom, Prénom, Email, etc.) puis relancez le test', 'info');
+                return false;
+            }
+        }
+        
+        // Test de restauration du focus
+        function testFocusRestoration() {
+            log('🧪 Test de restauration du focus...');
+            
+            if (!lastFocusInfo || !lastCellPos) {
+                log('⚠️ Aucune information de focus à restaurer', 'warning');
+                log('💡 Conseil: Lancez d\'abord le test de capture du focus', 'info');
+                return;
+            }
+            
+            if (restoreFocus()) {
+                log('✅ Test de restauration réussi', 'success');
+            } else {
+                log('❌ Test de restauration échoué', 'error');
+            }
+        }
+        
+        // Simulation d'autosave
+        function simulateAutosave() {
+            log('🔄 Simulation d\'autosave...');
+            
+            // Vérifier d'abord si une cellule est focalisée
+            const activeElement = document.activeElement;
+            if (!activeElement || !activeElement.classList.contains('editable-cell')) {
+                // Essayer d'utiliser les dernières informations de focus capturées
+                if (lastFocusInfo && lastCellPos) {
+                    log('📝 Utilisation des dernières informations de focus capturées', 'info');
+                    log(`📍 Dernière cellule: ${lastFocusInfo.colLabel}, Ligne: ${lastFocusInfo.rowIndex}`, 'info');
+                    
+                    // Simuler l'autosave avec les informations capturées
+                    simulateAutosaveWithStoredInfo();
+                    return;
+                } else {
+                    log('⚠️ Aucune cellule focalisée et aucune information de focus stockée', 'warning');
+                    log('💡 Conseil: Cliquez d\'abord dans une cellule du tableau', 'info');
+                    return;
+                }
+            }
+            
+            // Capturer l'état actuel du focus
+            const focusBeforeAutosave = {
+                activeElement: activeElement,
+                selection: window.getSelection().toString(),
+                cursorPosition: getCursorPosition(activeElement)
+            };
+            
+            log(`📝 État du focus capturé avant autosave: ${activeElement.getAttribute('data-label')}`, 'info');
+            log(`📍 Position du curseur: ${focusBeforeAutosave.cursorPosition || 'fin du texte'}`, 'info');
+            
+            // Simuler le délai d'autosave
+            setTimeout(() => {
+                log('💾 Autosave terminé, restauration du focus...', 'info');
+                
+                // Restaurer le focus
+                if (focusBeforeAutosave.activeElement && document.contains(focusBeforeAutosave.activeElement)) {
+                    // Ajouter une classe visuelle pour indiquer la restauration
+                    focusBeforeAutosave.activeElement.classList.add('restored');
+                    
+                    focusBeforeAutosave.activeElement.focus();
+                    
+                    // Restaurer la position du curseur
+                    if (focusBeforeAutosave.cursorPosition !== null) {
+                        const range = document.createRange();
+                        const selection = window.getSelection();
+                        
+                        if (focusBeforeAutosave.activeElement.firstChild) {
+                            range.setStart(focusBeforeAutosave.activeElement.firstChild, 
+                                Math.min(focusBeforeAutosave.cursorPosition, focusBeforeAutosave.activeElement.textContent.length));
+                            range.collapse(true);
+                        } else {
+                            range.selectNodeContents(focusBeforeAutosave.activeElement);
+                            range.collapse(true);
+                        }
+                        
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                        log(`✅ Curseur restauré à la position ${focusBeforeAutosave.cursorPosition}`, 'success');
+                    } else {
+                        // Placer le curseur à la fin
+                        const range = document.createRange();
+                        const selection = window.getSelection();
+                        range.selectNodeContents(focusBeforeAutosave.activeElement);
+                        range.collapse(false);
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                        log('✅ Curseur placé à la fin du texte', 'success');
+                    }
+                    
+                    log('✅ Focus restauré après autosave simulé', 'success');
+                    
+                    // Retirer la classe de restauration après l'animation
+                    setTimeout(() => focusBeforeAutosave.activeElement.classList.remove('restored'), 3000);
+                } else {
+                    log('⚠️ L\'élément cible n\'est plus accessible', 'warning');
+                }
+            }, 1000); // Simuler 1 seconde de délai
+        }
+        
+        // Fonction de simulation d'autosave avec informations stockées
+        function simulateAutosaveWithStoredInfo() {
+            log('🔄 Simulation d\'autosave avec informations stockées...');
+            
+            // Utiliser les informations de focus stockées
+            const focusBeforeAutosave = {
+                activeElement: null, // Pas d'élément actif, on utilisera la position
+                selection: '',
+                cursorPosition: lastFocusInfo ? lastFocusInfo.caret : null
+            };
+            
+            log(`📝 Utilisation des informations stockées: ${lastFocusInfo.colLabel}, Position curseur: ${focusBeforeAutosave.cursorPosition || 'fin du texte'}`, 'info');
+            
+            // Simuler le délai d'autosave
+            setTimeout(() => {
+                log('💾 Autosave terminé, restauration du focus par position...', 'info');
+                
+                // Restaurer le focus en utilisant la position stockée
+                if (restoreFocus()) {
+                    log('✅ Focus restauré par position après autosave simulé', 'success');
+                    
+                    // Restaurer la position du curseur si possible
+                    const activeCell = document.activeElement;
+                    if (activeCell && activeCell.contentEditable === 'true' && focusBeforeAutosave.cursorPosition !== null) {
+                        const range = document.createRange();
+                        const selection = window.getSelection();
+                        
+                        if (activeCell.firstChild) {
+                            range.setStart(activeCell.firstChild, 
+                                Math.min(focusBeforeAutosave.cursorPosition, activeCell.textContent.length));
+                            range.collapse(true);
+                        } else {
+                            range.selectNodeContents(activeCell);
+                            range.collapse(true);
+                        }
+                        
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                        log(`✅ Curseur restauré à la position ${focusBeforeAutosave.cursorPosition}`, 'success');
+                    }
+                } else {
+                    log('❌ Échec de la restauration du focus par position', 'error');
+                }
+            }, 1000); // Simuler 1 seconde de délai
+        }
+        
+        // Test complet automatique
+        function runCompleteTest() {
+            log('🚀 Démarrage du test complet automatique...');
+            log('📋 Instructions:');
+            log('   1. Cliquez dans une cellule du tableau (Nom, Prénom, Email, etc.)');
+            log('   2. Tapez du texte (par exemple "Test focus")');
+            log('   3. Attendez que le test se lance automatiquement');
+            
+            // Vérifier si une cellule est déjà focalisée
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.classList.contains('editable-cell')) {
+                log('✅ Cellule déjà focalisée détectée, lancement immédiat du test...');
+                runAutomaticTest();
+                return;
+            }
+            
+            // Attendre que l'utilisateur clique dans une cellule
+            const checkFocus = setInterval(() => {
+                const activeElement = document.activeElement;
+                if (activeElement && activeElement.classList.contains('editable-cell')) {
+                    clearInterval(checkFocus);
+                    log('✅ Cellule focalisée détectée, lancement du test...');
+                    runAutomaticTest();
+                }
+            }, 500);
+            
+            // Arrêter la vérification après 30 secondes
+            setTimeout(() => {
+                clearInterval(checkFocus);
+                if (!document.activeElement || !document.activeElement.classList.contains('editable-cell')) {
+                    log('⏰ Timeout - Aucune cellule focalisée détectée', 'warning');
+                    log('💡 Relancez le test et cliquez dans une cellule', 'info');
+                }
+            }, 30000);
+        }
+        
+        // Fonction pour exécuter le test automatique
+        function runAutomaticTest() {
+            setTimeout(() => {
+                log('🧪 Test automatique en cours...');
+                
+                // Test 1: Capture du focus
+                if (testFocusCapture()) {
+                    log('✅ Test de capture du focus réussi', 'success');
+                    
+                    // Test 2: Simulation d'autosave
+                    setTimeout(() => {
+                        log('🔄 Test de simulation d\'autosave...');
+                        simulateAutosave();
+                    }, 500);
+                    
+                } else {
+                    log('❌ Échec du test de capture du focus', 'error');
+                    log('💡 Vérifiez que vous avez cliqué dans une cellule et relancez le test', 'info');
+                }
+            }, 1000);
+        }
+        
+        // Configuration des événements sur les cellules
+        function setupCellEvents() {
+            const editableCells = document.querySelectorAll('.editable-cell');
+            
+            editableCells.forEach(cell => {
+                // Événement de focus
+                cell.addEventListener('focus', () => {
+                    log(`🎯 Focus sur: ${cell.getAttribute('data-label')}`, 'info');
+                    captureFocusInfo();
+                });
+                
+                // Événement de saisie
+                cell.addEventListener('input', () => {
+                    isTyping = true;
+                    lastEditAt = Date.now();
+                    
+                    // Simuler l'autosave après délai
+                    setTimeout(() => {
+                        if (Date.now() - lastEditAt >= AUTOSAVE_DELAY_MS) {
+                            log('⏰ Déclenchement de l\'autosave simulé...', 'info');
+                            simulateAutosave();
+                        }
+                    }, AUTOSAVE_DELAY_MS);
+                    
+                    isTyping = false;
+                });
+                
+                // Événement de clic
+                cell.addEventListener('click', () => {
+                    captureFocusInfo();
+                });
+            });
+        }
+        
+        // Initialisation au chargement
+        window.addEventListener('load', () => {
+            log('🚀 Initialisation du test de préservation du focus...');
+            setupCellEvents();
+            log('✅ Test prêt - Cliquez dans une cellule et tapez du texte pour tester');
+        });
+    </script>
+</body>
+</html>

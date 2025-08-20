@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Logique Autosave</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-cell { 
+            border: 1px solid #ccc; 
+            padding: 10px; 
+            margin: 10px; 
+            min-height: 50px;
+            background: #f9f9f9;
+        }
+        .log { 
+            background: #f0f0f0; 
+            padding: 10px; 
+            margin: 10px; 
+            border-radius: 5px;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { color: green; }
+        .warning { color: orange; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Test de la Logique Autosave</h1>
+    
+    <div class="test-cell" contenteditable="true" data-original-value="Test initial">
+        Test initial
+    </div>
+    
+    <div class="test-cell" contenteditable="true" data-original-value="Autre cellule">
+        Autre cellule
+    </div>
+    
+    <button onclick="testFocusChange()">Test Changement de Focus</button>
+    <button onclick="testContentChange()">Test Modification de Contenu</button>
+    <button onclick="clearLog()">Effacer Log</button>
+    
+    <div class="log" id="log"></div>
+    
+    <script>
+        let logCount = 0;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            logCount++;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            logCount = 0;
+        }
+        
+        function testFocusChange() {
+            log('🧪 Test: Changement de focus entre cellules...', 'info');
+            
+            const cells = document.querySelectorAll('.test-cell');
+            const cell1 = cells[0];
+            const cell2 = cells[1];
+            
+            // Simuler un changement de focus
+            cell1.focus();
+            log('Focus sur cellule 1', 'info');
+            
+            setTimeout(() => {
+                cell2.focus();
+                log('Focus sur cellule 2', 'info');
+                
+                // Vérifier si markEdited serait appelé
+                const shouldTriggerAutosave = checkIfShouldTriggerAutosave(cell1);
+                if (shouldTriggerAutosave) {
+                    log('❌ PROBLÈME: Autosave déclenché lors du changement de focus!', 'error');
+                } else {
+                    log('✅ SUCCÈS: Aucun autosave lors du changement de focus', 'success');
+                }
+            }, 100);
+        }
+        
+        function testContentChange() {
+            log('🧪 Test: Modification de contenu...', 'info');
+            
+            const cell = document.querySelector('.test-cell');
+            const originalValue = cell.dataset.originalValue;
+            const newValue = 'Contenu modifié ' + Date.now();
+            
+            cell.textContent = newValue;
+            log(`Contenu modifié: "${originalValue}" → "${newValue}"`, 'info');
+            
+            // Vérifier si markEdited devrait être appelé
+            const shouldTriggerAutosave = checkIfShouldTriggerAutosave(cell);
+            if (shouldTriggerAutosave) {
+                log('✅ SUCCÈS: Autosave autorisé pour modification de contenu', 'success');
+            } else {
+                log('❌ PROBLÈME: Autosave bloqué pour modification de contenu!', 'error');
+            }
+        }
+        
+        function checkIfShouldTriggerAutosave(cell) {
+            const currentValue = cell.textContent;
+            const originalValue = cell.dataset.originalValue;
+            
+            log(`Vérification: currentValue="${currentValue}", originalValue="${originalValue}"`, 'info');
+            
+            // Logique de détection des modifications
+            if (originalValue !== undefined && currentValue === originalValue) {
+                log('🚫 Aucun changement de contenu détecté', 'warning');
+                return false;
+            }
+            
+            // Vérification pour les changements de focus - normaliser les espaces
+            if (originalValue !== undefined) {
+                const normalizedCurrent = currentValue.trim();
+                const normalizedOriginal = originalValue.trim();
+                
+                if (normalizedCurrent === normalizedOriginal) {
+                    log('🚫 Changement de focus détecté (espaces normalisés), pas de vraie modification', 'warning');
+                    return false;
+                }
+                
+                // Vérification supplémentaire pour les différences très petites
+                if (Math.abs(normalizedCurrent.length - normalizedOriginal.length) <= 1) {
+                    // Si la différence est très petite, vérifier plus en détail
+                    if (normalizedCurrent === normalizedOriginal || 
+                        normalizedCurrent === normalizedOriginal.replace(/\s+/g, ' ')) {
+                        log('🚫 Changement de focus détecté (formatage), pas de vraie modification', 'warning');
+                        return false;
+                    }
+                }
+            }
+            
+            log('✅ Modification de contenu détectée', 'success');
+            return true;
+        }
+        
+        // Initialisation
+        log('🚀 Test de logique autosave initialisé', 'info');
+        log('Cliquez sur "Test Changement de Focus" pour vérifier que l\'autosave ne se déclenche pas', 'info');
+        log('Cliquez sur "Test Modification de Contenu" pour vérifier que l\'autosave se déclenche', 'info');
+    </script>
+</body>
+</html>

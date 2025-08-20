@@ -3567,9 +3567,56 @@
         }
         
         function markEdited() {
+            // CRITICAL: Ne pas marquer comme édité pendant la restauration du focus
+            if (window._isRestoringFocus) {
+                log('🚫 markEdited supprimé - restauration du focus en cours');
+                return;
+            }
+            
+            // Vérifier si c'est une vraie modification de contenu
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+                const currentValue = activeElement.textContent;
+                const originalValue = activeElement.dataset.originalValue;
+                
+                // Si originalValue n'est pas défini, c'est probablement la première fois qu'on édite cette cellule
+                // Dans ce cas, on permet l'édition
+                if (originalValue !== undefined) {
+                    // Normaliser les espaces pour éviter les faux positifs lors des changements de focus
+                    const normalizedCurrent = currentValue.trim();
+                    const normalizedOriginal = originalValue.trim();
+                    
+                    if (normalizedCurrent === normalizedOriginal) {
+                        log('🚫 markEdited supprimé - changement de focus détecté (espaces normalisés), pas de vraie modification');
+                        return;
+                    }
+                    
+                    // Vérification supplémentaire pour les différences très petites
+                    if (Math.abs(normalizedCurrent.length - normalizedOriginal.length) <= 1) {
+                        // Si la différence est très petite, vérifier plus en détail
+                        if (normalizedCurrent === normalizedOriginal || 
+                            normalizedCurrent === normalizedOriginal.replace(/\s+/g, ' ')) {
+                            log('🚫 markEdited supprimé - changement de focus détecté (formatage), pas de vraie modification');
+                            return;
+                        }
+                    }
+                    
+                    log(`✅ Modification détectée: "${originalValue}" → "${currentValue}"`);
+                } else {
+                    log(`✅ Première édition de la cellule: "${currentValue}"`);
+                }
+            }
+            
             isDirty = true; 
             isTyping = true; 
-            lastEditAt = Date.now();
+            
+            // Ne pas réinitialiser lastEditAt à chaque frappe - seulement la première fois
+            if (!lastEditAt || Date.now() - lastEditAt > 1000) {
+                lastEditAt = Date.now();
+                log('🕐 Démarrage du compte à rebours autosave (3s)');
+            } else {
+                log('⏱️ Compte à rebours autosave en cours...');
+            }
             
             if (typingTimer) clearTimeout(typingTimer);
             scheduleAutosaveCountdown();
@@ -3684,6 +3731,9 @@
           let initialValue = value || '';
           let hasBeenModified = false;
           
+          // Initialiser dataset.originalValue pour la détection des modifications
+          cell.dataset.originalValue = initialValue;
+          
           // --- Nom_Prénom auto-formatting logic ---
           if (isNomPrenomLabel(header)) {
             // Ensure initial display is formatted when creating the cell
@@ -3699,14 +3749,20 @@
               const formattedValue = formatNomPrenom(currentValue);
               cell.textContent = formattedValue;
               
-              // Sauvegarder seulement si la valeur a vraiment changé
-              if (hasBeenModified || formattedValue !== initialValue) {
+              // Sauvegarder seulement si la valeur a vraiment changé (normaliser les espaces)
+              const normalizedFormatted = formattedValue.trim();
+              const normalizedInitial = initialValue.trim();
+              
+              if (normalizedFormatted !== normalizedInitial) {
                 saveStateToHistory();
                 saveLocalDraft();
                 markEdited();
                 // Mettre à jour la valeur initiale pour les prochaines comparaisons
                 initialValue = formattedValue;
+                cell.dataset.originalValue = formattedValue;
                 hasBeenModified = false;
+              } else {
+                log('🚫 Blur ignoré - aucun changement de contenu détecté (espaces normalisés)');
               }
             });
             
@@ -3731,13 +3787,19 @@
             // Pour les autres colonnes, gérer blur et paste de manière similaire
             cell.addEventListener('blur', () => {
               const currentValue = cell.textContent;
-              // Sauvegarder seulement si la valeur a vraiment changé
-              if (hasBeenModified || currentValue !== initialValue) {
+              // Sauvegarder seulement si la valeur a vraiment changé (normaliser les espaces)
+              const normalizedCurrent = currentValue.trim();
+              const normalizedInitial = initialValue.trim();
+              
+              if (normalizedCurrent !== normalizedInitial) {
                 saveStateToHistory();
                 saveLocalDraft();
                 markEdited();
                 initialValue = currentValue;
+                cell.dataset.originalValue = currentValue;
                 hasBeenModified = false;
+              } else {
+                log('🚫 Blur ignoré - aucun changement de contenu détecté (espaces normalisés)');
               }
             });
             
@@ -3807,6 +3869,9 @@
             operationTimeout = setTimeout(() => {
                 completeOperation();
             }, 1000); // 1 second delay for cell edits
+            
+            // Mettre à jour dataset.originalValue pour la prochaine comparaison
+            cell.dataset.originalValue = cell.textContent;
             
             saveStateToHistory();
             saveLocalDraft();
@@ -7642,9 +7707,23 @@
                             return;
                         }
                         
+                        // Capturer l'état du focus avant la sauvegarde
+                        const activeElement = document.activeElement;
+                        const focusState = activeElement && activeElement.tagName === 'TD' ? {
+                            element: activeElement,
+                            position: getCursorPosition(activeElement)
+                        } : null;
+                        
                         isSyncing = true;
                         log('Auto-sync (500ms poll, 3s idle) vers Supabase…');
                         await syncToMaster(false);
+                        
+                        // Restaurer le focus après la sauvegarde automatique
+                        if (focusState && focusState.element) {
+                            setTimeout(() => {
+                                restoreFocusAfterAutosave(focusState);
+                            }, 100);
+                        }
                     } catch (error) {
                         console.error('❌ Error in periodic sync:', error);
                     } finally {

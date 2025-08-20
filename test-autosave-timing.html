@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Timing Autosave</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-cell { 
+            border: 1px solid #ccc; 
+            padding: 10px; 
+            margin: 10px; 
+            min-height: 50px;
+            background: #f9f9f9;
+        }
+        .log { 
+            background: #f0f0f0; 
+            padding: 10px; 
+            margin: 10px; 
+            border-radius: 5px;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { color: green; }
+        .warning { color: orange; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Test du Timing de l'Autosave</h1>
+    
+    <div class="test-cell" contenteditable="true" data-original-value="Test initial">
+        Test initial
+    </div>
+    
+    <button onclick="testTypingBehavior()">Test Comportement de Frappe</button>
+    <button onclick="testFocusPreservation()">Test Préservation du Focus</button>
+    <button onclick="clearLog()">Effacer Log</button>
+    
+    <div class="log" id="log"></div>
+    
+    <script>
+        let logCount = 0;
+        let lastEditAt = null;
+        let isTyping = false;
+        let typingTimer = null;
+        const AUTOSAVE_DELAY_MS = 3000;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            logCount++;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            logCount = 0;
+        }
+        
+        function testTypingBehavior() {
+            log('🧪 Test du comportement de frappe...', 'info');
+            
+            const cell = document.querySelector('.test-cell');
+            const originalValue = cell.dataset.originalValue;
+            
+            // Simuler plusieurs frappes rapides
+            log('⌨️ Simulation de frappes rapides...', 'info');
+            
+            // Première frappe
+            simulateTyping(cell, 'T', 0);
+            
+            // Deuxième frappe après 200ms
+            setTimeout(() => {
+                simulateTyping(cell, 'Te', 200);
+            }, 200);
+            
+            // Troisième frappe après 400ms
+            setTimeout(() => {
+                simulateTyping(cell, 'Tes', 400);
+            }, 400);
+            
+            // Quatrième frappe après 600ms
+            setTimeout(() => {
+                simulateTyping(cell, 'Test', 600);
+            }, 600);
+            
+            // Vérifier le timing après 1 seconde
+            setTimeout(() => {
+                checkTiming();
+            }, 1000);
+        }
+        
+        function simulateTyping(cell, newValue, delay) {
+            cell.textContent = newValue;
+            cell.dataset.originalValue = newValue;
+            
+            log(`⌨️ Frappe simulée (${delay}ms): "${newValue}"`, 'info');
+            
+            // Appeler markEdited simulé
+            markEditedSimulated();
+        }
+        
+        function markEditedSimulated() {
+            isTyping = true;
+            
+            // Ne pas réinitialiser lastEditAt à chaque frappe - seulement la première fois
+            if (!lastEditAt || Date.now() - lastEditAt > 1000) {
+                lastEditAt = Date.now();
+                log('🕐 Démarrage du compte à rebours autosave (3s)', 'success');
+            } else {
+                log('⏱️ Compte à rebours autosave en cours...', 'warning');
+            }
+            
+            if (typingTimer) clearTimeout(typingTimer);
+            typingTimer = setTimeout(() => { isTyping = false; }, 1200);
+        }
+        
+        function checkTiming() {
+            if (lastEditAt) {
+                const timeSinceLastEdit = Date.now() - lastEditAt;
+                const remainingTime = AUTOSAVE_DELAY_MS - timeSinceLastEdit;
+                
+                log(`⏰ Timing vérifié:`, 'info');
+                log(`   - Dernière édition: ${timeSinceLastEdit}ms`, 'info');
+                log(`   - Temps restant avant autosave: ${remainingTime}ms`, 'info');
+                
+                if (remainingTime > 0) {
+                    log(`✅ Autosave prévu dans ${Math.ceil(remainingTime/1000)}s`, 'success');
+                } else {
+                    log(`🚀 Autosave déclenché!`, 'success');
+                }
+            } else {
+                log('❌ Aucun timing d'édition enregistré', 'error');
+            }
+        }
+        
+        function testFocusPreservation() {
+            log('🧪 Test de préservation du focus...', 'info');
+            
+            const cell = document.querySelector('.test-cell');
+            cell.focus();
+            
+            // Capturer l'état du focus
+            const focusState = {
+                element: cell,
+                position: 0
+            };
+            
+            log('📝 Focus capturé sur la cellule', 'info');
+            
+            // Simuler une sauvegarde automatique
+            setTimeout(() => {
+                log('💾 Simulation de sauvegarde automatique...', 'info');
+                
+                // Simuler la perte de focus
+                cell.blur();
+                log('🚫 Focus perdu pendant la sauvegarde', 'warning');
+                
+                // Restaurer le focus
+                setTimeout(() => {
+                    restoreFocusSimulated(focusState);
+                }, 100);
+            }, 500);
+        }
+        
+        function restoreFocusSimulated(focusState) {
+            if (focusState && focusState.element) {
+                focusState.element.focus();
+                log('✅ Focus restauré après la sauvegarde', 'success');
+                
+                // Vérifier que le focus est bien restauré
+                if (document.activeElement === focusState.element) {
+                    log('✅ Test de préservation du focus réussi!', 'success');
+                } else {
+                    log('❌ Test de préservation du focus échoué!', 'error');
+                }
+            }
+        }
+        
+        // Initialisation
+        log('🚀 Test de timing autosave initialisé', 'info');
+        log('Cliquez sur "Test Comportement de Frappe" pour vérifier le timing', 'info');
+        log('Cliquez sur "Test Préservation du Focus" pour vérifier la préservation du focus', 'info');
+    </script>
+</body>
+</html>
