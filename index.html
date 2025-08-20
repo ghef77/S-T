@@ -5039,6 +5039,21 @@
             tableClone.style.display = 'table';
             document.body.appendChild(tableClone);
             
+            // ✅ Calculer la largeur totale réelle du tableau
+            const totalWidth = Array.from(tableClone.querySelectorAll('th')).reduce((total, th) => {
+                return total + (th.offsetWidth || 200); // Largeur minimale de 200px par colonne
+            }, 0);
+            
+            const totalHeight = Array.from(tableClone.querySelectorAll('tr')).reduce((total, tr) => {
+                return total + (tr.offsetHeight || 50); // Hauteur minimale de 50px par ligne
+            }, 0);
+            
+            // ✅ S'assurer que toutes les colonnes sont visibles
+            tableClone.style.width = `${totalWidth}px`;
+            tableClone.style.minWidth = `${totalWidth}px`;
+            tableClone.style.maxWidth = `${totalWidth}px`;
+            tableClone.style.tableLayout = 'fixed';
+            
             // ✅ Capture de la copie corrigée
             html2canvas(tableClone, {
                 useCORS: true,
@@ -5047,8 +5062,8 @@
                 scale: 2,
                 scrollX: 0,
                 scrollY: 0,
-                width: table.scrollWidth,
-                height: table.scrollHeight,
+                width: totalWidth,
+                height: totalHeight,
                 logging: false,
                 // ✅ Options supplémentaires pour garantir la capture
                 ignoreElements: (element) => {
@@ -5062,6 +5077,10 @@
                         clonedTable.style.visibility = 'visible';
                         clonedTable.style.opacity = '1';
                         clonedTable.style.display = 'table';
+                        clonedTable.style.width = `${totalWidth}px`;
+                        clonedTable.style.minWidth = `${totalWidth}px`;
+                        clonedTable.style.maxWidth = `${totalWidth}px`;
+                        clonedTable.style.tableLayout = 'fixed';
                     }
                 }
             }).then(canvas => { 
