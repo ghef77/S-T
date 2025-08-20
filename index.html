@@ -1905,13 +1905,14 @@
                 
                 // ENHANCED: Schedule automatic sync after undo operation with extended suppression
                 // Extended suppression windows to prevent conflicts with autosave/realtime
-                const SUPPRESSION_MS = 3000; // Increased from 2000ms to 3000ms
-                const AUTOSAVE_SUPPRESSION_MS = 4000; // Separate, longer suppression for autosave
+                const SUPPRESSION_MS = 5000; // Increased from 3000ms to 5000ms for better protection
+                const AUTOSAVE_SUPPRESSION_MS = 6000; // Separate, longer suppression for autosave
                 
                 suppressRealtimeUntil = Date.now() + SUPPRESSION_MS;
                 suppressAutosaveUntil = Date.now() + AUTOSAVE_SUPPRESSION_MS;
                 
-                // Clean: Removed debug log
+                // Show status that real-time sync is temporarily disabled
+                updateStatus(`Synchronisation temps réel désactivée (${SUPPRESSION_MS/1000}s)`, 'warning');
                 
                 if (typeof scheduleUndoRedoSync === 'function') {
                     clearUndoRedoSyncTimeout();
@@ -1922,7 +1923,7 @@
                             syncToMaster(true, true);
                             undoRedoSyncTimeout = null;
                         }
-                    }, 800); // Increased delay from 500ms to 800ms for better conflict prevention
+                    }, 1000); // Increased delay from 800ms to 1000ms for better conflict prevention
                 }
                 
             } catch (error) {
@@ -2055,13 +2056,14 @@
                 
                 // ENHANCED: Schedule automatic sync after redo operation with extended suppression
                 // Extended suppression windows to prevent conflicts with autosave/realtime
-                const SUPPRESSION_MS = 3000; // Increased from 2000ms to 3000ms
-                const AUTOSAVE_SUPPRESSION_MS = 4000; // Separate, longer suppression for autosave
+                const SUPPRESSION_MS = 5000; // Increased from 3000ms to 5000ms for better protection
+                const AUTOSAVE_SUPPRESSION_MS = 6000; // Separate, longer suppression for autosave
                 
                 suppressRealtimeUntil = Date.now() + SUPPRESSION_MS;
                 suppressAutosaveUntil = Date.now() + AUTOSAVE_SUPPRESSION_MS;
                 
-                // Clean: Removed debug log
+                // Show status that real-time sync is temporarily disabled
+                updateStatus(`Synchronisation temps réel désactivée (${SUPPRESSION_MS/1000}s)`, 'warning');
                 
                 if (typeof scheduleUndoRedoSync === 'function') {
                     clearUndoRedoSyncTimeout();
@@ -2072,7 +2074,7 @@
                             syncToMaster(true, true);
                             undoRedoSyncTimeout = null;
                         }
-                    }, 800); // Increased delay from 500ms to 800ms for better conflict prevention
+                    }, 1000); // Increased delay from 800ms to 1000ms for better conflict prevention
                 }
                 
             } catch (e) {
@@ -2290,6 +2292,54 @@
         window.resetOperationHistory = resetOperationHistory;
         window.safeStartOperation = safeStartOperation;
         window.updateRowCount = updateRowCount;
+        
+        // Debug function to check real-time sync suppression status
+        window.checkRealtimeSyncStatus = function() {
+            const now = Date.now();
+            const isSuppressed = typeof suppressRealtimeUntil !== 'undefined' && now < suppressRealtimeUntil;
+            const remainingTime = isSuppressed ? Math.max(0, suppressRealtimeUntil - now) : 0;
+            
+            console.log('📊 Real-time Sync Status Check:', {
+                isSuppressed: isSuppressed,
+                suppressRealtimeUntil: suppressRealtimeUntil,
+                currentTime: now,
+                remainingTime: remainingTime,
+                remainingSeconds: Math.ceil(remainingTime / 1000),
+                isPerformingUndoRedo: isPerformingUndoRedo,
+                realtimeSubscription: !!realtimeSubscription
+            });
+            
+            if (isSuppressed) {
+                showMessage(`Synchronisation temps réel désactivée pour encore ${Math.ceil(remainingTime / 1000)}s`, 'warning');
+            } else {
+                showMessage('Synchronisation temps réel active', 'success');
+            }
+            
+            return {
+                isSuppressed,
+                remainingTime,
+                remainingSeconds: Math.ceil(remainingTime / 1000)
+            };
+        };
+        
+        // Function to manually clear real-time sync suppression
+        window.clearRealtimeSyncSuppression = function() {
+            if (typeof suppressRealtimeUntil !== 'undefined' && Date.now() < suppressRealtimeUntil) {
+                const wasSuppressed = true;
+                suppressRealtimeUntil = 0;
+                suppressAutosaveUntil = 0;
+                
+                console.log('🔓 Manual real-time sync suppression cleared');
+                showMessage('Synchronisation temps réel réactivée manuellement', 'success');
+                updateStatus('Synchronisation temps réel activée', 'success');
+                
+                return { wasSuppressed, message: 'Real-time sync suppression cleared' };
+            } else {
+                console.log('ℹ️ Real-time sync is not currently suppressed');
+                showMessage('Synchronisation temps réel déjà active', 'info');
+                return { wasSuppressed: false, message: 'Real-time sync is not suppressed' };
+            }
+        };
         
         // Fonction pour forcer l'affichage du bouton d'ajout
         window.forceFabAddVisible = function() {
@@ -4590,6 +4640,13 @@
         function handleRealtimeUpdate(payload) {
             console.log('🔄 Realtime update received:', payload);
             
+            // CRITICAL FIX: Check if realtime updates should be suppressed (during undo/redo operations)
+            if (typeof suppressRealtimeUntil !== 'undefined' && Date.now() < suppressRealtimeUntil) {
+                const remainingTime = Math.max(0, suppressRealtimeUntil - Date.now());
+                console.log(`⚠️ Realtime update suppressed (undo/redo protection active for ${Math.round(remainingTime)}ms)`);
+                return;
+            }
+            
             // Avoid update loops
             if (window.isLocalSaveInProgress) {
                 console.log('⚠️ Realtime update ignored (local save in progress)');
@@ -4664,10 +4721,35 @@
                     });
                     
                 console.log('✅ Realtime subscription configured');
+                
+                // Start periodic status updates to show real-time sync suppression status
+                startSyncStatusUpdates();
             } catch (error) {
                 console.error('❌ Error setting up realtime subscription:', error);
                 updateStatus('Erreur de configuration temps réel', 'error');
             }
+        }
+        
+        // Function to periodically update sync status to show when real-time sync is suppressed
+        function startSyncStatusUpdates() {
+            setInterval(() => {
+                if (typeof suppressRealtimeUntil !== 'undefined' && Date.now() < suppressRealtimeUntil) {
+                    const remainingTime = Math.max(0, suppressRealtimeUntil - Date.now());
+                    const secondsLeft = Math.ceil(remainingTime / 1000);
+                    
+                    // Only update status if it's different to avoid spam
+                    const currentStatus = document.querySelector('#sync-status .sync-text');
+                    if (currentStatus && !currentStatus.textContent.includes('désactivée')) {
+                        updateStatus(`Synchronisation temps réel désactivée (${secondsLeft}s)`, 'warning');
+                    }
+                } else if (typeof suppressRealtimeUntil !== 'undefined' && Date.now() >= suppressRealtimeUntil) {
+                    // Real-time sync is no longer suppressed, show normal status
+                    const currentStatus = document.querySelector('#sync-status .sync-text');
+                    if (currentStatus && currentStatus.textContent.includes('désactivée')) {
+                        updateStatus('Synchronisation temps réel activée', 'success');
+                    }
+                }
+            }, 1000); // Update every second
         }
 
 
@@ -6835,6 +6917,14 @@
                 document.getElementById('login-container').classList.remove('hidden');
             }
             
+            // Add debug information to console about real-time sync conflict prevention
+            console.log('🛡️ Real-time Sync Conflict Prevention System Active');
+            console.log('📋 Available debug functions:');
+            console.log('   • checkRealtimeSyncStatus() - Check current sync suppression status');
+            console.log('   • clearRealtimeSyncSuppression() - Manually clear sync suppression');
+            console.log('   • Use undo/redo buttons to see suppression in action');
+            console.log('   • Real-time sync is automatically suppressed for 5s after undo/redo operations');
+            console.log('   • Status updates show when sync is temporarily disabled');
 
         }
         
