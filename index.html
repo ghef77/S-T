@@ -1100,6 +1100,8 @@
             </div>
         </div>
 
+
+
         <div id="button-bar" class="flex flex-nowrap items-center gap-1 mb-3 p-1 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto">
             <button onclick='saveManually()' title="Sauvegarder (Cmd+Z/Ctrl+Z ou Cmd+S/Ctrl+S)" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
                 <i class="fa-solid fa-save w-3.5 h-3.5"></i>
@@ -2972,10 +2974,29 @@
             } catch(_) {}
         }
 
-        // Mobile detection and support
+        // Mobile detection and support - Enhanced version
         function isMobile() {
             try { 
-                return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent); 
+                // Détection plus robuste
+                const userAgent = navigator.userAgent;
+                const mobileRegex = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+                
+                // Vérifier la taille de l'écran
+                const isSmallScreen = window.innerWidth <= 768;
+                
+                // Vérifier les capacités tactiles
+                const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+                
+                // Vérifier l'orientation (mobile a souvent une orientation changeante)
+                const hasOrientation = 'onorientationchange' in window;
+                
+                // Détection basée sur userAgent
+                const userAgentMobile = mobileRegex.test(userAgent);
+                
+                // Détection basée sur les capacités et la taille
+                const capabilitiesMobile = isSmallScreen && (hasTouch || hasOrientation);
+                
+                return userAgentMobile || capabilitiesMobile;
             } catch(_) { 
                 return false; 
             }
@@ -5026,6 +5047,41 @@
             try { 
                 document.addEventListener('touchend', endRowPaint, true); 
             } catch(_) {}
+            
+            // Mobile touch support for history toggle button
+            try {
+                const toggleBtn = document.getElementById('history-toggle-btn');
+                if (toggleBtn) {
+                    // Touch events for better mobile compatibility
+                    toggleBtn.addEventListener('touchstart', function(e) {
+                        e.preventDefault();
+                        console.log('📱 Touch start on toggle button');
+                    }, { passive: false });
+                    
+                    toggleBtn.addEventListener('touchend', function(e) {
+                        e.preventDefault();
+                        console.log('📱 Touch end on toggle button');
+                        toggleHistoryBarSimple();
+                    }, { passive: false });
+                    
+                    // Additional mobile event handling
+                    if (isMobile()) {
+                        toggleBtn.addEventListener('click', function(e) {
+                            console.log('📱 Click on toggle button (mobile)');
+                            // Ensure proper mobile handling
+                            setTimeout(() => {
+                                if (window.innerWidth <= 768) {
+                                    const historyBarContainer = document.getElementById('history-bar-container');
+                                    if (historyBarContainer) {
+                                        historyBarContainer.style.width = '100%';
+                                        historyBarContainer.style.maxWidth = 'none';
+                                    }
+                                }
+                            }, 50);
+                        });
+                    }
+                }
+            } catch(_) {}
         }
 
         // Keyboard navigation
@@ -6379,10 +6435,101 @@
             
             // Force a reflow on mobile to ensure proper rendering
             if (isMobile()) {
+                // Force reflow multiple
                 historyBarContainer.offsetHeight;
+                
+                // Additional mobile-specific adjustments
+                setTimeout(() => {
+                    if (window.innerWidth <= 768) {
+                        // Ensure proper mobile layout
+                        historyBarContainer.style.width = '100%';
+                        historyBarContainer.style.maxWidth = 'none';
+                        
+                        // Force another reflow
+                        historyBarContainer.offsetHeight;
+                        
+                        // Additional mobile optimization
+                        if (window.innerWidth <= 480) {
+                            // Very small screens - ensure vertical stacking
+                            const innerContainer = historyBarContainer.querySelector('div');
+                            if (innerContainer) {
+                                innerContainer.style.flexDirection = 'column';
+                                innerContainer.style.alignItems = 'center';
+                            }
+                        }
+                    }
+                }, 50);
             }
         }
         
+        // Test function for mobile history bar functionality
+        function testMobileHistoryBar() {
+            const historyBarContainer = document.getElementById('history-bar-container');
+            const toggleBtn = document.getElementById('history-toggle-btn');
+            const toggleIcon = document.getElementById('history-toggle-icon');
+            
+            console.log('🧪 Testing Mobile History Bar...');
+            console.log('📱 Screen size:', window.innerWidth, 'x', window.innerHeight);
+            console.log('📱 User Agent:', navigator.userAgent);
+            console.log('📱 isMobile():', isMobile());
+            
+            if (!historyBarContainer || !toggleBtn || !toggleIcon) {
+                console.error('❌ Test failed: Required elements not found');
+                return false;
+            }
+            
+            console.log('✅ All elements found');
+            console.log('🔍 History bar container:', historyBarContainer);
+            console.log('🔍 Toggle button:', toggleBtn);
+            console.log('🔍 Toggle icon:', toggleIcon);
+            
+            // Test initial state
+            const initialHidden = historyBarContainer.classList.contains('hidden');
+            const initialDisplay = historyBarContainer.style.display;
+            const initialHeight = historyBarContainer.offsetHeight;
+            
+            console.log('📊 Initial state:');
+            console.log('  - Hidden class:', initialHidden);
+            console.log('  - Display style:', initialDisplay);
+            console.log('  - Offset height:', initialHeight);
+            
+            // Test toggle functionality
+            console.log('🔄 Testing toggle functionality...');
+            toggleHistoryBarSimple();
+            
+            setTimeout(() => {
+                const afterToggleHidden = historyBarContainer.classList.contains('hidden');
+                const afterToggleDisplay = historyBarContainer.style.display;
+                const afterToggleHeight = historyBarContainer.offsetHeight;
+                
+                console.log('📊 After toggle:');
+                console.log('  - Hidden class:', afterToggleHidden);
+                console.log('  - Display style:', afterToggleDisplay);
+                console.log('  - Offset height:', afterToggleHeight);
+                
+                // Test toggle back
+                setTimeout(() => {
+                    console.log('🔄 Testing toggle back...');
+                    toggleHistoryBarSimple();
+                    
+                    setTimeout(() => {
+                        const finalHidden = historyBarContainer.classList.contains('hidden');
+                        const finalDisplay = historyBarContainer.style.display;
+                        const finalHeight = historyBarContainer.offsetHeight;
+                        
+                        console.log('📊 Final state:');
+                        console.log('  - Hidden class:', finalHidden);
+                        console.log('  - Display style:', finalDisplay);
+                        console.log('  - Offset height:', finalHeight);
+                        
+                        console.log('✅ Mobile History Bar test completed');
+                    }, 100);
+                }, 100);
+            }, 100);
+            
+            return true;
+        }
+
         // ===== END SNAPSHOT SYSTEM FUNCTIONS =====
 
 
@@ -6441,7 +6588,20 @@
                 // S'assurer que l'icône est en mode "plus" (fermé)
                 toggleIcon.className = 'fa-solid fa-plus w-2 h-2 flex items-center justify-center text-center leading-none';
                 
-                // Clean: Removed debug log
+                // Vérification post-initialisation pour mobile
+                setTimeout(() => {
+                    if (isMobile()) {
+                        const isHidden = historyBarContainer.classList.contains('hidden') && 
+                                        historyBarContainer.style.display === 'none';
+                        console.log('🔍 Post-init mobile check:', isHidden ? 'Hidden' : 'Visible');
+                        
+                        // Force mobile-specific layout
+                        if (window.innerWidth <= 768) {
+                            historyBarContainer.style.width = '100%';
+                            historyBarContainer.style.maxWidth = 'none';
+                        }
+                    }
+                }, 100);
             }
             
             // Initialiser l'affichage du nombre de lignes
