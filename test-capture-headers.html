@@ -208,13 +208,19 @@
         }
         
         // ✅ FONCTION DE CAPTURE CORRIGÉE (comme dans index.html)
-        function testCapture() {
-            const table = document.getElementById('test-table');
+        function testCapture() { 
+            const table = document.getElementById('test-table'); 
+            
+            // ✅ CAPTURE DE LA ZONE VISIBLE: Prendre seulement ce qui est à l'écran
+            const container = table.closest('.table-container') || table.parentElement;
+            const scrollTop = container ? container.scrollTop : 0;
+            const scrollLeft = container ? container.scrollLeft : 0;
+            const viewportHeight = window.innerHeight;
+            const viewportWidth = window.innerWidth;
+            
             log('📸 Début de la capture d\'écran...', 'info');
-            updateStatus('Capture en cours...');
             
             // ✅ NOUVELLE APPROCHE: Créer une copie du tableau pour la capture
-            log('🔧 Création d\'une copie du tableau pour la capture...', 'info');
             const tableClone = table.cloneNode(true);
             
             // ✅ Supprimer les classes et styles problématiques
@@ -328,16 +334,14 @@
             
             log('✅ Copie ajoutée au DOM, début de la capture...', 'success');
             
+            // ✅ CAPTURE DE LA ZONE VISIBLE: Calculer les dimensions de la zone visible
+            const visibleWidth = Math.min(viewportWidth - 40, table.scrollWidth); // -40px pour les marges
+            const visibleHeight = Math.min(viewportHeight - 100, table.scrollHeight); // -100px pour les marges
+            
             // ✅ Calculer la largeur totale réelle du tableau
             const totalWidth = Array.from(tableClone.querySelectorAll('th')).reduce((total, th) => {
                 return total + (th.offsetWidth || 200); // Largeur minimale de 200px par colonne
             }, 0);
-            
-            // ✅ Calculer la hauteur totale de TOUTES les lignes
-            const totalHeight = Array.from(allRows).reduce((total, tr) => {
-                const rowHeight = tr.offsetHeight || 50;
-                return total + rowHeight;
-            }, 0) + 100; // +100px pour les en-têtes
             
             // ✅ S'assurer que toutes les colonnes sont visibles
             tableClone.style.width = `${totalWidth}px`;
@@ -345,12 +349,13 @@
             tableClone.style.maxWidth = `${totalWidth}px`;
             tableClone.style.tableLayout = 'fixed';
             
-            // ✅ S'assurer que le tableau affiche TOUTES les lignes
-            tableClone.style.height = `${totalHeight}px`;
-            tableClone.style.minHeight = `${totalHeight}px`;
-            tableClone.style.maxHeight = `${totalHeight}px`;
-            tableClone.style.overflow = 'visible !important';
-            tableClone.style.clip = 'auto !important';
+            // ✅ CAPTURE DE LA ZONE VISIBLE: Positionner le tableau pour capturer la zone actuelle
+            tableClone.style.position = 'absolute';
+            tableClone.style.left = '0px';
+            tableClone.style.top = '0px';
+            tableClone.style.transform = `translate(-${scrollLeft}px, -${scrollTop}px)`;
+            tableClone.style.height = 'auto';
+            tableClone.style.overflow = 'visible';
             
             // ✅ Capture de la copie corrigée
             html2canvas(tableClone, {
@@ -360,8 +365,8 @@
                 scale: 2,
                 scrollX: 0,
                 scrollY: 0,
-                width: totalWidth,
-                height: totalHeight,
+                width: visibleWidth,
+                height: visibleHeight,
                 logging: false,
                 // ✅ Options supplémentaires pour garantir la capture
                 ignoreElements: (element) => {
@@ -379,24 +384,27 @@
                         clonedTable.style.minWidth = `${totalWidth}px`;
                         clonedTable.style.maxWidth = `${totalWidth}px`;
                         clonedTable.style.tableLayout = 'fixed';
-                        clonedTable.style.height = `${totalHeight}px`;
-                        clonedTable.style.minHeight = `${totalHeight}px`;
-                        clonedTable.style.maxHeight = `${totalHeight}px`;
-                        clonedTable.style.overflow = 'visible !important';
-                        clonedTable.style.clip = 'auto !important';
+                        clonedTable.style.height = 'auto';
+                        clonedTable.style.overflow = 'visible';
+                        clonedTable.style.transform = `translate(-${scrollLeft}px, -${scrollTop}px)`;
                         
-                        // ✅ Forcer l'affichage de toutes les lignes dans le clone
+                        // ✅ CAPTURE DE LA ZONE VISIBLE: Afficher seulement les lignes visibles
                         const clonedTbody = clonedDoc.querySelector('tbody');
                         if (clonedTbody) {
                             const clonedRows = clonedTbody.querySelectorAll('tr');
-                            clonedRows.forEach(row => {
-                                row.style.display = 'table-row !important';
-                                row.style.visibility = 'visible !important';
-                                row.style.opacity = '1 !important';
-                                row.style.height = 'auto !important';
-                                row.style.minHeight = '50px !important';
-                                row.style.overflow = 'visible !important';
-                                row.style.clip = 'auto !important';
+                            clonedRows.forEach((row, index) => {
+                                // ✅ Calculer si la ligne est dans la zone visible
+                                const rowTop = index * 50; // Hauteur approximative par ligne
+                                const rowBottom = rowTop + 50;
+                                const isVisible = (rowTop < scrollTop + visibleHeight) && (rowBottom > scrollTop);
+                                
+                                if (isVisible) {
+                                    row.style.display = 'table-row !important';
+                                    row.style.visibility = 'visible !important';
+                                    row.style.opacity = '1 !important';
+                                } else {
+                                    row.style.display = 'none !important';
+                                }
                             });
                         }
                     }
@@ -406,11 +414,11 @@
                 
                 const link = document.createElement('a'); 
                 link.href = canvas.toDataURL('image/png'); 
-                link.download = 'Test_Tableau_En-tetes.png'; 
+                link.download = 'Test_Tableau_Zone_Visible.png'; 
                 link.click(); 
                 
                 log('💾 Image téléchargée avec succès', 'success');
-                updateStatus('Capture réussie - Image téléchargée');
+                updateStatus('Capture réussie - Image téléchargée de la zone visible');
                 
                 // ✅ Nettoyer la copie temporaire
                 document.body.removeChild(tableClone);
