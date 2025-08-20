@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Capture d'Écran - En-têtes en Haut</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-table { 
+            border-collapse: collapse; 
+            margin: 20px 0; 
+            width: 100%;
+            max-width: 800px;
+            height: 600px;
+            overflow-y: auto;
+        }
+        .test-table th, .test-table td { 
+            border: 2px solid #007bff; 
+            padding: 15px; 
+            text-align: center;
+            background: #f8f9fa;
+            font-size: 16px;
+        }
+        .test-table thead { 
+            position: sticky !important; 
+            top: 0 !important; 
+            z-index: 1000 !important; 
+            background-color: #007bff !important;
+            color: white !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            /* ✅ GARANTIR que les en-têtes restent toujours visibles */
+            will-change: transform !important;
+            transform: translateZ(0) !important;
+            /* ✅ Ombre pour séparer visuellement les en-têtes */
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+            /* ✅ Bordure inférieure pour délimiter clairement */
+            border-bottom: 3px solid #0056b3 !important;
+        }
+        .test-table thead th {
+            padding: 1rem;
+            font-size: 0.875rem;
+        }
+        .test-table tbody tr {
+            transition: all 0.2s ease;
+        }
+        .test-table tbody tr:hover {
+            background-color: #e3f2fd;
+            transform: scale(1.005);
+        }
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+        .status {
+            background: #fff3cd;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #ffc107;
+        }
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+        }
+        .success { color: #28a745; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .info { color: #17a2b8; font-weight: bold; }
+        button { 
+            padding: 12px 20px; 
+            margin: 8px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-warning { background-color: #ffc107; color: black; }
+        
+        /* ✅ Styles pour les en-têtes pendant la capture d'écran */
+        .test-table thead.capturing {
+            position: absolute !important;
+            top: 0px !important;
+            left: 0px !important;
+            right: 0px !important;
+            z-index: 10000 !important;
+            background-color: #007bff !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+            border-bottom: 3px solid #ffc107 !important;
+            /* ✅ Garantir la visibilité pendant la capture */
+            visibility: visible !important;
+            opacity: 1 !important;
+            /* ✅ Empêcher tout débordement */
+            overflow: visible !important;
+            /* ✅ Forcer l'affichage en haut */
+            transform: translateY(0) !important;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Capture d'Écran - En-têtes en Haut</h1>
+    
+    <div class="instructions">
+        <h3>📋 Test de la Capture d'Écran</h3>
+        <p><strong>Objectif :</strong> Vérifier que les en-têtes restent en haut lors de la capture d'écran, même après défilement.</p>
+        <ol>
+            <li>Faites défiler le tableau vers le bas (les en-têtes restent visibles en haut)</li>
+            <li>Cliquez sur "Capture d'Écran" pour tester la fonction</li>
+            <li>Vérifiez que l'image capturée a les en-têtes en haut</li>
+            <li>Les en-têtes doivent apparaître en haut, pas au milieu</li>
+        </ol>
+    </div>
+    
+    <div class="status" id="status">
+        <strong>État :</strong> Prêt pour le test de capture d'écran
+    </div>
+    
+    <div style="margin: 20px;">
+        <button onclick="testCapture()" class="btn-primary">📸 Capture d'Écran</button>
+        <button onclick="scrollToBottom()" class="btn-warning">⬇️ Défiler vers le Bas</button>
+        <button onclick="scrollToTop()" class="btn-success">⬆️ Défiler vers le Haut</button>
+        <button onclick="clearLog()" class="btn-success">🗑️ Effacer Log</button>
+    </div>
+    
+    <table class="test-table" id="test-table">
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Prénom</th>
+                <th>Email</th>
+                <th>Téléphone</th>
+                <th>Département</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Dupont</td><td>Jean</td><td>jean.dupont@email.com</td><td>01 23 45 67 89</td><td>IT</td></tr>
+            <tr><td>Martin</td><td>Marie</td><td>marie.martin@email.com</td><td>01 98 76 54 32</td><td>RH</td></tr>
+            <tr><td>Bernard</td><td>Pierre</td><td>pierre.bernard@email.com</td><td>01 11 22 33 44</td><td>Marketing</td></tr>
+            <tr><td>Petit</td><td>Sophie</td><td>sophie.petit@email.com</td><td>01 55 66 77 88</td><td>Finance</td></tr>
+            <tr><td>Moreau</td><td>Lucas</td><td>lucas.moreau@email.com</td><td>01 99 88 77 66</td><td>Ventes</td></tr>
+            <tr><td>Leroy</td><td>Emma</td><td>emma.leroy@email.com</td><td>01 44 33 22 11</td><td>R&D</td></tr>
+            <tr><td>Garcia</td><td>Thomas</td><td>thomas.garcia@email.com</td><td>01 77 88 99 00</td><td>Support</td></tr>
+            <tr><td>Roux</td><td>Julie</td><td>julie.roux@email.com</td><td>01 12 34 56 78</td><td>Marketing</td></tr>
+            <tr><td>Simon</td><td>Paul</td><td>paul.simon@email.com</td><td>01 87 65 43 21</td><td>IT</td></tr>
+            <tr><td>Michel</td><td>Claire</td><td>claire.michel@email.com</td><td>01 98 76 54 32</td><td>RH</td></tr>
+            <tr><td>Lefevre</td><td>Antoine</td><td>antoine.lefevre@email.com</td><td>01 11 22 33 44</td><td>Finance</td></tr>
+            <tr><td>Girard</td><td>Camille</td><td>camille.girard@email.com</td><td>01 55 66 77 88</td><td>Ventes</td></tr>
+            <tr><td>Bonnet</td><td>Hugo</td><td>hugo.bonnet@email.com</td><td>01 99 88 77 66</td><td>Support</td></tr>
+            <tr><td>Dupuis</td><td>Léa</td><td>lea.dupuis@email.com</td><td>01 44 33 22 11</td><td>R&D</td></tr>
+            <tr><td>Lambert</td><td>Nathan</td><td>nathan.lambert@email.com</td><td>01 77 88 99 00</td><td>IT</td></tr>
+            <tr><td>Fontaine</td><td>Chloé</td><td>chloe.fontaine@email.com</td><td>01 12 34 56 78</td><td>Marketing</td></tr>
+            <tr><td>Rousseau</td><td>Ethan</td><td>ethan.rousseau@email.com</td><td>01 87 65 43 21</td><td>Finance</td></tr>
+            <tr><td>Blanc</td><td>Zoé</td><td>zoe.blanc@email.com</td><td>01 98 76 54 32</td><td>RH</td></tr>
+            <tr><td>Henry</td><td>Adam</td><td>adam.henry@email.com</td><td>01 11 22 33 44</td><td>Ventes</td></tr>
+            <tr><td>Garnier</td><td>Lola</td><td>lola.garnier@email.com</td><td>01 55 66 77 88</td><td>Support</td></tr>
+        </tbody>
+    </table>
+    
+    <div class="log" id="log">
+        <div class="info">🚀 Test de capture d'écran initialisé</div>
+    </div>
+    
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(message) {
+            document.getElementById('status').innerHTML = `<strong>État :</strong> ${message}`;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '<div class="info">🚀 Test de capture d\'écran initialisé</div>';
+        }
+        
+        function scrollToBottom() {
+            const table = document.getElementById('test-table');
+            table.scrollTop = table.scrollHeight;
+            log('⬇️ Défilement vers le bas effectué', 'info');
+            updateStatus('Tableau défilé vers le bas - En-têtes restent visibles en haut');
+        }
+        
+        function scrollToTop() {
+            const table = document.getElementById('test-table');
+            table.scrollTop = 0;
+            log('⬆️ Défilement vers le haut effectué', 'info');
+            updateStatus('Tableau défilé vers le haut');
+        }
+        
+        // ✅ FONCTION DE CAPTURE CORRIGÉE (comme dans index.html)
+        function testCapture() {
+            const table = document.getElementById('test-table');
+            log('📸 Début de la capture d\'écran...', 'info');
+            updateStatus('Capture en cours...');
+            
+            // ✅ CORRECTION: Forcer le repositionnement des en-têtes avant la capture
+            const thead = table.querySelector('thead');
+            const originalTop = thead.style.top;
+            const originalPosition = thead.style.position;
+            
+            log('🔧 Repositionnement des en-têtes pour la capture...', 'info');
+            
+            // ✅ Forcer les en-têtes en haut absolu pour la capture
+            thead.style.position = 'absolute';
+            thead.style.top = '0px';
+            thead.style.zIndex = '10000';
+            
+            // ✅ Ajouter une classe pour le style de capture
+            thead.classList.add('capturing');
+            
+            log('✅ En-têtes repositionnés, début de la capture...', 'success');
+            
+            // ✅ Attendre un peu pour que le repositionnement soit effectif
+            setTimeout(() => {
+                html2canvas(table, {
+                    // ✅ Options pour une meilleure capture
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    scale: 2, // Meilleure qualité
+                    scrollX: 0,
+                    scrollY: 0,
+                    windowWidth: table.scrollWidth,
+                    windowHeight: table.scrollHeight
+                }).then(canvas => { 
+                    log('✅ Capture réussie !', 'success');
+                    
+                    const link = document.createElement('a'); 
+                    link.href = canvas.toDataURL('image/png'); 
+                    link.download = 'Test_Tableau_En-tetes.png'; 
+                    link.click(); 
+                    
+                    log('💾 Image téléchargée avec succès', 'success');
+                    updateStatus('Capture réussie - Image téléchargée');
+                    
+                    // ✅ Restaurer les styles originaux après la capture
+                    thead.style.position = originalPosition;
+                    thead.style.top = originalTop;
+                    thead.style.zIndex = '';
+                    thead.classList.remove('capturing');
+                    
+                    log('🔄 Styles des en-têtes restaurés', 'info');
+                    
+                }).catch(error => {
+                    log(`❌ Erreur lors de la capture: ${error.message}`, 'error');
+                    updateStatus('Erreur lors de la capture');
+                    
+                    // ✅ Restaurer les styles même en cas d'erreur
+                    thead.style.position = originalPosition;
+                    thead.style.top = originalTop;
+                    thead.style.zIndex = '';
+                    thead.classList.remove('capturing');
+                    
+                    log('🔄 Styles des en-têtes restaurés après erreur', 'warning');
+                });
+            }, 100);
+        }
+        
+        // Initialisation
+        log('✅ Test de capture d\'écran initialisé avec succès', 'success');
+        log('🎯 Objectif: Vérifier que les en-têtes restent en haut lors de la capture', 'success');
+        log('💡 Défilez vers le bas puis testez la capture', 'info');
+        
+        // Afficher l'état initial
+        log('📊 État initial:', 'info');
+        log('   - Tableau avec 20 lignes configurées', 'info');
+        log('   - En-têtes sticky configurés', 'info');
+        log('   - Fonction de capture corrigée', 'info');
+        log('   - Styles de capture ajoutés', 'info');
+        
+        updateStatus('Prêt pour le test - Défilez puis capturez');
+    </script>
+</body>
+</html>

@@ -65,14 +65,21 @@
         }
         
         #data-table thead { 
-            position: sticky; 
-            top: 0; 
-            z-index: 10; 
-            background-color: var(--primary-color);
-            color: white;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            position: sticky !important; 
+            top: 0 !important; 
+            z-index: 1000 !important; 
+            background-color: var(--primary-color) !important;
+            color: white !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            /* ✅ GARANTIR que les en-têtes restent toujours visibles */
+            will-change: transform !important;
+            transform: translateZ(0) !important;
+            /* ✅ Ombre pour séparer visuellement les en-têtes */
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+            /* ✅ Bordure inférieure pour délimiter clairement */
+            border-bottom: 3px solid var(--primary-hover) !important;
         }
         
         #data-table thead th {
@@ -450,10 +457,16 @@
         }
 
         #data-table th:first-child {
-            position: sticky;
-            left: 0;
-            z-index: 3;
+            position: sticky !important;
+            left: 0 !important;
+            top: 0 !important;
+            z-index: 1001 !important;
             background-color: var(--primary-color) !important;
+            /* ✅ GARANTIR que la première colonne reste visible */
+            will-change: transform !important;
+            transform: translateZ(0) !important;
+            /* ✅ Ombre pour séparer visuellement */
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1) !important;
         }
         
         /* Frozen column classes for JavaScript */
@@ -468,8 +481,107 @@
         .frozen-column-header.frozen-1 {
             position: sticky !important;
             left: 0 !important;
-            z-index: 3 !important;
+            top: 0 !important;
+            z-index: 1001 !important;
             background-color: var(--primary-color) !important;
+            /* ✅ GARANTIR que les colonnes gelées restent visibles */
+            will-change: transform !important;
+            transform: translateZ(0) !important;
+            /* ✅ Ombre pour séparer visuellement */
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1) !important;
+        }
+        
+        /* ✅ GARANTIR que les en-têtes restent TOUJOURS visibles */
+        #data-table thead,
+        #data-table thead th,
+        .frozen-column-header {
+            /* ✅ Forcer le comportement sticky même pendant les opérations */
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 1000 !important;
+            /* ✅ Optimisations pour la performance */
+            will-change: transform !important;
+            transform: translateZ(0) !important;
+            /* ✅ Garantir la visibilité */
+            visibility: visible !important;
+            opacity: 1 !important;
+            /* ✅ Empêcher le débordement */
+            overflow: visible !important;
+        }
+        
+        /* ✅ En-têtes de colonnes gelées avec priorité maximale */
+        #data-table th:first-child,
+        .frozen-column-header.frozen-1 {
+            z-index: 1001 !important;
+            left: 0 !important;
+            top: 0 !important;
+        }
+        
+        /* ✅ Styles pour les en-têtes pendant le téléchargement */
+        #data-table thead.downloading {
+            background-color: var(--primary-color) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+            border-bottom: 3px solid var(--warning-color) !important;
+        }
+        
+        /* ✅ Styles pour les en-têtes pendant la capture d'écran */
+        #data-table thead.capturing {
+            position: absolute !important;
+            top: 0px !important;
+            left: 0px !important;
+            right: 0px !important;
+            z-index: 10000 !important;
+            background-color: var(--primary-color) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+            border-bottom: 3px solid var(--warning-color) !important;
+            /* ✅ Garantir la visibilité pendant la capture */
+            visibility: visible !important;
+            opacity: 1 !important;
+            /* ✅ Empêcher tout débordement */
+            overflow: visible !important;
+            /* ✅ Forcer l'affichage en haut */
+            transform: translateY(0) !important;
+        }
+        
+        /* ✅ Styles pour les en-têtes de colonnes gelées pendant la capture */
+        #data-table thead.capturing th:first-child,
+        .frozen-column-header.capturing {
+            position: absolute !important;
+            top: 0px !important;
+            left: 0px !important;
+            z-index: 10001 !important;
+            background-color: var(--primary-color) !important;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.2) !important;
+        }
+        
+        /* ✅ Styles pour les en-têtes pendant la capture d'écran */
+        #data-table thead.capturing {
+            position: absolute !important;
+            top: 0px !important;
+            left: 0px !important;
+            right: 0px !important;
+            z-index: 10000 !important;
+            background-color: var(--primary-color) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+            border-bottom: 3px solid var(--warning-color) !important;
+            /* ✅ Garantir la visibilité pendant la capture */
+            visibility: visible !important;
+            opacity: 1 !important;
+            /* ✅ Empêcher tout débordement */
+            overflow: visible !important;
+            /* ✅ Forcer l'affichage en haut */
+            transform: translateY(0) !important;
+        }
+        
+        /* ✅ Styles pour les en-têtes de colonnes gelées pendant la capture */
+        #data-table thead.capturing th:first-child,
+        .frozen-column-header.capturing {
+            position: absolute !important;
+            top: 0px !important;
+            left: 0px !important;
+            z-index: 10001 !important;
+            background-color: var(--primary-color) !important;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.2) !important;
         }
         
         /* Editable cell styles */
@@ -4829,13 +4941,55 @@
         
         function downloadImage() { 
             const table = document.getElementById('data-table'); 
-            html2canvas(table).then(canvas => { 
-                const link = document.createElement('a'); 
-                link.href = canvas.toDataURL('image/png'); 
-                link.download = 'Tableau_Staff.png'; 
-                link.click(); 
-                showMessage('Image téléchargée.'); 
-            }); 
+            
+            // ✅ CORRECTION: Forcer le repositionnement des en-têtes avant la capture
+            const thead = table.querySelector('thead');
+            const originalTop = thead.style.top;
+            const originalPosition = thead.style.position;
+            
+            // ✅ Forcer les en-têtes en haut absolu pour la capture
+            thead.style.position = 'absolute';
+            thead.style.top = '0px';
+            thead.style.zIndex = '10000';
+            
+            // ✅ Ajouter une classe pour le style de capture
+            thead.classList.add('capturing');
+            
+            // ✅ Attendre un peu pour que le repositionnement soit effectif
+            setTimeout(() => {
+                html2canvas(table, {
+                    // ✅ Options pour une meilleure capture
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    scale: 2, // Meilleure qualité
+                    scrollX: 0,
+                    scrollY: 0,
+                    windowWidth: table.scrollWidth,
+                    windowHeight: table.scrollHeight
+                }).then(canvas => { 
+                    const link = document.createElement('a'); 
+                    link.href = canvas.toDataURL('image/png'); 
+                    link.download = 'Tableau_Staff.png'; 
+                    link.click(); 
+                    showMessage('Image téléchargée.'); 
+                    
+                    // ✅ Restaurer les styles originaux après la capture
+                    thead.style.position = originalPosition;
+                    thead.style.top = originalTop;
+                    thead.style.zIndex = '';
+                    thead.classList.remove('capturing');
+                }).catch(error => {
+                    console.error('Erreur lors de la capture:', error);
+                    showMessage('Erreur lors de la capture d\'écran.', 'error');
+                    
+                    // ✅ Restaurer les styles même en cas d'erreur
+                    thead.style.position = originalPosition;
+                    thead.style.top = originalTop;
+                    thead.style.zIndex = '';
+                    thead.classList.remove('capturing');
+                });
+            }, 100);
         }
 
         // Manual save function
