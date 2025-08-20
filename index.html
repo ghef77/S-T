@@ -4964,7 +4964,7 @@
                 
                 // ✅ Corriger chaque cellule d'en-tête
                 const thCells = theadClone.querySelectorAll('th');
-                thCells.forEach(th => {
+                thCells.forEach((th, index) => {
                     th.style.position = 'static';
                     th.style.top = 'auto';
                     th.style.left = 'auto';
@@ -4974,21 +4974,58 @@
                     th.style.fontWeight = 'bold';
                     th.style.border = '1px solid #e5e7eb';
                     th.style.padding = '1rem';
+                    
+                    // ✅ CORRECTION SPÉCIALE pour la colonne "N°" (première colonne)
+                    if (index === 0) {
+                        th.style.backgroundColor = '#15803d !important';
+                        th.style.color = 'white !important';
+                        th.style.fontWeight = 'bold !important';
+                        th.style.border = '1px solid #e5e7eb !important';
+                        th.style.padding = '1rem !important';
+                        th.style.position = 'static !important';
+                        th.style.left = 'auto !important';
+                        th.style.zIndex = 'auto !important';
+                        // ✅ S'assurer que le texte "N°" est visible
+                        th.style.visibility = 'visible !important';
+                        th.style.opacity = '1 !important';
+                        th.style.display = 'table-cell !important';
+                    }
                 });
             }
             
             // ✅ Corriger les cellules du corps du tableau
             const tbodyClone = tableClone.querySelector('tbody');
             if (tbodyClone) {
-                const tdCells = tbodyClone.querySelectorAll('td');
-                tdCells.forEach(td => {
-                    td.style.position = 'static';
-                    td.style.top = 'auto';
-                    td.style.left = 'auto';
-                    td.style.zIndex = 'auto';
-                    td.style.backgroundColor = '#ffffff';
-                    td.style.border = '1px solid #e5e7eb';
-                    td.style.padding = '1rem';
+                const rows = tbodyClone.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    cells.forEach((td, cellIndex) => {
+                        td.style.position = 'static';
+                        td.style.top = 'auto';
+                        td.style.left = 'auto';
+                        td.style.zIndex = 'auto';
+                        td.style.backgroundColor = '#ffffff';
+                        td.style.border = '1px solid #e5e7eb';
+                        td.style.padding = '1rem';
+                        
+                        // ✅ CORRECTION SPÉCIALE pour la colonne "N°" (première colonne)
+                        if (cellIndex === 0) {
+                            td.style.backgroundColor = '#ffffff !important';
+                            td.style.color = '#1f2937 !important'; // Texte foncé
+                            td.style.fontWeight = 'bold !important';
+                            td.style.border = '1px solid #e5e7eb !important';
+                            td.style.padding = '1rem !important';
+                            td.style.position = 'static !important';
+                            td.style.left = 'auto !important';
+                            td.style.zIndex = 'auto !important';
+                            // ✅ S'assurer que le numéro de ligne est visible
+                            td.style.visibility = 'visible !important';
+                            td.style.opacity = '1 !important';
+                            td.style.display = 'table-cell !important';
+                            // ✅ Supprimer les classes problématiques
+                            td.classList.remove('frozen-column', 'frozen-1');
+                        }
+                    });
                 });
             }
             
