@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Variable Globale capturedFocusState</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { 
+            padding: 15px; 
+            margin: 10px; 
+            border-radius: 8px; 
+            font-family: monospace;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Variable Globale capturedFocusState</h1>
+    
+    <div class="test-result info">
+        <strong>Test :</strong> Vérifier que la variable globale capturedFocusState est accessible
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        function log(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const logEntry = document.createElement('div');
+            logEntry.className = `test-result ${type}`;
+            logEntry.textContent = message;
+            resultsDiv.appendChild(logEntry);
+        }
+        
+        // Test 1: Vérifier si la variable existe globalement
+        log('🧪 Test 1: Vérification de l\'existence de capturedFocusState...', 'info');
+        
+        if (typeof capturedFocusState !== 'undefined') {
+            log('✅ SUCCÈS: Variable capturedFocusState est définie globalement', 'success');
+            log(`📊 Valeur actuelle: ${capturedFocusState}`, 'info');
+        } else {
+            log('❌ ERREUR: Variable capturedFocusState n\'est PAS définie globalement', 'error');
+        }
+        
+        // Test 2: Vérifier si la variable peut être assignée
+        log('🧪 Test 2: Test d\'assignation de capturedFocusState...', 'info');
+        
+        try {
+            capturedFocusState = {
+                element: document.body,
+                position: 0,
+                timestamp: Date.now(),
+                rowIndex: 0,
+                colLabel: 'test'
+            };
+            log('✅ SUCCÈS: Variable capturedFocusState peut être assignée', 'success');
+            log(`📊 Nouvelle valeur: ${JSON.stringify(capturedFocusState)}`, 'info');
+        } catch (error) {
+            log(`❌ ERREUR: Impossible d\'assigner capturedFocusState: ${error.message}`, 'error');
+        }
+        
+        // Test 3: Vérifier si la variable est accessible dans une fonction
+        log('🧪 Test 3: Test d\'accès dans une fonction...', 'info');
+        
+        function testFunction() {
+            if (typeof capturedFocusState !== 'undefined') {
+                log('✅ SUCCÈS: Variable accessible dans une fonction', 'success');
+                return true;
+            } else {
+                log('❌ ERREUR: Variable non accessible dans une fonction', 'error');
+                return false;
+            }
+        }
+        
+        testFunction();
+        
+        // Test 4: Vérifier si la variable est accessible dans un callback
+        log('🧪 Test 4: Test d\'accès dans un callback...', 'info');
+        
+        setTimeout(() => {
+            if (typeof capturedFocusState !== 'undefined') {
+                log('✅ SUCCÈS: Variable accessible dans un callback setTimeout', 'success');
+            } else {
+                log('❌ ERREUR: Variable non accessible dans un callback setTimeout', 'error');
+            }
+        }, 100);
+        
+        // Test 5: Vérifier si la variable est accessible dans un objet
+        log('🧪 Test 5: Test d\'accès dans un objet...', 'info');
+        
+        const testObject = {
+            testMethod: function() {
+                if (typeof capturedFocusState !== 'undefined') {
+                    log('✅ SUCCÈS: Variable accessible dans une méthode d\'objet', 'success');
+                    return true;
+                } else {
+                    log('❌ ERREUR: Variable non accessible dans une méthode d\'objet', 'error');
+                    return false;
+                }
+            }
+        };
+        
+        testObject.testMethod();
+        
+        log('🎯 Test terminé - Vérifiez les résultats ci-dessus', 'info');
+    </script>
+</body>
+</html>

@@ -1275,6 +1275,10 @@
         let history = [];
         let historyDebounceTimeout = null;
         
+        // ✅ GLOBAL: Variables pour la capture et restauration du focus
+        let capturedFocusState = null;
+        let focusRestorationEnabled = true;
+        
         // Persistent undo/redo stacks (per session)
         let operationHistory = []; // already-declared enhanced history (kept for clarity)
         let redoHistory = [];
@@ -4467,7 +4471,6 @@
             
             // ✅ CAPTURER LA CELLULE SÉLECTIONNÉE AVANT LA SAUVEGARDE
             const activeElement = document.activeElement;
-            let capturedFocusState = null;
             
             if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
                 capturedFocusState = {
