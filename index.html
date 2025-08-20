@@ -4942,54 +4942,94 @@
         function downloadImage() { 
             const table = document.getElementById('data-table'); 
             
-            // ✅ CORRECTION: Forcer le repositionnement des en-têtes avant la capture
-            const thead = table.querySelector('thead');
-            const originalTop = thead.style.top;
-            const originalPosition = thead.style.position;
+            // ✅ NOUVELLE APPROCHE: Créer une copie du tableau pour la capture
+            const tableClone = table.cloneNode(true);
             
-            // ✅ Forcer les en-têtes en haut absolu pour la capture
-            thead.style.position = 'absolute';
-            thead.style.top = '0px';
-            thead.style.zIndex = '10000';
+            // ✅ Supprimer les classes et styles problématiques
+            tableClone.classList.remove('capturing');
+            tableClone.style.position = 'static';
+            tableClone.style.top = 'auto';
+            tableClone.style.zIndex = 'auto';
             
-            // ✅ Ajouter une classe pour le style de capture
-            thead.classList.add('capturing');
-            
-            // ✅ Attendre un peu pour que le repositionnement soit effectif
-            setTimeout(() => {
-                html2canvas(table, {
-                    // ✅ Options pour une meilleure capture
-                    useCORS: true,
-                    allowTaint: true,
-                    backgroundColor: '#ffffff',
-                    scale: 2, // Meilleure qualité
-                    scrollX: 0,
-                    scrollY: 0,
-                    windowWidth: table.scrollWidth,
-                    windowHeight: table.scrollHeight
-                }).then(canvas => { 
-                    const link = document.createElement('a'); 
-                    link.href = canvas.toDataURL('image/png'); 
-                    link.download = 'Tableau_Staff.png'; 
-                    link.click(); 
-                    showMessage('Image téléchargée.'); 
-                    
-                    // ✅ Restaurer les styles originaux après la capture
-                    thead.style.position = originalPosition;
-                    thead.style.top = originalTop;
-                    thead.style.zIndex = '';
-                    thead.classList.remove('capturing');
-                }).catch(error => {
-                    console.error('Erreur lors de la capture:', error);
-                    showMessage('Erreur lors de la capture d\'écran.', 'error');
-                    
-                    // ✅ Restaurer les styles même en cas d'erreur
-                    thead.style.position = originalPosition;
-                    thead.style.top = originalTop;
-                    thead.style.zIndex = '';
-                    thead.classList.remove('capturing');
+            // ✅ Corriger les en-têtes dans la copie
+            const theadClone = tableClone.querySelector('thead');
+            if (theadClone) {
+                theadClone.style.position = 'static';
+                theadClone.style.top = 'auto';
+                theadClone.style.zIndex = 'auto';
+                theadClone.style.backgroundColor = '#15803d'; // Couleur verte des en-têtes
+                theadClone.style.color = 'white';
+                theadClone.style.fontWeight = 'bold';
+                theadClone.style.textTransform = 'uppercase';
+                
+                // ✅ Corriger chaque cellule d'en-tête
+                const thCells = theadClone.querySelectorAll('th');
+                thCells.forEach(th => {
+                    th.style.position = 'static';
+                    th.style.top = 'auto';
+                    th.style.left = 'auto';
+                    th.style.zIndex = 'auto';
+                    th.style.backgroundColor = '#15803d';
+                    th.style.color = 'white';
+                    th.style.fontWeight = 'bold';
+                    th.style.border = '1px solid #e5e7eb';
+                    th.style.padding = '1rem';
                 });
-            }, 100);
+            }
+            
+            // ✅ Corriger les cellules du corps du tableau
+            const tbodyClone = tableClone.querySelector('tbody');
+            if (tbodyClone) {
+                const tdCells = tbodyClone.querySelectorAll('td');
+                tdCells.forEach(td => {
+                    td.style.position = 'static';
+                    td.style.top = 'auto';
+                    td.style.left = 'auto';
+                    td.style.zIndex = 'auto';
+                    td.style.backgroundColor = '#ffffff';
+                    td.style.border = '1px solid #e5e7eb';
+                    td.style.padding = '1rem';
+                });
+            }
+            
+            // ✅ Ajouter la copie au DOM temporairement (cachée)
+            tableClone.style.position = 'absolute';
+            tableClone.style.left = '-9999px';
+            tableClone.style.top = '0px';
+            tableClone.style.zIndex = '-1';
+            tableClone.style.visibility = 'hidden';
+            document.body.appendChild(tableClone);
+            
+            // ✅ Capture de la copie corrigée
+            html2canvas(tableClone, {
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                scale: 2,
+                scrollX: 0,
+                scrollY: 0,
+                width: table.scrollWidth,
+                height: table.scrollHeight,
+                logging: false
+            }).then(canvas => { 
+                const link = document.createElement('a'); 
+                link.href = canvas.toDataURL('image/png'); 
+                link.download = 'Tableau_Staff.png'; 
+                link.click(); 
+                showMessage('Image téléchargée avec en-têtes en haut.'); 
+                
+                // ✅ Nettoyer la copie temporaire
+                document.body.removeChild(tableClone);
+                
+            }).catch(error => {
+                console.error('Erreur lors de la capture:', error);
+                showMessage('Erreur lors de la capture d\'écran.', 'error');
+                
+                // ✅ Nettoyer même en cas d'erreur
+                if (document.body.contains(tableClone)) {
+                    document.body.removeChild(tableClone);
+                }
+            });
         }
 
         // Manual save function

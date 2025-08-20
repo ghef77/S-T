@@ -213,67 +213,105 @@
             log('📸 Début de la capture d\'écran...', 'info');
             updateStatus('Capture en cours...');
             
-            // ✅ CORRECTION: Forcer le repositionnement des en-têtes avant la capture
-            const thead = table.querySelector('thead');
-            const originalTop = thead.style.top;
-            const originalPosition = thead.style.position;
+            // ✅ NOUVELLE APPROCHE: Créer une copie du tableau pour la capture
+            log('🔧 Création d\'une copie du tableau pour la capture...', 'info');
+            const tableClone = table.cloneNode(true);
             
-            log('🔧 Repositionnement des en-têtes pour la capture...', 'info');
+            // ✅ Supprimer les classes et styles problématiques
+            tableClone.classList.remove('capturing');
+            tableClone.style.position = 'static';
+            tableClone.style.top = 'auto';
+            tableClone.style.zIndex = 'auto';
             
-            // ✅ Forcer les en-têtes en haut absolu pour la capture
-            thead.style.position = 'absolute';
-            thead.style.top = '0px';
-            thead.style.zIndex = '10000';
-            
-            // ✅ Ajouter une classe pour le style de capture
-            thead.classList.add('capturing');
-            
-            log('✅ En-têtes repositionnés, début de la capture...', 'success');
-            
-            // ✅ Attendre un peu pour que le repositionnement soit effectif
-            setTimeout(() => {
-                html2canvas(table, {
-                    // ✅ Options pour une meilleure capture
-                    useCORS: true,
-                    allowTaint: true,
-                    backgroundColor: '#ffffff',
-                    scale: 2, // Meilleure qualité
-                    scrollX: 0,
-                    scrollY: 0,
-                    windowWidth: table.scrollWidth,
-                    windowHeight: table.scrollHeight
-                }).then(canvas => { 
-                    log('✅ Capture réussie !', 'success');
-                    
-                    const link = document.createElement('a'); 
-                    link.href = canvas.toDataURL('image/png'); 
-                    link.download = 'Test_Tableau_En-tetes.png'; 
-                    link.click(); 
-                    
-                    log('💾 Image téléchargée avec succès', 'success');
-                    updateStatus('Capture réussie - Image téléchargée');
-                    
-                    // ✅ Restaurer les styles originaux après la capture
-                    thead.style.position = originalPosition;
-                    thead.style.top = originalTop;
-                    thead.style.zIndex = '';
-                    thead.classList.remove('capturing');
-                    
-                    log('🔄 Styles des en-têtes restaurés', 'info');
-                    
-                }).catch(error => {
-                    log(`❌ Erreur lors de la capture: ${error.message}`, 'error');
-                    updateStatus('Erreur lors de la capture');
-                    
-                    // ✅ Restaurer les styles même en cas d'erreur
-                    thead.style.position = originalPosition;
-                    thead.style.top = originalTop;
-                    thead.style.zIndex = '';
-                    thead.classList.remove('capturing');
-                    
-                    log('🔄 Styles des en-têtes restaurés après erreur', 'warning');
+            // ✅ Corriger les en-têtes dans la copie
+            const theadClone = tableClone.querySelector('thead');
+            if (theadClone) {
+                theadClone.style.position = 'static';
+                theadClone.style.top = 'auto';
+                theadClone.style.zIndex = 'auto';
+                theadClone.style.backgroundColor = '#007bff';
+                theadClone.style.color = 'white';
+                theadClone.style.fontWeight = 'bold';
+                theadClone.style.textTransform = 'uppercase';
+                
+                // ✅ Corriger chaque cellule d'en-tête
+                const thCells = theadClone.querySelectorAll('th');
+                thCells.forEach(th => {
+                    th.style.position = 'static';
+                    th.style.top = 'auto';
+                    th.style.left = 'auto';
+                    th.style.zIndex = 'auto';
+                    th.style.backgroundColor = '#007bff';
+                    th.style.color = 'white';
+                    th.style.fontWeight = 'bold';
+                    th.style.border = '1px solid #e5e7eb';
+                    th.style.padding = '1rem';
                 });
-            }, 100);
+            }
+            
+            // ✅ Corriger les cellules du corps du tableau
+            const tbodyClone = tableClone.querySelector('tbody');
+            if (tbodyClone) {
+                const tdCells = tbodyClone.querySelectorAll('td');
+                tdCells.forEach(td => {
+                    td.style.position = 'static';
+                    td.style.top = 'auto';
+                    td.style.left = 'auto';
+                    td.style.zIndex = 'auto';
+                    td.style.backgroundColor = '#ffffff';
+                    td.style.border = '1px solid #e5e7eb';
+                    td.style.padding = '1rem';
+                });
+            }
+            
+            log('✅ Copie du tableau corrigée, ajout au DOM...', 'success');
+            
+            // ✅ Ajouter la copie au DOM temporairement (cachée)
+            tableClone.style.position = 'absolute';
+            tableClone.style.left = '-9999px';
+            tableClone.style.top = '0px';
+            tableClone.style.zIndex = '-1';
+            tableClone.style.visibility = 'hidden';
+            document.body.appendChild(tableClone);
+            
+            log('✅ Copie ajoutée au DOM, début de la capture...', 'success');
+            
+            // ✅ Capture de la copie corrigée
+            html2canvas(tableClone, {
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                scale: 2,
+                scrollX: 0,
+                scrollY: 0,
+                width: table.scrollWidth,
+                height: table.scrollHeight,
+                logging: false
+            }).then(canvas => { 
+                log('✅ Capture réussie !', 'success');
+                
+                const link = document.createElement('a'); 
+                link.href = canvas.toDataURL('image/png'); 
+                link.download = 'Test_Tableau_En-tetes.png'; 
+                link.click(); 
+                
+                log('💾 Image téléchargée avec succès', 'success');
+                updateStatus('Capture réussie - Image téléchargée');
+                
+                // ✅ Nettoyer la copie temporaire
+                document.body.removeChild(tableClone);
+                log('🔄 Copie temporaire nettoyée', 'info');
+                
+            }).catch(error => {
+                log(`❌ Erreur lors de la capture: ${error.message}`, 'error');
+                updateStatus('Erreur lors de la capture');
+                
+                // ✅ Nettoyer même en cas d'erreur
+                if (document.body.contains(tableClone)) {
+                    document.body.removeChild(tableClone);
+                    log('🔄 Copie temporaire nettoyée après erreur', 'warning');
+                }
+            });
         }
         
         // Initialisation
