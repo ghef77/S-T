@@ -5046,19 +5046,6 @@
             tableClone.style.display = 'table';
             document.body.appendChild(tableClone);
             
-            // ✅ S'assurer que TOUTES les lignes sont visibles dans la copie
-            const allRows = tbodyClone.querySelectorAll('tr');
-            allRows.forEach(row => {
-                row.style.display = 'table-row !important';
-                row.style.visibility = 'visible !important';
-                row.style.opacity = '1 !important';
-                row.style.height = 'auto !important';
-                row.style.minHeight = '50px !important';
-                // ✅ Forcer l'affichage de toutes les lignes
-                row.style.overflow = 'visible !important';
-                row.style.clip = 'auto !important';
-            });
-            
             // ✅ CAPTURE DE LA ZONE VISIBLE: Calculer les dimensions de la zone visible
             const visibleWidth = Math.min(viewportWidth - 40, table.scrollWidth); // -40px pour les marges
             const visibleHeight = Math.min(viewportHeight - 100, table.scrollHeight); // -100px pour les marges
@@ -5073,6 +5060,32 @@
             tableClone.style.minWidth = `${totalWidth}px`;
             tableClone.style.maxWidth = `${totalWidth}px`;
             tableClone.style.tableLayout = 'fixed';
+            
+            // ✅ CAPTURE DE LA ZONE VISIBLE: Masquer les lignes non visibles
+            const allRows = tbodyClone.querySelectorAll('tr');
+            allRows.forEach((row, index) => {
+                // ✅ Calculer la position réelle de chaque ligne
+                const rowTop = index * 60; // Hauteur approximative par ligne (60px)
+                const rowBottom = rowTop + 60;
+                
+                // ✅ Vérifier si la ligne est dans la zone visible actuelle
+                const isVisible = (rowTop >= scrollTop - 100) && (rowBottom <= scrollTop + visibleHeight + 100);
+                
+                if (isVisible) {
+                    row.style.display = 'table-row !important';
+                    row.style.visibility = 'visible !important';
+                    row.style.opacity = '1 !important';
+                    row.style.height = 'auto !important';
+                    row.style.minHeight = '50px !important';
+                } else {
+                    // ✅ Masquer complètement les lignes non visibles
+                    row.style.display = 'none !important';
+                    row.style.visibility = 'hidden !important';
+                    row.style.opacity = '0 !important';
+                    row.style.height = '0 !important';
+                    row.style.overflow = 'hidden !important';
+                }
+            });
             
             // ✅ CAPTURE DE LA ZONE VISIBLE: Positionner le tableau pour capturer la zone actuelle
             tableClone.style.position = 'absolute';
