@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Blocage Realtime Sync Pendant Undo/Redo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-table { 
+            border-collapse: collapse; 
+            margin: 20px 0; 
+            width: 100%;
+            max-width: 600px;
+        }
+        .test-table th, .test-table td { 
+            border: 2px solid #007bff; 
+            padding: 15px; 
+            text-align: center;
+            background: #f8f9fa;
+            font-size: 16px;
+        }
+        .test-table th { 
+            background: #007bff; 
+            color: white; 
+            font-weight: bold;
+        }
+        .test-table td:focus { 
+            background: #fff3cd; 
+            border-color: #ffc107;
+            outline: 3px solid #ffc107;
+        }
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+        .status {
+            background: #fff3cd;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #ffc107;
+        }
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+        }
+        .success { color: #28a745; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .info { color: #17a2b8; font-weight: bold; }
+        .realtime { color: #6f42c1; font-weight: bold; }
+        button { 
+            padding: 12px 20px; 
+            margin: 8px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-warning { background-color: #ffc107; color: black; }
+        .btn-danger { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Blocage Realtime Sync Pendant Undo/Redo</h1>
+    
+    <div class="instructions">
+        <h3>📋 Test du Blocage de la Synchronisation Temps Réel</h3>
+        <p><strong>Objectif :</strong> Vérifier que la synchronisation temps réel est bloquée pendant les opérations undo/redo.</p>
+        <ol>
+            <li>Modifiez une cellule pour créer un historique</li>
+            <li>Cliquez sur "Undo" pour déclencher une opération undo</li>
+            <li>Simulez une mise à jour temps réel</li>
+            <li>Vérifiez que la mise à jour est ignorée</li>
+            <li>Cliquez sur "Sauvegarde Auto" pour terminer l'opération</li>
+            <li>Vérifiez que la synchronisation temps réel est réactivée</li>
+        </ol>
+    </div>
+    
+    <div class="status" id="status">
+        <strong>État :</strong> Prêt pour le test de blocage realtime sync
+    </div>
+    
+    <table class="test-table">
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Prénom</th>
+                <th>Email</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td contenteditable="true" data-label="Nom">Dupont</td>
+                <td contenteditable="true" data-label="Prénom">Jean</td>
+                <td contenteditable="true" data-label="Email">jean@email.com</td>
+            </tr>
+            <tr>
+                <td contenteditable="true" data-label="Nom">Martin</td>
+                <td contenteditable="true" data-label="Prénom">Marie</td>
+                <td contenteditable="true" data-label="Email">marie@email.com</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div style="margin: 20px;">
+        <button onclick="testUndo()" class="btn-warning">↶ Undo</button>
+        <button onclick="testRedo()" class="btn-warning">↷ Redo</button>
+        <button onclick="testRealtimeUpdate()" class="btn-primary">🔄 Simuler Realtime Update</button>
+        <button onclick="testAutosave()" class="btn-success">💾 Sauvegarde Auto</button>
+        <button onclick="clearLog()" class="btn-danger">🗑️ Effacer Log</button>
+        <button onclick="showState()" class="btn-info">📊 État Actuel</button>
+    </div>
+    
+    <div class="log" id="log">
+        <div class="info">🚀 Test de blocage realtime sync pendant undo/redo initialisé</div>
+    </div>
+    
+    <script>
+        // ✅ SIMULATION DU SYSTÈME UNDO/REDO ET REALTIME SYNC
+        let operationHistory = [];
+        let redoHistory = [];
+        let isPerformingUndoRedo = false;
+        let realtimeSyncBlocked = false;
+        let testResults = {
+            undoOperations: 0,
+            redoOperations: 0,
+            realtimeUpdates: 0,
+            blockedUpdates: 0,
+            autosaves: 0
+        };
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(message) {
+            document.getElementById('status').innerHTML = `<strong>État :</strong> ${message}`;
+        }
+        
+        // ✅ SIMULATION DE LA FONCTION UNDO
+        function testUndo() {
+            if (operationHistory.length === 0) {
+                log('❌ Aucune opération à annuler', 'error');
+                return;
+            }
+            
+            log('🔄 Déclenchement de l\'opération Undo...', 'warning');
+            isPerformingUndoRedo = true;
+            realtimeSyncBlocked = true;
+            
+            const lastOperation = operationHistory.pop();
+            redoHistory.push(lastOperation);
+            
+            log(`✅ Undo effectué: ${lastOperation.description}`, 'success');
+            log('⚠️ Synchronisation temps réel BLOQUÉE pendant undo/redo', 'warning');
+            
+            testResults.undoOperations++;
+            updateStatus(`Undo: ${testResults.undoOperations}, Realtime bloqué: ${realtimeSyncBlocked}`);
+        }
+        
+        // ✅ SIMULATION DE LA FONCTION REDO
+        function testRedo() {
+            if (redoHistory.length === 0) {
+                log('❌ Aucune opération à refaire', 'error');
+                return;
+            }
+            
+            log('🔄 Déclenchement de l\'opération Redo...', 'warning');
+            isPerformingUndoRedo = true;
+            realtimeSyncBlocked = true;
+            
+            const lastRedoOperation = redoHistory.pop();
+            operationHistory.push(lastRedoOperation);
+            
+            log(`✅ Redo effectué: ${lastRedoOperation.description}`, 'success');
+            log('⚠️ Synchronisation temps réel BLOQUÉE pendant undo/redo', 'warning');
+            
+            testResults.redoOperations++;
+            updateStatus(`Redo: ${testResults.redoOperations}, Realtime bloqué: ${realtimeSyncBlocked}`);
+        }
+        
+        // ✅ SIMULATION D'UNE MISE À JOUR TEMPS RÉEL
+        function testRealtimeUpdate() {
+            testResults.realtimeUpdates++;
+            
+            if (isPerformingUndoRedo) {
+                log(`❌ Realtime update IGNORÉ (undo/redo en cours) - Update #${testResults.realtimeUpdates}`, 'warning');
+                testResults.blockedUpdates++;
+                updateStatus(`Realtime bloqué: ${realtimeSyncBlocked}, Updates ignorés: ${testResults.blockedUpdates}`);
+            } else {
+                log(`✅ Realtime update traité - Update #${testResults.realtimeUpdates}`, 'realtime');
+                updateStatus(`Realtime actif, Updates traités: ${testResults.realtimeUpdates}`);
+            }
+        }
+        
+        // ✅ SIMULATION DE LA SAUVEGARDE AUTOMATIQUE
+        function testAutosave() {
+            if (!isPerformingUndoRedo) {
+                log('⚠️ Aucune opération undo/redo en cours', 'warning');
+                return;
+            }
+            
+            log('💾 Sauvegarde automatique en cours...', 'info');
+            
+            // Simuler le temps de sauvegarde
+            setTimeout(() => {
+                log('✅ Sauvegarde automatique terminée', 'success');
+                
+                // ✅ RÉACTIVER LA SYNCHRONISATION TEMPS RÉEL
+                isPerformingUndoRedo = false;
+                realtimeSyncBlocked = false;
+                
+                log('🔄 Synchronisation temps réel RÉACTIVÉE après sauvegarde', 'success');
+                updateStatus(`Sauvegarde terminée, Realtime réactivé: ${!realtimeSyncBlocked}`);
+                
+                testResults.autosaves++;
+                
+                // Test de validation
+                setTimeout(() => {
+                    log('🧪 Test de validation: Vérification que realtime est réactivé...', 'info');
+                    testRealtimeUpdate();
+                }, 200);
+                
+            }, 500);
+        }
+        
+        // Afficher l'état actuel
+        function showState() {
+            log('📊 État actuel du système:', 'info');
+            log(`   - isPerformingUndoRedo: ${isPerformingUndoRedo}`, 'info');
+            log(`   - realtimeSyncBlocked: ${realtimeSyncBlocked}`, 'info');
+            log(`   - Historique undo: ${operationHistory.length} opérations`, 'info');
+            log(`   - Historique redo: ${redoHistory.length} opérations`, 'info');
+            log(`   - Statistiques:`, 'info');
+            log(`     * Undo: ${testResults.undoOperations}`, 'info');
+            log(`     * Redo: ${testResults.redoOperations}`, 'info');
+            log(`     * Realtime updates: ${testResults.realtimeUpdates}`, 'info');
+            log(`     * Updates bloqués: ${testResults.blockedUpdates}`, 'info');
+            log(`     * Autosaves: ${testResults.autosaves}`, 'info');
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '<div class="info">🚀 Test de blocage realtime sync pendant undo/redo initialisé</div>';
+        }
+        
+        // ✅ SIMULATION DE LA CAPTURE DES MODIFICATIONS
+        function setupCellEvents() {
+            const cells = document.querySelectorAll('.test-table td[contenteditable="true"]');
+            
+            cells.forEach((cell, index) => {
+                let originalValue = cell.textContent;
+                
+                cell.addEventListener('input', () => {
+                    const newValue = cell.textContent;
+                    if (newValue !== originalValue) {
+                        const operation = {
+                            description: `Modification ${cell.getAttribute('data-label')}: "${originalValue}" → "${newValue}"`,
+                            timestamp: Date.now(),
+                            cell: cell,
+                            oldValue: originalValue,
+                            newValue: newValue
+                        };
+                        
+                        operationHistory.push(operation);
+                        originalValue = newValue;
+                        
+                        log(`📝 Modification capturée: ${operation.description}`, 'info');
+                        log(`📊 Historique undo: ${operationHistory.length} opérations`, 'info');
+                    }
+                });
+            });
+        }
+        
+        // Initialisation
+        log('✅ Test de blocage realtime sync pendant undo/redo initialisé avec succès', 'success');
+        log('🎯 Objectif: Vérifier que realtime sync est bloqué pendant undo/redo', 'success');
+        log('💡 La synchronisation temps réel doit être réactivée après autosave', 'info');
+        
+        // Configurer les événements
+        setupCellEvents();
+        
+        // Afficher l'état initial
+        log('📊 État initial:', 'info');
+        log('   - 2 lignes de test configurées', 'info');
+        log('   - Système undo/redo simulé', 'info');
+        log('   - Blocage realtime sync pendant undo/redo', 'info');
+        log('   - Réactivation après sauvegarde automatique', 'info');
+        
+        updateStatus('Prêt pour le test - Modifiez une cellule puis testez undo/redo');
+        
+        // Test automatique après 3 secondes
+        setTimeout(() => {
+            log('💡 Conseil: Modifiez une cellule, puis testez undo → realtime update → autosave', 'info');
+        }, 3000);
+    </script>
+</body>
+</html>

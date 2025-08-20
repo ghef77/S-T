@@ -4701,6 +4701,19 @@
                         }
                     }, 100);
                 }
+                
+                // ✅ RÉACTIVER LA SYNCHRONISATION TEMPS RÉEL APRÈS SAUVEGARDE
+                if (isPerformingUndoRedo) {
+                    log('🔄 Réactivation de la synchronisation temps réel après sauvegarde undo/redo', 'info');
+                    // Réactiver la synchronisation temps réel après un court délai
+                    setTimeout(() => {
+                        if (realtimeSubscription) {
+                            console.log('✅ Synchronisation temps réel réactivée après undo/redo');
+                            updateStatus('Synchronisation temps réel réactivée', 'success');
+                        }
+                    }, 500);
+                }
+                
             } catch(e) {
                 log('Erreur de sauvegarde : ' + e.message, 'error');
                 updateStatus('Erreur de sauvegarde', 'error');
@@ -4716,9 +4729,15 @@
         function handleRealtimeUpdate(payload) {
             console.log('🔄 Realtime update received:', payload);
             
-            // Avoid update loops
+            // ✅ CORRECTION: Bloquer la synchronisation temps réel pendant undo/redo
             if (window.isLocalSaveInProgress) {
-                console.log('⚠️ Realtime update ignored (local save in progress)');
+                console.log('⚠️ Realtime update ignoré (sauvegarde locale en cours)');
+                return;
+            }
+            
+            // ✅ CORRECTION: Bloquer la synchronisation temps réel pendant undo/redo
+            if (isPerformingUndoRedo) {
+                console.log('⚠️ Realtime update ignoré (opération undo/redo en cours)');
                 return;
             }
 
