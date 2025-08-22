@@ -34,7 +34,7 @@ serve(async (req) => {
     const parisTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Paris"}))
     const snapshotDate = parisTime.toISOString().split('T')[0] // YYYY-MM-DD format
     
-    console.log(`🔄 Starting daily snapshot for date: ${snapshotDate}`)
+    console.log(`🔄 Starting minute snapshot for date: ${snapshotDate}`)
 
     // 1. Fetch all data from staffTable
     const { data: tableData, error: fetchError } = await supabase
@@ -109,7 +109,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Daily snapshot completed for ${snapshotDate}`,
+        message: `Minute snapshot completed for ${snapshotDate}`,
         data: {
           snapshotDate,
           rowCount,
