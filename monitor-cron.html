@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring Cron Job - Supabase</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .header h1 {
+            color: #2563eb;
+            margin: 0;
+        }
+        .header p {
+            color: #6b7280;
+            margin: 10px 0 0 0;
+        }
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background: #1d4ed8;
+        }
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .btn.stop {
+            background: #dc2626;
+        }
+        .btn.stop:hover {
+            background: #b91c1c;
+        }
+        .status {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .status h3 {
+            margin: 0 0 15px 0;
+            color: #374151;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        .status-label {
+            font-weight: 500;
+            color: #4b5563;
+        }
+        .status-value {
+            color: #1f2937;
+            font-weight: 600;
+        }
+        .log-container {
+            background: #1f2937;
+            color: #f9fafb;
+            border-radius: 6px;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 2px 0;
+        }
+        .log-success { color: #10b981; }
+        .log-warning { color: #f59e0b; }
+        .log-error { color: #ef4444; }
+        .log-info { color: #3b82f6; }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+            transition: width 0.3s ease;
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid;
+        }
+        .alert-success {
+            background: #f0fdf4;
+            border-color: #10b981;
+            color: #065f46;
+        }
+        .alert-warning {
+            background: #fffbeb;
+            border-color: #f59e0b;
+            color: #92400e;
+        }
+        .alert-error {
+            background: #fef2f2;
+            border-color: #ef4444;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Monitoring Cron Job Supabase</h1>
+            <p>Vérification que le cron job ne tourne plus toutes les minutes</p>
+        </div>
+
+        <div class="controls">
+            <button id="startBtn" class="btn" onclick="startMonitoring()">🚀 Démarrer le Monitoring</button>
+            <button id="stopBtn" class="btn stop" onclick="stopMonitoring()" disabled>⏹️ Arrêter</button>
+            <button id="clearBtn" class="btn" onclick="clearLog()">🧹 Effacer les Logs</button>
+        </div>
+
+        <div class="status">
+            <h3>📊 Statut du Monitoring</h3>
+            <div class="status-item">
+                <span class="status-label">État:</span>
+                <span id="statusState" class="status-value">En attente</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Temps écoulé:</span>
+                <span id="elapsedTime" class="status-value">0s</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Temps restant:</span>
+                <span id="remainingTime" class="status-value">5m 0s</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Snapshots détectés:</span>
+                <span id="snapshotCount" class="status-value">0</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Limite d'alerte:</span>
+                <span id="alertThreshold" class="status-value">2</span>
+            </div>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <div class="log-container" id="logContainer">
+            <div class="log-entry log-info">🚀 Prêt à démarrer le monitoring...</div>
+            <div class="log-entry log-info">⏱️  Durée de monitoring: 5 minutes</div>
+            <div class="log-entry log-info">🔍 Vérification toutes les 30 secondes</div>
+            <div class="log-entry log-info">⚠️  Alerte si plus de 2 snapshots en 5 minutes</div>
+        </div>
+    </div>
+
+    <script src="monitor-cron-activity.js"></script>
+    <script>
+        let monitoringInterval;
+        let startTime;
+        let isMonitoring = false;
+
+        function startMonitoring() {
+            if (isMonitoring) return;
+            
+            isMonitoring = true;
+            startTime = Date.now();
+            
+            // Mettre à jour l'interface
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('statusState').textContent = 'En cours';
+            document.getElementById('statusState').style.color = '#10b981';
+            
+            // Effacer les alertes précédentes
+            document.getElementById('alertContainer').innerHTML = '';
+            
+            // Démarrer le monitoring
+            startCronMonitoring();
+            
+            // Mettre à jour le statut en temps réel
+            monitoringInterval = setInterval(updateStatus, 1000);
+            
+            addLog('🚀 Monitoring démarré !', 'success');
+        }
+
+        function stopMonitoring() {
+            if (!isMonitoring) return;
+            
+            isMonitoring = false;
+            clearInterval(monitoringInterval);
+            
+            // Mettre à jour l'interface
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('statusState').textContent = 'Arrêté';
+            document.getElementById('statusState').style.color = '#6b7280';
+            
+            addLog('⏹️ Monitoring arrêté manuellement', 'warning');
+        }
+
+        function updateStatus() {
+            if (!isMonitoring) return;
+            
+            const now = Date.now();
+            const elapsed = Math.round((now - startTime) / 1000);
+            const remaining = Math.round((300 - elapsed)); // 5 minutes = 300 secondes
+            
+            if (remaining <= 0) {
+                stopMonitoring();
+                return;
+            }
+            
+            // Mettre à jour les temps
+            document.getElementById('elapsedTime').textContent = `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`;
+            document.getElementById('remainingTime').textContent = `${Math.floor(remaining / 60)}m ${remaining % 60}s`;
+            
+            // Mettre à jour la barre de progression
+            const progress = (elapsed / 300) * 100;
+            document.getElementById('progressFill').style.width = `${progress}%`;
+        }
+
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString('fr-FR')}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('logContainer').innerHTML = `
+                <div class="log-entry log-info">🚀 Prêt à démarrer le monitoring...</div>
+                <div class="log-entry log-info">⏱️  Durée de monitoring: 5 minutes</div>
+                <div class="log-entry log-info">🔍 Vérification toutes les 30 secondes</div>
+                <div class="log-entry log-info">⚠️  Alerte si plus de 2 snapshots en 5 minutes</div>
+            `;
+        }
+
+        // Surcharger la fonction console.log pour afficher dans l'interface
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            
+            const message = args.join(' ');
+            let type = 'info';
+            
+            if (message.includes('✅')) type = 'success';
+            else if (message.includes('⚠️') || message.includes('🚨')) type = 'warning';
+            else if (message.includes('❌')) type = 'error';
+            
+            addLog(message, type);
+        };
+
+        // Surcharger console.error aussi
+        const originalError = console.error;
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            
+            const message = args.join(' ');
+            addLog(message, 'error');
+        };
+    </script>
+</body>
+</html>

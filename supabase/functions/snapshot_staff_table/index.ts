@@ -1,24 +1,26 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', {
+      headers: corsHeaders
+    });
   }
 
   try {
     // Get environment variables
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing required environment variables')
+      throw new Error('Missing required environment variables');
     }
 
     // Create Supabase client with service role
@@ -27,27 +29,29 @@ serve(async (req) => {
         autoRefreshToken: false,
         persistSession: false
       }
-    })
+    });
 
     // Get current date in Europe/Paris timezone
-    const now = new Date()
-    const parisTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Paris"}))
-    const snapshotDate = parisTime.toISOString().split('T')[0] // YYYY-MM-DD format
+    const now = new Date();
+    const parisTime = new Date(now.toLocaleString("en-US", {
+      timeZone: "Europe/Paris"
+    }));
+    const snapshotDate = parisTime.toISOString().split('T')[0]; // YYYY-MM-DD format
     
-    console.log(`🔄 Starting minute snapshot for date: ${snapshotDate}`)
-
+    console.log(`🔄 Starting DAILY snapshot for date: ${snapshotDate} at ${parisTime.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris' })}`);
+    
     // 1. Fetch all data from staffTable
     const { data: tableData, error: fetchError } = await supabase
       .from('staffTable')
       .select('*')
-      .order('No', { ascending: true })
+      .order('No', { ascending: true });
 
     if (fetchError) {
-      throw new Error(`Failed to fetch table data: ${fetchError.message}`)
+      throw new Error(`Failed to fetch table data: ${fetchError.message}`);
     }
 
-    const rowCount = tableData?.length || 0
-    console.log(`📊 Fetched ${rowCount} rows from staffTable`)
+    const rowCount = tableData?.length || 0;
+    console.log(`📊 Fetched ${rowCount} rows from staffTable`);
 
     // 2. Prepare snapshot data
     const snapshotData = {
@@ -57,27 +61,21 @@ serve(async (req) => {
         rowCount,
         createdAt: new Date().toISOString(),
         snapshotDate,
-        version: '1.0.0'
+        version: '1.0.0',
+        executionType: 'daily_cron_job',
+        scheduledTime: '10:00 AM Europe/Paris'
       }
-    }
+    };
 
     // 3. Serialize to JSON
-    const jsonContent = JSON.stringify(snapshotData, null, 2)
-    const fileSize = new TextEncoder().encode(jsonContent).length
+    const jsonContent = JSON.stringify(snapshotData, null, 2);
+    const fileSize = new TextEncoder().encode(jsonContent).length;
 
-    // 4. Generate hierarchical storage path (YYYY/MM/DD/HH-MM-SS_staffTable.json)
-    // Create organized folder structure for better file management
-    const currentTime = new Date()
-    const year = currentTime.getFullYear()
-    const month = (currentTime.getMonth() + 1).toString().padStart(2, '0')
-    const day = currentTime.getDate().toString().padStart(2, '0')
-    const hours = currentTime.getHours().toString().padStart(2, '0')
-    const minutes = currentTime.getMinutes().toString().padStart(2, '0')
-    const seconds = currentTime.getSeconds().toString().padStart(2, '0')
-    const timeStamp = `${hours}-${minutes}-${seconds}`
+    // 4. Generate simplified storage path for daily snapshots
+    // Daily format: YYYY-MM-DD_staffTable_daily.json
+    const objectPath = `${snapshotDate}_staffTable_daily.json`;
     
-    // Create hierarchical path: YYYY/MM/DD/HH-MM-SS_staffTable.json
-    const objectPath = `${year}/${month}/${day}/${timeStamp}_staffTable.json`
+    console.log(`📁 Using daily snapshot path: ${objectPath}`);
 
     // 5. Upload to Storage
     const { error: uploadError } = await supabase.storage
@@ -85,15 +83,15 @@ serve(async (req) => {
       .upload(objectPath, jsonContent, {
         contentType: 'application/json',
         upsert: true // Overwrite if exists
-      })
+      });
 
     if (uploadError) {
-      throw new Error(`Failed to upload snapshot: ${uploadError.message}`)
+      throw new Error(`Failed to upload snapshot: ${uploadError.message}`);
     }
 
-    console.log(`💾 Snapshot uploaded to: ${objectPath}`)
+    console.log(`💾 Daily snapshot uploaded to: ${objectPath}`);
 
-    // 6. Upsert index record
+    // 6. Upsert index record with daily execution info
     const { error: indexError } = await supabase
       .from('table_snapshots_index')
       .upsert({
@@ -101,49 +99,58 @@ serve(async (req) => {
         object_path: objectPath,
         row_count: rowCount,
         file_size_bytes: fileSize,
-        metadata: snapshotData.metadata
+        metadata: {
+          ...snapshotData.metadata,
+          executionFrequency: 'daily',
+          nextExecution: 'tomorrow at 10:00 AM Europe/Paris'
+        }
       }, {
         onConflict: 'snapshot_date,created_at'
-      })
+      });
 
     if (indexError) {
-      throw new Error(`Failed to update index: ${indexError.message}`)
+      throw new Error(`Failed to update index: ${indexError.message}`);
     }
 
-    console.log(`✅ Snapshot index updated for date: ${snapshotDate}`)
+    console.log(`✅ Daily snapshot index updated for date: ${snapshotDate}`);
 
     // 7. Return success response
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: `Minute snapshot completed for ${snapshotDate}`,
-        data: {
-          snapshotDate,
-          rowCount,
-          fileSize,
-          objectPath,
-          timestamp: new Date().toISOString()
-        }
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
+    return new Response(JSON.stringify({
+      success: true,
+      message: `Daily snapshot completed for ${snapshotDate}`,
+      executionInfo: {
+        type: 'daily_cron_job',
+        scheduledTime: '10:00 AM Europe/Paris',
+        nextExecution: 'tomorrow at 10:00 AM Europe/Paris'
+      },
+      data: {
+        snapshotDate,
+        rowCount,
+        fileSize,
+        objectPath,
+        timestamp: new Date().toISOString()
       }
-    )
+    }), {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      },
+      status: 200
+    });
 
   } catch (error) {
-    console.error('❌ Snapshot error:', error)
-    
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
-      }
-    )
+    console.error('❌ Daily snapshot error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message,
+      executionType: 'daily_cron_job',
+      timestamp: new Date().toISOString()
+    }), {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      },
+      status: 500
+    });
   }
-})
+});
