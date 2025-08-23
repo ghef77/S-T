@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Nouvelle Structure Hiérarchique</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Nouvelle Structure Hiérarchique</h1>
+    
+    <div class="test-section info">
+        <h3>📋 Objectif</h3>
+        <p>Tester la lecture des snapshots avec la nouvelle structure hiérarchique : YYYY/MM/DD/HH-MM-SS_staffTable.json</p>
+    </div>
+
+    <div class="test-section">
+        <h3>🔑 Configuration</h3>
+        <p><strong>URL:</strong> https://fiecugxopjxzqfdnaqsu.supabase.co</p>
+        <p><strong>Bucket:</strong> table-snapshots</p>
+        <button onclick="testHierarchicalStructure()">🧪 Test Structure Hiérarchique</button>
+        <button onclick="testOldStructure()">🧪 Test Ancienne Structure</button>
+        <button onclick="clearLogs()">🗑️ Effacer Logs</button>
+    </div>
+
+    <div class="test-section">
+        <h3>📊 Logs de Test</h3>
+        <div id="logs" class="log"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://fiecugxopjxzqfdnaqsu.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw';
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById('logs');
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        async function testHierarchicalStructure() {
+            log('🧪 === TEST STRUCTURE HIÉRARCHIQUE ===');
+            
+            try {
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                // Test avec le nouveau format hiérarchique
+                const hierarchicalPath = '2025/08/23/07-32-11_staffTable.json';
+                log(`🔄 Test lecture: ${hierarchicalPath}`);
+                
+                const result = await supabase.storage
+                    .from('table-snapshots')
+                    .download(hierarchicalPath);
+                
+                if (result.error) {
+                    log(`❌ Erreur lecture hiérarchique: ${JSON.stringify(result.error)}`, 'error');
+                } else {
+                    const content = await result.data.text();
+                    const parsed = JSON.parse(content);
+                    log(`✅ Lecture hiérarchique réussie!`);
+                    log(`📊 Taille: ${result.data.size} bytes`);
+                    log(`📋 Lignes: ${parsed.data?.length || 'N/A'}`);
+                    log(`📄 Contenu preview: ${content.substring(0, 100)}...`);
+                }
+                
+            } catch (error) {
+                log(`❌ Erreur test hiérarchique: ${error.message}`, 'error');
+            }
+        }
+
+        async function testOldStructure() {
+            log('🧪 === TEST ANCIENNE STRUCTURE ===');
+            
+            try {
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                // Test avec l'ancien format plat
+                const flatPath = 'staffTable_2025-08-23_07-27-00.json';
+                log(`🔄 Test lecture: ${flatPath}`);
+                
+                const result = await supabase.storage
+                    .from('table-snapshots')
+                    .download(flatPath);
+                
+                if (result.error) {
+                    log(`❌ Erreur lecture ancienne: ${JSON.stringify(result.error)}`, 'error');
+                } else {
+                    const content = await result.data.text();
+                    const parsed = JSON.parse(content);
+                    log(`✅ Lecture ancienne réussie!`);
+                    log(`📊 Taille: ${result.data.size} bytes`);
+                    log(`📋 Lignes: ${parsed.data?.length || 'N/A'}`);
+                    log(`📄 Contenu preview: ${content.substring(0, 100)}...`);
+                }
+                
+            } catch (error) {
+                log(`❌ Erreur test ancienne: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialisation
+        log('🚀 Test Nouvelle Structure initialisé');
+        log('Cliquez sur un bouton pour commencer les tests...');
+    </script>
+</body>
+</html>
+
+

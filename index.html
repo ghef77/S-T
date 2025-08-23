@@ -5574,7 +5574,7 @@
                 const { data: snapshots, error: fetchError } = await supabase
                     .from('table_snapshots_index')
                     .select('*')
-                    .order('snapshot_date', { ascending: false });
+                    .order('created_at', { ascending: false });
                 
                 if (fetchError) {
                     console.error('❌ Error fetching snapshots for cleanup:', fetchError);
@@ -5901,7 +5901,13 @@
                     // Clean: Removed debug log
                 }
 
-                let fileName = `staff_table_${dateString}_10-00-00.json`;
+                // Generate unique filename with timestamp
+                const now = new Date();
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                const seconds = now.getSeconds().toString().padStart(2, '0');
+                const timeStamp = `${hours}-${minutes}-${seconds}`;
+                let fileName = `staff_table_${dateString}_${timeStamp}.json`;
                 const jsonBlob = new Blob([JSON.stringify(snapshotData, null, 2)], { type: 'application/json' });
 
                 // Check if file already exists in storage before uploading
@@ -5978,13 +5984,13 @@
                             .from('table_snapshots_index')
                             .insert({
                                 snapshot_date: uniqueDateString,
-                                object_path: `staff_table_${uniqueDateString}_${timestamp}.json`,
+                                object_path: `staff_table_${uniqueDateString}_${timestamp}_retry.json`,
                                 row_count: 3,
                                 file_size_bytes: 1500,
                                 metadata: JSON.stringify({
                                     table: 'staffTable',
                                     version: '1.0.0',
-                                    description: 'Demo snapshot for testing'
+                                    description: 'Demo snapshot for testing (retry)'
                                 })
                             });
                         
@@ -6058,8 +6064,8 @@
                 console.log('🔄 Chargement de tous les snapshots...');
                 const { data, error } = await supabase
                     .from('table_snapshots_index')
-                    .select('snapshot_date, created_at, row_count, object_path, file_size_bytes')
-                    .order('snapshot_date', { ascending: false });
+                    .select('id, snapshot_date, created_at, row_count, object_path, file_size_bytes')
+                    .order('created_at', { ascending: false });
                 
                 if (error) {
                     console.error('❌ Error loading snapshots:', error);
@@ -6157,15 +6163,25 @@
             if (currentSnapshotDateText) {
                 if (snapshotMode === 'live') {
                     currentSnapshotDateText.textContent = 'Données en direct';
-                } else if (currentSnapshotDate) {
-                    // Format the date nicely
-                    const date = new Date(currentSnapshotDate);
-                    const formattedDate = date.toLocaleDateString('fr-FR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                    });
-                    currentSnapshotDateText.textContent = `Snapshot du ${formattedDate}`;
+                } else if (currentSnapshotDate && currentSnapshotIndex >= 0) {
+                    // Get the current snapshot info for better display
+                    const currentSnapshot = availableSnapshots[currentSnapshotIndex];
+                    if (currentSnapshot) {
+                        const date = new Date(currentSnapshot.snapshot_date);
+                        const createdTime = new Date(currentSnapshot.created_at);
+                        const formattedDate = date.toLocaleDateString('fr-FR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                        });
+                        const timeString = createdTime.toLocaleTimeString('fr-FR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                        currentSnapshotDateText.textContent = `Snapshot du ${formattedDate} à ${timeString}`;
+                    } else {
+                        currentSnapshotDateText.textContent = 'Snapshot en cours...';
+                    }
                 }
             }
         }
@@ -6200,18 +6216,21 @@
                 // Check for orphaned database records (no corresponding file)
                 const orphanedRecords = [];
                 for (const snapshot of dbSnapshots || []) {
-                    const fileExists = storageFiles?.some(file => file.name === snapshot.object_path);
+                    // Extract filename from object_path (remove directory part)
+                    const fileName = snapshot.object_path.split('/').pop();
+                    const fileExists = storageFiles?.some(file => file.name === fileName);
                     if (!fileExists) {
                         orphanedRecords.push(snapshot);
-                        console.warn(`⚠️ Orphaned record: ${snapshot.snapshot_date} -> ${snapshot.object_path}`);
+                        console.warn(`⚠️ Orphaned record: ${snapshot.snapshot_date} -> ${snapshot.object_path} (filename: ${fileName})`);
                     }
                 }
                 
                 // Check for orphaned storage files (no corresponding database record)
                 const orphanedFiles = [];
                 for (const file of storageFiles || []) {
-                    if (file.name.includes('staff_table_')) {
-                        const recordExists = dbSnapshots?.some(s => s.object_path === file.name);
+                    if (file.name.includes('staff_table_') || file.name.includes('staffTable_')) {
+                        // Check if any database record has this filename in its object_path
+                        const recordExists = dbSnapshots?.some(s => s.object_path.endsWith(file.name));
                         if (!recordExists) {
                             orphanedFiles.push(file);
                             console.warn(`⚠️ Orphaned file: ${file.name}`);
@@ -6307,32 +6326,157 @@
                 if (listError) {
                     console.warn('⚠️ Could not list storage files:', listError);
                 } else {
-                    const fileExists = fileList?.some(file => file.name === snapshotInfo.object_path);
+                    // Extract filename from object_path for comparison
+                    const fileName = snapshotInfo.object_path.split('/').pop() || snapshotInfo.object_path;
+                    const fileExists = fileList?.some(file => file.name === fileName);
                     if (!fileExists) {
-                        console.warn(`⚠️ File not found in storage: ${snapshotInfo.object_path}`);
+                        console.warn(`⚠️ File not found in storage: ${fileName} (from path: ${snapshotInfo.object_path})`);
                         // Clean: Removed debug log
                         
                         // Try to find a similar file or suggest cleanup
-                        const similarFiles = fileList?.filter(f => f.name.includes('staff_table_'));
+                        const similarFiles = fileList?.filter(f => f.name.includes('staffTable_'));
                         if (similarFiles && similarFiles.length > 0) {
                             console.log('📋 Similar files found:', similarFiles.map(f => f.name));
-                            showMessage(`Fichier snapshot introuvable. Utilisez le bouton "Nettoyer" pour corriger.`, 'warning');
+                            showMessage('Fichier snapshot introuvable. Utilisez le bouton "Nettoyer" pour corriger.', 'warning');
                             return;
                         }
                     }
                 }
                 
-                // Get snapshot data from storage
-                        const { data: snapshotData, error } = await supabase.storage
-            .from('table-snapshots')
-            .download(snapshotInfo.object_path);
+                // Get snapshot data from storage - Handle both old and new path formats
+                let fileName = snapshotInfo.object_path;
+                let isHierarchicalPath = false;
                 
-                if (error) {
-                    throw new Error(`Failed to download snapshot: ${error.message}`);
+                // Check if this is a new hierarchical path (YYYY/MM/DD/HH-MM-SS_staffTable.json)
+                if (fileName.match(/^\d{4}\/\d{2}\/\d{2}\/\d{2}-\d{2}-\d{2}_staffTable\.json$/)) {
+                    isHierarchicalPath = true;
+                    console.log('🔄 Nouveau format hiérarchique détecté:', fileName);
+                } else if (fileName.includes('/')) {
+                    // Old format with slashes, extract filename
+                    fileName = fileName.split('/').pop();
+                    console.log('🔄 Ancien format détecté, nom extrait:', fileName);
+                } else {
+                    // Flat format (staffTable_YYYY-MM-DD_HH-MM-SS.json)
+                    console.log('🔄 Format plat détecté:', fileName);
                 }
                 
-                // Parse snapshot data
-                const snapshot = JSON.parse(await snapshotData.text());
+                console.log('🔍 Debug - Reading snapshot:', {
+                    originalPath: snapshotInfo.object_path,
+                    finalFileName: fileName,
+                    snapshotDate: snapshotInfo.snapshot_date,
+                    created_at: snapshotInfo.created_at,
+                    snapshotId: snapshotInfo.id
+                });
+                
+                // RADICAL SOLUTION: Force fresh Supabase client + multiple download methods
+                let snapshotData;
+                
+                // STEP 1: Create a completely fresh Supabase client for this download
+                const freshSupabase = createClient(
+                    'https://fiecugxopjxzqfdnaqsu.supabase.co',
+                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw'
+                );
+                
+                console.log('🔄 Created fresh Supabase client for download');
+                
+                // STEP 2: Try multiple download methods with fresh client
+                try {
+                    // METHOD 1: Fresh Supabase client download
+                    console.log('🔄 METHOD 1: Fresh Supabase client download...');
+                    
+                    // Use the full path for hierarchical paths, filename for flat paths
+                    const downloadPath = isHierarchicalPath ? snapshotInfo.object_path : fileName;
+                    console.log('📁 Téléchargement avec chemin:', downloadPath);
+                    
+                    const result = await freshSupabase.storage
+                        .from('table-snapshots')
+                        .download(downloadPath);
+                    
+                    if (result.error) {
+                        throw new Error(`Fresh client download failed: ${result.error.message}`);
+                    }
+                    
+                    if (!result.data) {
+                        throw new Error(`No data from fresh client for: ${downloadPath}`);
+                    }
+                    
+                    snapshotData = result.data;
+                    console.log('✅ METHOD 1 SUCCESS: Fresh Supabase client, Size:', snapshotData.size);
+                    
+                } catch (method1Err) {
+                    console.error('❌ METHOD 1 failed:', method1Err);
+                    
+                    // METHOD 2: Direct URL fetch with cache busting
+                    try {
+                        console.log('🔄 METHOD 2: Direct URL with cache busting...');
+                        const timestamp = Date.now();
+                        const downloadPath = isHierarchicalPath ? snapshotInfo.object_path : fileName;
+                        const directUrl = `https://fiecugxopjxzqfdnaqsu.supabase.co/storage/v1/object/public/table-snapshots/${downloadPath}?t=${timestamp}`;
+                        
+                        const response = await fetch(directUrl, {
+                            method: 'GET',
+                            headers: {
+                                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                                'Pragma': 'no-cache',
+                                'Expires': '0'
+                            }
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`Direct URL failed: HTTP ${response.status}`);
+                        }
+                        
+                        const textData = await response.text();
+                        console.log('✅ METHOD 2 SUCCESS: Direct URL, Size:', textData.length);
+                        
+                        // Create a mock File object
+                        snapshotData = new File([textData], fileName, { type: 'application/json' });
+                        
+                    } catch (method2Err) {
+                        console.error('❌ METHOD 2 failed:', method2Err);
+                        
+                        // METHOD 3: Service role key with fresh client
+                        try {
+                            console.log('🔄 METHOD 3: Service role with fresh client...');
+                            const serviceSupabase = createClient(
+                                'https://fiecugxopjxzqfdnaqsu.supabase.co',
+                                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDUwNTY1NywiZXhwIjoyMDcwMDgxNjU3fQ.5m7nLHxHxOkxQf8maZis7Y7jynqu2dWqIzEbgWvOTcE'
+                            );
+                            
+                            const downloadPath = isHierarchicalPath ? snapshotInfo.object_path : fileName;
+                            const serviceResult = await serviceSupabase.storage
+                                .from('table-snapshots')
+                                .download(downloadPath);
+                            
+                            if (serviceResult.error) {
+                                throw new Error(`Service role download failed: ${serviceResult.error.message}`);
+                            }
+                            
+                            snapshotData = serviceResult.data;
+                            console.log('✅ METHOD 3 SUCCESS: Service role, Size:', snapshotData.size);
+                            
+                        } catch (method3Err) {
+                            console.error('❌ All methods failed!');
+                            throw new Error(`All download methods failed for ${downloadPath}. Method1: ${method1Err.message}, Method2: ${method2Err.message}, Method3: ${method3Err.message}`);
+                        }
+                    }
+                }
+                
+                // Parse snapshot data with verification
+                const snapshotText = await snapshotData.text();
+                console.log('📄 Raw snapshot content preview:', snapshotText.substring(0, 200) + '...');
+                
+                const snapshot = JSON.parse(snapshotText);
+                
+                // VERIFICATION: Check if this is the right snapshot
+                if (snapshot.data && snapshot.data.length !== snapshotInfo.row_count) {
+                    console.warn('⚠️ WARNING: Snapshot row count mismatch!', {
+                        expected: snapshotInfo.row_count,
+                        actual: snapshot.data.length,
+                        fileName: fileName,
+                        snapshotId: snapshotInfo.id
+                    });
+                }
                 
                 // Update state
                 snapshotMode = 'snapshot';
@@ -6360,6 +6504,205 @@
                 
             } catch (error) {
                 console.error('❌ Error entering snapshot mode:', error);
+                showMessage(`Erreur lors du chargement du snapshot: ${error.message}`, 'error');
+            }
+        }
+        
+        // Enter snapshot mode using unique snapshot object (fixes multiple snapshots per day issue)
+        async function enterSnapshotModeByUniqueId(snapshotInfo) {
+            if (snapshotMode === 'snapshot' && currentSnapshotDate === snapshotInfo.snapshot_date && 
+                currentSnapshotIndex >= 0 && availableSnapshots[currentSnapshotIndex]?.id === snapshotInfo.id) {
+                return; // Already in this exact snapshot
+            }
+            
+            try {
+                console.log('🔄 enterSnapshotModeByUniqueId: Loading snapshot with ID:', snapshotInfo.id);
+                
+                // Check if the file exists in storage first
+                const { data: fileList, error: listError } = await supabase.storage
+                    .from('table-snapshots')
+                    .list('', { limit: 100 });
+                
+                if (listError) {
+                    console.warn('⚠️ Could not list storage files:', listError);
+                } else {
+                    // Extract filename from object_path for comparison
+                    const fileName = snapshotInfo.object_path.split('/').pop() || snapshotInfo.object_path;
+                    const fileExists = fileList?.some(file => file.name === fileName);
+                    if (!fileExists) {
+                        console.warn(`⚠️ File not found in storage: ${fileName} (from path: ${snapshotInfo.object_path})`);
+                        
+                        // Try to find a similar file or suggest cleanup
+                        const similarFiles = fileList?.filter(f => f.name.includes('staffTable_'));
+                        if (similarFiles && similarFiles.length > 0) {
+                            console.log('📋 Similar files found:', similarFiles.map(f => f.name));
+                            showMessage('Fichier snapshot introuvable. Utilisez le bouton "Nettoyer" pour corriger.', 'warning');
+                            return;
+                        }
+                    }
+                }
+                
+                // Get snapshot data from storage - Handle both old and new path formats
+                let fileName = snapshotInfo.object_path;
+                let isHierarchicalPath = false;
+                
+                // Check if this is a new hierarchical path (YYYY/MM/DD/HH-MM-SS_staffTable.json)
+                if (fileName.match(/^\d{4}\/\d{2}\/\d{2}\/\d{2}-\d{2}-\d{2}_staffTable\.json$/)) {
+                    isHierarchicalPath = true;
+                    console.log('🔄 Nouveau format hiérarchique détecté:', fileName);
+                } else if (fileName.includes('/')) {
+                    // Old format with slashes, extract filename
+                    fileName = fileName.split('/').pop();
+                    console.log('🔄 Ancien format détecté, nom extrait:', fileName);
+                } else {
+                    // Flat format (staffTable_YYYY-MM-DD_HH-MM-SS.json)
+                    console.log('🔄 Format plat détecté:', fileName);
+                }
+                
+                console.log('🔍 Debug - Reading snapshot:', {
+                    snapshotId: snapshotInfo.id,
+                    originalPath: snapshotInfo.object_path,
+                    finalFileName: fileName,
+                    snapshotDate: snapshotInfo.snapshot_date,
+                    created_at: snapshotInfo.created_at
+                });
+                
+                // RADICAL SOLUTION: Force fresh Supabase client + multiple download methods
+                let snapshotData;
+                
+                // STEP 1: Create a completely fresh Supabase client for this download
+                const freshSupabase = createClient(
+                    'https://fiecugxopjxzqfdnaqsu.supabase.co',
+                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw'
+                );
+                
+                console.log('🔄 Created fresh Supabase client for download');
+                
+                // STEP 2: Try multiple download methods with fresh client
+                try {
+                    // METHOD 1: Fresh Supabase client download
+                    console.log('🔄 METHOD 1: Fresh Supabase client download...');
+                    
+                    // Use the full path for hierarchical paths, filename for flat paths
+                    const downloadPath = isHierarchicalPath ? snapshotInfo.object_path : fileName;
+                    console.log('📁 Téléchargement avec chemin:', downloadPath);
+                    
+                    const result = await freshSupabase.storage
+                        .from('table-snapshots')
+                        .download(downloadPath);
+                    
+                    if (result.error) {
+                        throw new Error(`Fresh client download failed: ${result.error.message}`);
+                    }
+                    
+                    if (!result.data) {
+                        throw new Error(`No data from fresh client for: ${downloadPath}`);
+                    }
+                    
+                    snapshotData = result.data;
+                    console.log('✅ METHOD 1 SUCCESS: Fresh Supabase client, Size:', snapshotData.size);
+                    
+                } catch (method1Err) {
+                    console.error('❌ METHOD 1 failed:', method1Err);
+                    
+                    // METHOD 2: Direct URL fetch with cache busting
+                    try {
+                        console.log('🔄 METHOD 2: Direct URL with cache busting...');
+                        const timestamp = Date.now();
+                        const downloadPath = isHierarchicalPath ? snapshotInfo.object_path : fileName;
+                        const directUrl = `https://fiecugxopjxzqfdnaqsu.supabase.co/storage/v1/object/public/table-snapshots/${downloadPath}?t=${timestamp}`;
+                        
+                        const response = await fetch(directUrl, {
+                            method: 'GET',
+                            headers: {
+                                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                                'Pragma': 'no-cache',
+                                'Expires': '0'
+                            }
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`Direct URL failed: HTTP ${response.status}`);
+                        }
+                        
+                        const textData = await response.text();
+                        console.log('✅ METHOD 2 SUCCESS: Direct URL, Size:', textData.length);
+                        
+                        // Create a mock File object
+                        snapshotData = new File([textData], fileName, { type: 'application/json' });
+                        
+                    } catch (method2Err) {
+                        console.error('❌ METHOD 2 failed:', method2Err);
+                        
+                        // METHOD 3: Service role key with fresh client
+                        try {
+                            console.log('🔄 METHOD 3: Service role with fresh client...');
+                            const serviceSupabase = createClient(
+                                'https://fiecugxopjxzqfdnaqsu.supabase.co',
+                                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDUwNTY1NywiZXhwIjoyMDcwMDgxNjU3fQ.5m7nLHxHxOkxQf8maZis7Y7jynqu2dWqIzEbgWvOTcE'
+                            );
+                            
+                            const downloadPath = isHierarchicalPath ? snapshotInfo.object_path : fileName;
+                            const serviceResult = await serviceSupabase.storage
+                                .from('table-snapshots')
+                                .download(downloadPath);
+                            
+                            if (serviceResult.error) {
+                                throw new Error(`Service role download failed: ${serviceResult.error.message}`);
+                            }
+                            
+                            snapshotData = serviceResult.data;
+                            console.log('✅ METHOD 3 SUCCESS: Service role, Size:', snapshotData.size);
+                            
+                        } catch (method3Err) {
+                            console.error('❌ All methods failed!');
+                            throw new Error(`All download methods failed for ${downloadPath}. Method1: ${method1Err.message}, Method2: ${method2Err.message}, Method3: ${method3Err.message}`);
+                        }
+                    }
+                }
+                
+                // Parse snapshot data with verification
+                const snapshotText = await snapshotData.text();
+                console.log('📄 Raw snapshot content preview:', snapshotText.substring(0, 200) + '...');
+                
+                const snapshot = JSON.parse(snapshotText);
+                
+                // VERIFICATION: Check if this is the right snapshot
+                if (snapshot.data && snapshot.data.length !== snapshotInfo.row_count) {
+                    console.warn('⚠️ WARNING: Snapshot row count mismatch!', {
+                        expected: snapshotInfo.row_count,
+                        actual: snapshot.data.length,
+                        fileName: fileName,
+                        snapshotId: snapshotInfo.id
+                    });
+                }
+                
+                // Update state using unique identifier
+                snapshotMode = 'snapshot';
+                currentSnapshotDate = snapshotInfo.snapshot_date;
+                currentSnapshotIndex = availableSnapshots.findIndex(s => s.id === snapshotInfo.id);
+                
+                // Disable realtime updates
+                if (realtimeSubscription) {
+                    supabase.removeChannel(realtimeSubscription);
+                    realtimeSubscription = null;
+                }
+                
+                // Load snapshot data into table
+                loadTableData(snapshot.data);
+                
+                // Update UI
+                updateHistoryNavigation();
+                updateSnapshotBanner();
+                updateHistoryDateButton();
+                
+                // Disable editing
+                disableTableEditing();
+                
+                showMessage(`Snapshot chargé du ${formatDateForDisplay(snapshotInfo.snapshot_date)} (${snapshot.data.length} lignes) - ID: ${snapshotInfo.id}`, 'success');
+                
+            } catch (error) {
+                console.error('❌ Error entering snapshot mode by unique ID:', error);
                 showMessage(`Erreur lors du chargement du snapshot: ${error.message}`, 'error');
             }
         }
@@ -6404,7 +6747,7 @@
         function goToPreviousSnapshot() {
             if (currentSnapshotIndex > 0) {
                 const prevSnapshot = availableSnapshots[currentSnapshotIndex - 1];
-                enterSnapshotMode(prevSnapshot.snapshot_date);
+                enterSnapshotModeByUniqueId(prevSnapshot);
             }
         }
         
@@ -6412,7 +6755,7 @@
         function goToNextSnapshot() {
             if (currentSnapshotIndex < availableSnapshots.length - 1) {
                 const nextSnapshot = availableSnapshots[currentSnapshotIndex + 1];
-                enterSnapshotMode(nextSnapshot.snapshot_date);
+                enterSnapshotModeByUniqueId(nextSnapshot);
             }
         }
         
@@ -6435,7 +6778,13 @@
             const nextIndex = (currentIndex + 1) % dates.length;
             const nextDate = dates[nextIndex];
             
-            enterSnapshotMode(nextDate);
+            // Find the snapshot object for this date
+            const nextSnapshot = availableSnapshots.find(s => s.snapshot_date === nextDate);
+            if (nextSnapshot) {
+                enterSnapshotModeByUniqueId(nextSnapshot);
+            } else {
+                showMessage('Snapshot non trouvé pour cette date', 'error');
+            }
         }
         
         // Toggle snapshot calendar dropdown
@@ -6476,9 +6825,14 @@
             // Update button text with count
             calendarBtnText.textContent = `Calendrier (${availableSnapshots.length})`;
             
+            // Sort snapshots by created_at (most recent first) to ensure proper ordering
+            const sortedSnapshots = [...availableSnapshots].sort((a, b) => 
+                new Date(b.created_at) - new Date(a.created_at)
+            );
+            
             // Group snapshots by month/year for better organization
             const groupedSnapshots = {};
-            availableSnapshots.forEach(snapshot => {
+            sortedSnapshots.forEach(snapshot => {
                 const date = new Date(snapshot.snapshot_date);
                 const monthYear = date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' });
                 
@@ -6496,12 +6850,19 @@
                 monthHeader.textContent = monthYear;
                 datesList.appendChild(monthHeader);
                 
-                // Dates in this month
+                // Dates in this month - sort by created_at within each month
+                snapshots.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                
                 snapshots.forEach(snapshot => {
                     const dateItem = document.createElement('div');
                     dateItem.className = 'px-3 py-2 hover:bg-blue-50 cursor-pointer rounded text-sm transition-colors';
                     
-                    const isCurrent = snapshotMode === 'snapshot' && currentSnapshotDate === snapshot.snapshot_date;
+                    // Use unique identifier combining date and time for current snapshot detection
+                    const snapshotUniqueId = `${snapshot.snapshot_date}_${snapshot.created_at}`;
+                    const currentUniqueId = snapshotMode === 'snapshot' && currentSnapshotDate ? 
+                        `${currentSnapshotDate}_${currentSnapshotDate}` : null;
+                    const isCurrent = snapshotUniqueId === currentUniqueId;
+                    
                     if (isCurrent) {
                         dateItem.className += ' bg-blue-100 border-l-4 border-blue-500';
                     }
@@ -6513,15 +6874,31 @@
                         month: 'short'
                     });
                     
+                    // Extract time from created_at for unique identification
+                    const createdTime = new Date(snapshot.created_at);
+                    const timeString = createdTime.toLocaleTimeString('fr-FR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    
+                    // Add unique identifier to help with debugging
+                    const uniqueTimeId = createdTime.getTime();
+                    
                     dateItem.innerHTML = `
                         <div class="flex items-center justify-between">
-                            <span class="${isCurrent ? 'font-semibold text-blue-700' : 'text-gray-700'}">${formattedDate}</span>
+                            <div class="flex flex-col">
+                                <span class="${isCurrent ? 'font-semibold text-blue-700' : 'text-gray-700'}">${formattedDate}</span>
+                                <span class="text-xs text-gray-400">${timeString}</span>
+                                <span class="text-xs text-gray-300">ID: ${uniqueTimeId}</span>
+                            </div>
                             <span class="text-xs text-gray-500">${snapshot.row_count} lignes</span>
                         </div>
                     `;
                     
                     dateItem.onclick = () => {
-                        enterSnapshotMode(snapshot.snapshot_date);
+                        // Use unique identifier for snapshot selection
+                        enterSnapshotModeByUniqueId(snapshot);
                         toggleSnapshotCalendar(); // Close dropdown
                     };
                     

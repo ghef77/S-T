@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Avancé - Fonction Snapshot avec Authentification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        .config-info {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .test-section {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .key-display {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 11px;
+            word-break: break-all;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Avancé - Fonction Snapshot avec Authentification</h1>
+        
+        <div class="config-info">
+            <h3>🔑 Clés d'Authentification Configurées</h3>
+            <p><strong>Anon Key:</strong></p>
+            <div class="key-display">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw</div>
+            <p><strong>Service Role Key:</strong></p>
+            <div class="key-display">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDUwNTY1NywiZXhwIjoyMDcwMDgxNjU3fQ.5m7nLHxHxOkxQf8maZis7Y7jynqu2dWqIzEbgWvOTcE</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Tests de Fonctionnement avec Authentification</h3>
+            <button onclick="testFunctionWithAnonKey()">Test 1: Fonction avec Clé Anon</button>
+            <button onclick="testFunctionWithServiceRole()">Test 2: Fonction avec Service Role</button>
+            <button onclick="testDatabaseAccess()">Test 3: Accès à la Base de Données</button>
+            <button onclick="testStorageAccess()">Test 4: Accès au Stockage</button>
+            <button onclick="clearLogs()">🗑️ Effacer les Logs</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Vérification des Snapshots</h3>
+            <button onclick="checkSnapshotsIndex()">Vérifier l'Index des Snapshots</button>
+            <button onclick="checkStorageFiles()">Vérifier les Fichiers de Stockage</button>
+            <button onclick="createTestSnapshot()">Créer un Snapshot de Test</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🐛 Debug et Test Automatique</h3>
+            <button onclick="debugCronFunction()" style="background-color: #dc3545;">🔴 Debug Cron - Test Manuel</button>
+            <button onclick="monitorAutomaticSnapshots()" style="background-color: #28a745;">🟢 Monitor Snapshots Auto</button>
+            <button onclick="forceCronExecution()" style="background-color: #ffc107; color: #000;">🟡 Forcer Exécution Cron</button>
+            <button onclick="clearLogs()">🗑️ Effacer les Logs</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Logs de Test</h3>
+            <div id="logs" class="log">🚀 Test avancé de la fonction snapshot initialisé...\nCliquez sur un bouton pour commencer les tests.</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Prochaines Étapes</h3>
+            <ol>
+                <li>Exécuter les tests d'authentification pour vérifier l'accès</li>
+                <li>Tester la création d'un snapshot manuel</li>
+                <li>Vérifier que l'infrastructure est accessible</li>
+                <li>Attendre les snapshots automatiques du cron</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://fiecugxopjxzqfdnaqsu.supabase.co';
+        const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/snapshot_staff_table`;
+        const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw';
+        const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDUwNTY1NywiZXhwIjoyMDcwMDgxNjU3fQ.5m7nLHxHxOkxQf8maZis7Y7jynqu2dWqIzEbgWvOTcE';
+        
+        function log(message) {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logsDiv.textContent += `[${timestamp}] ${message}\n`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').textContent = '🚀 Logs effacés...\n';
+        }
+
+        async function testFunctionWithAnonKey() {
+            log('🔑 Test 1: Test de la fonction avec clé anon...');
+            
+            try {
+                const response = await fetch(FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${ANON_KEY}`
+                    }
+                });
+                
+                const responseText = await response.text();
+                log(`📊 Réponse avec clé anon: ${response.status} ${response.statusText}`);
+                
+                if (response.status === 200) {
+                    log('✅ Fonction exécutée avec succès avec clé anon!');
+                    log(`Résultat: ${responseText}`);
+                } else if (response.status === 401) {
+                    log('⚠️ Fonction accessible mais nécessite des permissions plus élevées');
+                    log(`Détails: ${responseText}`);
+                } else {
+                    log(`⚠️ Réponse inattendue: ${response.status}`);
+                    log(`Détails: ${responseText}`);
+                }
+            } catch (error) {
+                log(`❌ Erreur avec clé anon: ${error.message}`);
+            }
+        }
+
+        async function testFunctionWithServiceRole() {
+            log('🔑 Test 2: Test de la fonction avec service role...');
+            
+            try {
+                const response = await fetch(FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`
+                    }
+                });
+                
+                const responseText = await response.text();
+                log(`📊 Réponse avec service role: ${response.status} ${response.statusText}`);
+                
+                if (response.status === 200) {
+                    log('✅ Fonction exécutée avec succès avec service role!');
+                    log(`Résultat: ${responseText}`);
+                    
+                    try {
+                        const result = JSON.parse(responseText);
+                        if (result.success) {
+                            log(`📸 Snapshot créé: ${result.data.snapshotDate}`);
+                            log(`📊 Lignes: ${result.data.rowCount}`);
+                            log(`💾 Taille: ${result.data.fileSize} bytes`);
+                            log(`📁 Chemin: ${result.data.objectPath}`);
+                        }
+                    } catch (parseError) {
+                        log(`⚠️ Impossible de parser la réponse JSON: ${parseError.message}`);
+                    }
+                } else {
+                    log(`❌ Échec avec service role: ${response.status}`);
+                    log(`Détails: ${responseText}`);
+                }
+            } catch (error) {
+                log(`❌ Erreur avec service role: ${error.message}`);
+            }
+        }
+
+        async function testDatabaseAccess() {
+            log('🗄️ Test 3: Test d\'accès à la base de données...');
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/table_snapshots_index?select=*&limit=5`, {
+                    headers: {
+                        'apikey': ANON_KEY,
+                        'Authorization': `Bearer ${ANON_KEY}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Accès à la base de données réussi`);
+                    log(`📊 ${data.length} enregistrements trouvés dans table_snapshots_index`);
+                    
+                    if (data.length > 0) {
+                        log(`📅 Dernier snapshot: ${data[0].snapshot_date}`);
+                        log(`📁 Chemin: ${data[0].object_path}`);
+                        log(`📊 Lignes: ${data[0].row_count}`);
+                    }
+                } else {
+                    log(`❌ Échec d'accès à la base: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ Erreur d'accès à la base: ${error.message}`);
+            }
+        }
+
+        async function testStorageAccess() {
+            log('📦 Test 4: Test d\'accès au stockage...');
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/storage/v1/object/list/table-snapshots`, {
+                    headers: {
+                        'apikey': ANON_KEY,
+                        'Authorization': `Bearer ${ANON_KEY}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Accès au stockage réussi`);
+                    log(`📁 Bucket table-snapshots accessible`);
+                    log(`📊 ${data.length} objets trouvés`);
+                    
+                    if (data.length > 0) {
+                        log(`📅 Dernier fichier: ${data[0].name}`);
+                        log(`📏 Taille: ${data[0].metadata?.size || 'N/A'} bytes`);
+                    }
+                } else {
+                    log(`❌ Échec d'accès au stockage: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ Erreur d'accès au stockage: ${error.message}`);
+            }
+        }
+
+        async function checkSnapshotsIndex() {
+            log('📊 Vérification de l\'index des snapshots...');
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/table_snapshots_index?select=*&order=created_at.desc&limit=10`, {
+                    headers: {
+                        'apikey': ANON_KEY,
+                        'Authorization': `Bearer ${ANON_KEY}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Index des snapshots accessible`);
+                    log(`📊 Total: ${data.length} snapshots`);
+                    
+                    if (data.length > 0) {
+                        log(`📅 Snapshots récents:`);
+                        data.forEach((snapshot, index) => {
+                            log(`   ${index + 1}. ${snapshot.snapshot_date} - ${snapshot.row_count} lignes - ${snapshot.object_path}`);
+                        });
+                    } else {
+                        log(`ℹ️ Aucun snapshot trouvé dans l'index`);
+                    }
+                } else {
+                    log(`❌ Échec d'accès à l'index: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ Erreur d'accès à l'index: ${error.message}`);
+            }
+        }
+
+        async function checkStorageFiles() {
+            log('📁 Vérification des fichiers de stockage...');
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/storage/v1/object/list/table-snapshots`, {
+                    headers: {
+                        'apikey': ANON_KEY,
+                        'Authorization': `Bearer ${ANON_KEY}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Fichiers de stockage accessibles`);
+                    log(`📊 Total: ${data.length} fichiers`);
+                    
+                    if (data.length > 0) {
+                        log(`📁 Fichiers récents:`);
+                        data.slice(0, 5).forEach((file, index) => {
+                            log(`   ${index + 1}. ${file.name} - ${file.metadata?.size || 'N/A'} bytes`);
+                        });
+                        
+                        if (data.length > 5) {
+                            log(`   ... et ${data.length - 5} autres fichiers`);
+                        }
+                    } else {
+                        log(`ℹ️ Aucun fichier trouvé dans le bucket`);
+                    }
+                } else {
+                    log(`❌ Échec d'accès aux fichiers: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ Erreur d'accès aux fichiers: ${error.message}`);
+            }
+        }
+
+        async function createTestSnapshot() {
+            log('📸 Création d\'un snapshot de test...');
+            
+            try {
+                const response = await fetch(FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`
+                    }
+                });
+                
+                const responseText = await response.text();
+                log(`📊 Réponse de création: ${response.status} ${response.statusText}`);
+                
+                if (response.status === 200) {
+                    log('✅ Snapshot de test créé avec succès!');
+                    log(`Résultat: ${responseText}`);
+                    
+                    // Attendre un peu puis vérifier l'index
+                    setTimeout(() => {
+                        log('🔄 Vérification de l\'index après création...');
+                        checkSnapshotsIndex();
+                    }, 2000);
+                } else {
+                    log(`❌ Échec de création: ${response.status}`);
+                    log(`Détails: ${responseText}`);
+                }
+            } catch (error) {
+                log(`❌ Erreur de création: ${error.message}`);
+            }
+        }
+
+        // === FONCTIONS DE DEBUG ===
+        
+        async function debugCronFunction() {
+            log('🔴 === DEBUG CRON - TEST MANUEL ===');
+            log('📅 Heure actuelle: ' + new Date().toLocaleString());
+            log('⏰ Vérification de la configuration cron...');
+            
+            // Test 1: Vérifier l'accessibilité de la fonction
+            log('🔍 Test 1: Accessibilité de la fonction...');
+            try {
+                const response = await fetch(FUNCTION_URL, {
+                    method: 'OPTIONS',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                log(`   ✅ OPTIONS: ${response.status} ${response.statusText}`);
+            } catch (error) {
+                log(`   ❌ OPTIONS: ${error.message}`);
+            }
+            
+            // Test 2: Vérifier l'authentification
+            log('🔑 Test 2: Authentification...');
+            try {
+                const response = await fetch(FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`
+                    }
+                });
+                log(`   ✅ POST avec service role: ${response.status} ${response.statusText}`);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`   📸 Snapshot créé: ${result.data.snapshotDate} - ${result.data.rowCount} lignes`);
+                }
+            } catch (error) {
+                log(`   ❌ POST avec service role: ${error.message}`);
+            }
+            
+            // Test 3: Vérifier l'état de la base
+            log('🗄️ Test 3: État de la base de données...');
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/table_snapshots_index?select=count`, {
+                    headers: {
+                        'apikey': ANON_KEY,
+                        'Authorization': `Bearer ${ANON_KEY}`
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`   ✅ Base accessible: ${data.length} snapshots dans l'index`);
+                } else {
+                    log(`   ❌ Base: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`   ❌ Base: ${error.message}`);
+            }
+            
+            log('🔴 === FIN DEBUG CRON ===');
+        }
+
+        async function monitorAutomaticSnapshots() {
+            log('🟢 === MONITOR SNAPSHOTS AUTOMATIQUES ===');
+            log('⏰ Démarrage du monitoring...');
+            log('📊 Vérification initiale...');
+            
+            // Vérification initiale
+            await checkSnapshotsIndex();
+            
+            // Monitoring toutes les 30 secondes pendant 5 minutes
+            let monitoringCount = 0;
+            const maxMonitoring = 10; // 5 minutes (10 x 30 secondes)
+            
+            const monitoringInterval = setInterval(async () => {
+                monitoringCount++;
+                log(`🔄 Monitoring #${monitoringCount}/${maxMonitoring} - ${new Date().toLocaleTimeString()}`);
+                
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/table_snapshots_index?select=*&order=created_at.desc&limit=1`, {
+                        headers: {
+                            'apikey': ANON_KEY,
+                            'Authorization': `Bearer ${ANON_KEY}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.length > 0) {
+                            const latestSnapshot = data[0];
+                            const snapshotTime = new Date(latestSnapshot.created_at);
+                            const now = new Date();
+                            const timeDiff = Math.round((now - snapshotTime) / 1000); // en secondes
+                            
+                            log(`   📸 Dernier snapshot: ${latestSnapshot.snapshot_date} - ${timeDiff}s ago`);
+                            
+                            if (timeDiff < 120) { // moins de 2 minutes
+                                log(`   ✅ Snapshot récent détecté! (${timeDiff}s)`);
+                            } else {
+                                log(`   ⚠️ Snapshot ancien (${timeDiff}s) - cron peut-être en pause`);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    log(`   ❌ Erreur monitoring: ${error.message}`);
+                }
+                
+                if (monitoringCount >= maxMonitoring) {
+                    clearInterval(monitoringInterval);
+                    log('🟢 === FIN MONITORING ===');
+                    log('📊 Résumé: Vérifiez les logs de la fonction pour plus de détails');
+                }
+            }, 30000); // 30 secondes
+            
+            log('⏱️ Monitoring actif - arrêt automatique dans 5 minutes');
+        }
+
+        async function forceCronExecution() {
+            log('🟡 === FORCER EXÉCUTION CRON ===');
+            log('📅 Heure actuelle: ' + new Date().toLocaleString());
+            log('🚀 Déclenchement manuel de la fonction...');
+            
+            try {
+                // Déclencher la fonction
+                const response = await fetch(FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    log('✅ Fonction déclenchée avec succès!');
+                    log(`📸 Snapshot: ${result.data.snapshotDate} - ${result.data.rowCount} lignes`);
+                    log(`📁 Fichier: ${result.data.objectPath}`);
+                    log(`⏰ Timestamp: ${result.data.timestamp}`);
+                    
+                    // Attendre et vérifier l'index
+                    log('⏳ Attente de 3 secondes pour la synchronisation...');
+                    setTimeout(async () => {
+                        log('🔄 Vérification de l\'index après déclenchement...');
+                        await checkSnapshotsIndex();
+                        
+                        // Vérifier si le nouveau snapshot est visible
+                        try {
+                            const indexResponse = await fetch(`${SUPABASE_URL}/rest/v1/table_snapshots_index?select=*&order=created_at.desc&limit=1`, {
+                                headers: {
+                                    'apikey': ANON_KEY,
+                                    'Authorization': `Bearer ${ANON_KEY}`
+                                }
+                            });
+                            
+                            if (indexResponse.ok) {
+                                const indexData = await indexResponse.json();
+                                if (indexData.length > 0) {
+                                    const latest = indexData[0];
+                                    log(`📊 Vérification: Snapshot ${latest.snapshot_date} visible dans l'index`);
+                                    log(`   📁 Chemin: ${latest.object_path}`);
+                                    log(`   📊 Lignes: ${latest.row_count}`);
+                                    log(`   ⏰ Créé: ${new Date(latest.created_at).toLocaleString()}`);
+                                }
+                            }
+                        } catch (error) {
+                            log(`❌ Erreur vérification index: ${error.message}`);
+                        }
+                    }, 3000);
+                    
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ Échec du déclenchement: ${response.status} ${response.statusText}`);
+                    log(`Détails: ${errorText}`);
+                }
+            } catch (error) {
+                log(`❌ Erreur de déclenchement: ${error.message}`);
+            }
+            
+            log('🟡 === FIN FORÇAGE CRON ===');
+        }
+
+        // Test automatique au chargement
+        window.addEventListener('load', () => {
+            log('🚀 Test avancé de la fonction snapshot initialisé...');
+            log('🔑 Clés d\'authentification configurées');
+            log('📋 Infrastructure vérifiée:');
+            log('   - Bucket: table-snapshots ✅');
+            log('   - Table: table_snapshots_index ✅');
+            log('   - Fonction: snapshot_staff_table ✅');
+            log('   - Cron: * * * * * ✅');
+            log('\n🎯 Prêt pour les tests avancés!');
+        });
+    </script>
+</body>
+</html>

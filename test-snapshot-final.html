@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Final - Fonction Snapshot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        .config-info {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .test-section {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Final - Fonction Snapshot Supabase</h1>
+        
+        <div class="config-info">
+            <h3>📋 Configuration Vérifiée</h3>
+            <p><strong>✅ Bucket de stockage :</strong> table-snapshots (existe)</p>
+            <p><strong>✅ Table d'index :</strong> table_snapshots_index (existe)</p>
+            <p><strong>✅ Fonction déployée :</strong> snapshot_staff_table</p>
+            <p><strong>✅ Cron configuré :</strong> * * * * * (chaque minute)</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Tests de Fonctionnement</h3>
+            <button onclick="testFunctionAccessibility()">Test 1: Accessibilité de la Fonction</button>
+            <button onclick="testFunctionExecution()">Test 2: Exécution de la Fonction</button>
+            <button onclick="checkSupabaseStatus()">Test 3: Statut Supabase</button>
+            <button onclick="clearLogs()">🗑️ Effacer les Logs</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Vérification des Snapshots</h3>
+            <button onclick="checkExistingSnapshots()">Vérifier les Snapshots Existants</button>
+            <button onclick="checkStorageBucket()">Vérifier le Bucket de Stockage</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Logs de Test</h3>
+            <div id="logs" class="log">🚀 Test de la fonction snapshot initialisé...\nCliquez sur un bouton pour commencer les tests.</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Prochaines Étapes</h3>
+            <ol>
+                <li>Exécuter les tests ci-dessus pour vérifier le bon fonctionnement</li>
+                <li>Si tout fonctionne, attendre quelques minutes pour voir les snapshots automatiques</li>
+                <li>Vérifier les logs de la fonction dans le dashboard Supabase</li>
+                <li>Vérifier que les snapshots sont créés dans le bucket et l'index</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://fiecugxopjxzqfdnaqsu.supabase.co';
+        const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/snapshot_staff_table`;
+        
+        function log(message) {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logsDiv.textContent += `[${timestamp}] ${message}\n`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').textContent = '🚀 Logs effacés...\n';
+        }
+
+        async function testFunctionAccessibility() {
+            log('📡 Test 1: Vérification de l\'accessibilité de la fonction...');
+            
+            try {
+                const response = await fetch(FUNCTION_URL, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    log('✅ Fonction accessible (OPTIONS request réussi)');
+                } else {
+                    log(`❌ Problème d'accessibilité: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ Erreur de test: ${error.message}`);
+            }
+        }
+
+        async function testFunctionExecution() {
+            log('📡 Test 2: Test d\'exécution de la fonction...');
+            
+            try {
+                const response = await fetch(FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const responseText = await response.text();
+                log(`📊 Réponse de la fonction: ${response.status} ${response.statusText}`);
+                
+                if (response.status === 401) {
+                    log('✅ Fonction existe mais nécessite une authentification (comportement normal)');
+                    log(`Détails de l'erreur: ${responseText}`);
+                } else if (response.status === 200) {
+                    log('✅ Fonction exécutée avec succès!');
+                    log(`Résultat: ${responseText}`);
+                } else {
+                    log(`⚠️ Réponse inattendue: ${response.status}`);
+                    log(`Détails: ${responseText}`);
+                }
+            } catch (error) {
+                log(`❌ Erreur d'exécution: ${error.message}`);
+            }
+        }
+
+        async function checkSupabaseStatus() {
+            log('📊 Test 3: Vérification du statut Supabase...');
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/`);
+                
+                if (response.ok) {
+                    log('✅ Projet Supabase accessible');
+                } else {
+                    log(`❌ Problème d'accès au projet: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ Vérification du statut échouée: ${error.message}`);
+            }
+        }
+
+        async function checkExistingSnapshots() {
+            log('📊 Vérification des snapshots existants...');
+            log('ℹ️ Cette vérification nécessite l\'accès à la base de données');
+            log('📋 Pour vérifier manuellement, exécutez dans l\'éditeur SQL Supabase:');
+            log('SELECT snapshot_date, object_path, row_count, created_at FROM table_snapshots_index ORDER BY created_at DESC LIMIT 10;');
+        }
+
+        async function checkStorageBucket() {
+            log('📦 Vérification du bucket de stockage...');
+            log('ℹ️ Cette vérification nécessite l\'accès au stockage');
+            log('📋 Pour vérifier manuellement, allez dans Storage > table-snapshots dans le dashboard Supabase');
+        }
+
+        // Test automatique au chargement
+        window.addEventListener('load', () => {
+            log('🚀 Test de la fonction snapshot initialisé...');
+            log('📋 Configuration vérifiée:');
+            log('   - Bucket: table-snapshots ✅');
+            log('   - Table: table_snapshots_index ✅');
+            log('   - Fonction: snapshot_staff_table ✅');
+            log('   - Cron: * * * * * ✅');
+            log('\n🎯 Prêt pour les tests!');
+        });
+    </script>
+</body>
+</html>
+

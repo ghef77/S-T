@@ -65,12 +65,19 @@ serve(async (req) => {
     const jsonContent = JSON.stringify(snapshotData, null, 2)
     const fileSize = new TextEncoder().encode(jsonContent).length
 
-    // 4. Generate storage path (YYYY/MM/DD/staffTable.json)
-    const dateParts = snapshotDate.split('-')
-    const year = dateParts[0]
-    const month = dateParts[1]
-    const day = dateParts[2]
-    const objectPath = `${year}/${month}/${day}/staffTable.json`
+    // 4. Generate hierarchical storage path (YYYY/MM/DD/HH-MM-SS_staffTable.json)
+    // Create organized folder structure for better file management
+    const currentTime = new Date()
+    const year = currentTime.getFullYear()
+    const month = (currentTime.getMonth() + 1).toString().padStart(2, '0')
+    const day = currentTime.getDate().toString().padStart(2, '0')
+    const hours = currentTime.getHours().toString().padStart(2, '0')
+    const minutes = currentTime.getMinutes().toString().padStart(2, '0')
+    const seconds = currentTime.getSeconds().toString().padStart(2, '0')
+    const timeStamp = `${hours}-${minutes}-${seconds}`
+    
+    // Create hierarchical path: YYYY/MM/DD/HH-MM-SS_staffTable.json
+    const objectPath = `${year}/${month}/${day}/${timeStamp}_staffTable.json`
 
     // 5. Upload to Storage
     const { error: uploadError } = await supabase.storage
@@ -96,7 +103,7 @@ serve(async (req) => {
         file_size_bytes: fileSize,
         metadata: snapshotData.metadata
       }, {
-        onConflict: 'snapshot_date'
+        onConflict: 'snapshot_date,created_at'
       })
 
     if (indexError) {
