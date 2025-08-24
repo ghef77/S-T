@@ -9097,6 +9097,67 @@ ${capacityInfo.needsCleanup ?
         // ========================================
         // FIN DU SUPPORT TACTILE MOBILE
         // ========================================
+        
+        // ========================================
+        // FONCTIONS DE RÉACTIVATION REALTIME
+        // ========================================
+        
+        // Function to manually reactivate realtime sync
+        window.reactivateRealtimeSync = function() {
+            console.log('🔄 Manually reactivating realtime sync...');
+            try {
+                // Force return to live mode if in snapshot mode
+                if (window.snapshotMode === 'snapshot') {
+                    console.log('🔄 Currently in snapshot mode, returning to live mode...');
+                    if (typeof window.returnToToday === 'function') {
+                        window.returnToToday();
+                    } else {
+                        console.log('⚠️ returnToToday function not available');
+                    }
+                } else {
+                    // Just reactivate realtime subscription
+                    console.log('🔄 Setting up realtime subscription...');
+                    if (typeof window.setupRealtimeSubscription === 'function') {
+                        window.setupRealtimeSubscription();
+                    } else {
+                        console.log('⚠️ setupRealtimeSubscription function not available');
+                    }
+                }
+                console.log('✅ Realtime sync reactivated');
+                if (typeof window.showMessage === 'function') {
+                    window.showMessage('Synchronisation temps réel réactivée', 'success');
+                }
+            } catch (error) {
+                console.error('❌ Error reactivating realtime sync:', error);
+                if (typeof window.showMessage === 'function') {
+                    window.showMessage('Erreur lors de la réactivation', 'error');
+                }
+            }
+        };
+        
+        // Function to check realtime sync status
+        window.checkRealtimeStatus = function() {
+            console.log('🔍 Checking realtime sync status...');
+            console.log('📡 Realtime subscription:', window.realtimeSubscription);
+            console.log('📊 Snapshot mode:', window.snapshotMode);
+            console.log('📅 Current snapshot date:', window.currentSnapshotDate);
+            
+            if (window.realtimeSubscription) {
+                console.log('✅ Realtime sync is active');
+                if (typeof window.showMessage === 'function') {
+                    window.showMessage('Synchronisation temps réel active', 'success');
+                }
+            } else {
+                console.log('❌ Realtime sync is inactive');
+                if (typeof window.showMessage === 'function') {
+                    window.showMessage('Synchronisation temps réel inactive', 'info');
+                }
+            }
+        };
+        
+        // ========================================
+        // FIN DES FONCTIONS DE RÉACTIVATION
+        // ========================================
     </script>
 </body>
 </html>
