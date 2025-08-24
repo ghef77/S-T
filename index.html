@@ -299,52 +299,9 @@
             }
         }
 
-        /* Positionnement pour écrans moyens (tablettes) */
-        @media (min-width: 641px) and (max-width: 1024px) {
-            #button-bar {
-                position: absolute !important;
-                top: 8px !important;
-                right: 8px !important;
-                z-index: 20 !important;
-                margin: 0 !important;
-                margin-bottom: 0 !important;
-                transform: none !important;
-            }
-            
-            /* Annuler les marges qui peuvent causer le déplacement */
-            #button-bar.mb-3 {
-                margin-bottom: 0 !important;
-            }
+        /* Button bar positioning for medium screens - no responsive modifications */
 
-            /* Laisser un petit espace entre la barre et le tableau */
-            #button-bar + div {
-                margin-top: 6px !important; /* ~ quelques millimètres */
-            }
-        }
-
-        /* Mobile-safe positioning for the top-right button bar */
-        @media (max-width: 640px) {
-            #button-bar {
-                position: fixed;
-                top: calc(env(safe-area-inset-top, 0px) + 8px);
-                right: 8px;
-                z-index: 50;
-                overflow-x: auto;
-            }
-            
-            #table-container { 
-                padding-top: 56px; 
-            }
-            
-            /* Empêcher que le bouton de couleur s'écrase en largeur */
-            #row-color-picker {
-                min-width: 32px !important;
-                min-height: 32px !important;
-                width: 32px !important;
-                height: 32px !important;
-                flex-shrink: 0 !important;
-            }
-        }
+        /* Button bar positioning - no responsive modifications */
         
         /* Sticky first column */
         #data-table td:first-child {
@@ -561,38 +518,7 @@
             min-height: 100dvh;
         }
         
-        /* Mobile-specific viewport adjustments */
-        @media (max-width: 768px) {
-            body {
-                overflow-x: hidden;
-                position: fixed;
-                width: 100%;
-                height: 100%;
-            }
-            
-            #table-container {
-                height: 100vh;
-                height: 100dvh;
-                height: calc(var(--vh, 1vh) * 100);
-                min-height: 100vh;
-                min-height: 100dvh;
-                min-height: calc(var(--vh, 1vh) * 100);
-                overflow: hidden;
-            }
-            
-            /* Optimiser pour la barre de navigation mobile */
-            #fab-add {
-                position: fixed;
-                bottom: 16px;
-                right: 16px;
-                z-index: 1000;
-            }
-            
-            /* S'assurer que le contenu ne déborde pas */
-            .overflow-auto {
-                overflow: auto !important;
-                -webkit-overflow-scrolling: touch;
-            }
+        /* Viewport styling - no responsive modifications */
             
                     /* History bar styling - no responsive modifications */
         
@@ -660,18 +586,7 @@
             border-color: #9ca3af;
         }
         
-        /* Mobile adjustments for date display */
-        @media (max-width: 640px) {
-            #current-snapshot-date-display {
-                font-size: 0.7rem !important;
-                padding: 0.25rem 0.375rem !important;
-            }
-            
-            #current-snapshot-date-display .fa-solid {
-                width: 0.75rem !important;
-                height: 0.75rem !important;
-            }
-        }
+        /* Date display styling - no responsive modifications */
         
         /* Focus styles for accessibility */
         .editable-cell:focus {
@@ -831,25 +746,7 @@
             to { opacity: 1; }
         }
         
-        /* Responsive table */
-        @media (max-width: 768px) {
-            #data-table {
-                font-size: 0.75rem;
-            }
-            
-            #data-table th, #data-table td {
-                padding: 0.25rem 0.5rem;
-            }
-            
-            /* Empêcher que le bouton de couleur s'écrase en largeur sur les écrans moyens */
-            #row-color-picker {
-                min-width: 32px !important;
-                min-height: 32px !important;
-                width: 32px !important;
-                height: 32px !important;
-                flex-shrink: 0 !important;
-            }
-        }
+        /* Table styling - no responsive modifications */
         
         /* Smart Calendar Styles */
         .month-nav-btn {
@@ -927,22 +824,7 @@
             padding-left: 1rem;
         }
         
-        /* Responsive calendar */
-        @media (max-width: 640px) {
-            .month-nav-btn {
-                font-size: 0.75rem;
-                padding: 0.5rem 0.75rem;
-            }
-            
-            .month-content {
-                margin-left: 0.5rem;
-            }
-            
-            .week-section {
-                margin-left: 0.5rem;
-                padding-left: 0.5rem;
-            }
-        }
+        /* Calendar styling - no responsive modifications */
     </style>
 </head>
 <body class="bg-gray-100 flex flex-col h-screen overflow-hidden text-sm md:text-base lg:text-lg">
