@@ -6124,8 +6124,8 @@
                     
                     // Analyser le type d'erreur
                     if (testError.code === 'PGRST116') { // No rows returned
-                        console.log('⚠️ Table vide, création d\'un snapshot de démonstration...');
-                        await createDemoSnapshot();
+                        console.log('ℹ️ Table vide - état normal, pas de snapshot automatique');
+                        // Don't create demo snapshot automatically
                         return;
                     } else if (testError.code === 'PGRST301') { // Table doesn't exist
                         console.error('❌ Table table_snapshots_index n\'existe pas. Vérifiez la configuration SQL.');
@@ -6163,10 +6163,10 @@
                 
                 console.log(`📊 ${availableSnapshots.length} snapshots disponibles:`, availableSnapshots);
                 
-                // If no snapshots exist, create a demo one
+                // If no snapshots exist, just show empty state
                 if (availableSnapshots.length === 0) {
-                    console.log('⚠️ Aucun snapshot trouvé, création d\'un snapshot de démonstration...');
-                    await createDemoSnapshot();
+                    console.log('ℹ️ Aucun snapshot trouvé - état vide normal');
+                    // Don't create demo snapshot automatically
                 } else {
                     console.log('✅ Snapshots trouvés, mise à jour de l\'interface...');
                     updateHistoryNavigation();
@@ -7082,7 +7082,7 @@
                 const { error: logError } = await supabaseService
                     .from('snapshot_restore_log')
                     .delete()
-                    .eq('snapshot_id', snapshotId);
+                    .eq('snapshot_date', snapshotDate);
                 
                 if (logError) {
                     console.warn('⚠️ Erreur lors de la suppression du log:', logError);
