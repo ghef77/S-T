@@ -9106,52 +9106,110 @@ ${capacityInfo.needsCleanup ?
         window.reactivateRealtimeSync = function() {
             console.log('🔄 Manually reactivating realtime sync...');
             try {
+                // Check current state
+                const currentMode = window.snapshotMode || 'unknown';
+                const hasRealtimeSub = !!window.realtimeSubscription;
+                
+                console.log('📊 Current state:', {
+                    mode: currentMode,
+                    hasRealtimeSub: hasRealtimeSub,
+                    currentSnapshotDate: window.currentSnapshotDate
+                });
+                
                 // Force return to live mode if in snapshot mode
-                if (window.snapshotMode === 'snapshot') {
+                if (currentMode === 'snapshot') {
                     console.log('🔄 Currently in snapshot mode, returning to live mode...');
                     if (typeof window.returnToToday === 'function') {
                         window.returnToToday();
+                        return 'Returning to live mode...';
                     } else {
                         console.log('⚠️ returnToToday function not available');
-                    }
-                } else {
-                    // Just reactivate realtime subscription
-                    console.log('🔄 Setting up realtime subscription...');
-                    if (typeof window.setupRealtimeSubscription === 'function') {
-                        window.setupRealtimeSubscription();
-                    } else {
-                        console.log('⚠️ setupRealtimeSubscription function not available');
+                        // Fallback: manually reset state
+                        window.snapshotMode = 'live';
+                        window.currentSnapshotDate = null;
+                        window.currentSnapshotIndex = -1;
+                        console.log('✅ Manually reset to live mode');
                     }
                 }
+                
+                // Reactivate realtime subscription
+                console.log('🔄 Setting up realtime subscription...');
+                if (typeof window.setupRealtimeSubscription === 'function') {
+                    window.setupRealtimeSubscription();
+                    console.log('✅ Realtime subscription setup called');
+                } else {
+                    console.log('⚠️ setupRealtimeSubscription function not available');
+                    // Fallback: try to create subscription manually
+                    if (window.supabase) {
+                        console.log('🔄 Creating manual realtime subscription...');
+                        window.realtimeSubscription = window.supabase.channel('table-changes')
+                            .on('postgres_changes', { 
+                                event: 'INSERT', 
+                                schema: 'public', 
+                                table: 'staffTable' 
+                            }, (payload) => console.log('🔄 INSERT:', payload))
+                            .on('postgres_changes', { 
+                                event: 'UPDATE', 
+                                schema: 'public', 
+                                table: 'staffTable' 
+                            }, (payload) => console.log('🔄 UPDATE:', payload))
+                            .on('postgres_changes', { 
+                                event: 'DELETE', 
+                                schema: 'public', 
+                                table: 'staffTable' 
+                            }, (payload) => console.log('🔄 DELETE:', payload))
+                            .subscribe();
+                        console.log('✅ Manual realtime subscription created');
+                    }
+                }
+                
                 console.log('✅ Realtime sync reactivated');
                 if (typeof window.showMessage === 'function') {
                     window.showMessage('Synchronisation temps réel réactivée', 'success');
                 }
+                
+                return 'Realtime sync reactivated successfully';
             } catch (error) {
                 console.error('❌ Error reactivating realtime sync:', error);
                 if (typeof window.showMessage === 'function') {
                     window.showMessage('Erreur lors de la réactivation', 'error');
                 }
+                return 'Error: ' + error.message;
             }
         };
         
         // Function to check realtime sync status
         window.checkRealtimeStatus = function() {
             console.log('🔍 Checking realtime sync status...');
-            console.log('📡 Realtime subscription:', window.realtimeSubscription);
-            console.log('📊 Snapshot mode:', window.snapshotMode);
-            console.log('📅 Current snapshot date:', window.currentSnapshotDate);
+            
+            const status = {
+                realtimeSubscription: window.realtimeSubscription,
+                snapshotMode: window.snapshotMode || 'unknown',
+                currentSnapshotDate: window.currentSnapshotDate,
+                hasSupabase: !!window.supabase,
+                hasSetupFunction: typeof window.setupRealtimeSubscription === 'function',
+                hasReturnFunction: typeof window.returnToToday === 'function'
+            };
+            
+            console.log('📊 Status details:', status);
             
             if (window.realtimeSubscription) {
                 console.log('✅ Realtime sync is active');
                 if (typeof window.showMessage === 'function') {
                     window.showMessage('Synchronisation temps réel active', 'success');
                 }
+                return 'ACTIVE';
             } else {
                 console.log('❌ Realtime sync is inactive');
+                console.log('🔍 Possible reasons:');
+                console.log('   - In snapshot mode:', status.snapshotMode === 'snapshot');
+                console.log('   - Supabase client:', status.hasSupabase);
+                console.log('   - Setup function:', status.hasSetupFunction);
+                
                 if (typeof window.showMessage === 'function') {
                     window.showMessage('Synchronisation temps réel inactive', 'info');
                 }
+                return 'INACTIVE';
             }
         };
         
