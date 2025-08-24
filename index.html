@@ -7292,42 +7292,81 @@
         
         // Disable table editing
         function disableTableEditing() {
-            const cells = document.querySelectorAll('#table-body td.editable-cell');
-            cells.forEach(cell => {
-                cell.contentEditable = false;
-                cell.classList.add('snapshot-readonly');
-            });
+            console.log('🔒 DEBUG: disableTableEditing called');
             
-            // Disable all function buttons in snapshot mode
-            const functionButtons = document.querySelectorAll('#button-bar button');
-            functionButtons.forEach(btn => {
-                btn.disabled = true;
-            });
-            
-            // Disable FAB add button
-            const fabAdd = document.getElementById('fab-add');
-            if (fabAdd) fabAdd.style.pointerEvents = 'none';
+            // Wait for DOM to be ready
+            setTimeout(() => {
+                const cells = document.querySelectorAll('#table-body td.editable-cell');
+                console.log('🔒 DEBUG: Found', cells.length, 'editable cells to disable');
+                
+                cells.forEach((cell, index) => {
+                    cell.contentEditable = false;
+                    cell.classList.add('snapshot-readonly');
+                    console.log(`🔒 DEBUG: Cell ${index} disabled and marked readonly`);
+                });
+                
+                // Disable all function buttons in snapshot mode
+                const functionButtons = document.querySelectorAll('#button-bar button');
+                console.log('🔒 DEBUG: Found', functionButtons.length, 'function buttons to disable');
+                
+                functionButtons.forEach((btn, index) => {
+                    btn.disabled = true;
+                    console.log(`🔒 DEBUG: Button ${index} disabled`);
+                });
+                
+                // Disable FAB add button
+                const fabAdd = document.getElementById('fab-add');
+                if (fabAdd) {
+                    fabAdd.style.pointerEvents = 'none';
+                    console.log('🔒 DEBUG: FAB add button disabled');
+                } else {
+                    console.warn('⚠️ DEBUG: FAB add button not found');
+                }
+                
+                console.log('✅ DEBUG: Table editing disabled successfully');
+            }, 100); // Small delay to ensure DOM is ready
         }
         
         // Enable table editing
         function enableTableEditing() {
-            const cells = document.querySelectorAll('#table-body td.editable-cell');
-            cells.forEach(cell => {
-                if (!isViewMode) { // Only enable if not in view mode
-                    cell.contentEditable = true;
+            console.log('🔓 DEBUG: enableTableEditing called');
+            
+            // Wait for DOM to be ready
+            setTimeout(() => {
+                const cells = document.querySelectorAll('#table-body td.editable-cell');
+                console.log('🔓 DEBUG: Found', cells.length, 'editable cells to enable');
+                
+                cells.forEach((cell, index) => {
+                    if (!isViewMode) { // Only enable if not in view mode
+                        cell.contentEditable = true;
+                        console.log(`🔓 DEBUG: Cell ${index} enabled for editing`);
+                    } else {
+                        console.log(`🔓 DEBUG: Cell ${index} kept disabled (view mode)`);
+                    }
+                    cell.classList.remove('snapshot-readonly');
+                    console.log(`🔓 DEBUG: Cell ${index} readonly class removed`);
+                });
+                
+                // Re-enable function buttons
+                const functionButtons = document.querySelectorAll('#button-bar button');
+                console.log('🔓 DEBUG: Found', functionButtons.length, 'function buttons to enable');
+                
+                functionButtons.forEach((btn, index) => {
+                    btn.disabled = false;
+                    console.log(`🔓 DEBUG: Button ${index} enabled`);
+                });
+                
+                // Re-enable FAB add button
+                const fabAdd = document.getElementById('fab-add');
+                if (fabAdd) {
+                    fabAdd.style.pointerEvents = 'auto';
+                    console.log('🔓 DEBUG: FAB add button enabled');
+                } else {
+                    console.warn('⚠️ DEBUG: FAB add button not found');
                 }
-                cell.classList.remove('snapshot-readonly');
-            });
-            
-            // Re-enable function buttons
-            const functionButtons = document.querySelectorAll('#button-bar button');
-            functionButtons.forEach(btn => {
-                btn.disabled = false;
-            });
-            
-            // Re-enable FAB add button
-            const fabAdd = document.getElementById('fab-add');
-            if (fabAdd) fabAdd.style.pointerEvents = 'auto';
+                
+                console.log('✅ DEBUG: Table editing enabled successfully');
+            }, 100); // Small delay to ensure DOM is ready
         }
         
         // Format date for display
