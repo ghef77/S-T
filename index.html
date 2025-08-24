@@ -212,14 +212,7 @@
             }
         }
         
-        /* History bar responsive design */
-        /* Enhanced mobile support for history bar */
-        @media (max-width: 1023px) {
-            #snapshot-banner {
-                display: none !important;
-            }
-            /* Don't hide history bar on mobile - make it responsive instead */
-        }
+        /* History bar design - no responsive modifications */
         
         /* Utility classes */
         .hidden {
@@ -7844,166 +7837,21 @@
                 console.log('🔼 History bar shown');
             }
             
-            // Enhanced mobile-specific optimizations
-            if (isMobile()) {
-                // Force reflow for proper rendering
-                historyBarContainer.offsetHeight;
-                
-                // Mobile-specific layout adjustments
-                setTimeout(() => {
-                    if (window.innerWidth <= 768) {
-                        // Ensure proper mobile layout
-                        historyBarContainer.style.width = '100%';
-                        historyBarContainer.style.maxWidth = 'none';
-                        
-                        // Force another reflow
-                        historyBarContainer.offsetHeight;
-                        
-                        // Enhanced mobile optimization for very small screens
-                        if (window.innerWidth <= 480) {
-                            // Very small screens - ensure vertical stacking
-                            const innerContainer = historyBarContainer.querySelector('div');
-                            if (innerContainer) {
-                                innerContainer.style.flexDirection = 'column';
-                                innerContainer.style.alignItems = 'center';
-                                innerContainer.style.gap = '0.5rem';
-                            }
-                            
-                            // Make calendar dropdown more mobile-friendly
-                            const calendarDropdown = document.getElementById('snapshot-calendar-dropdown');
-                            if (calendarDropdown) {
-                                calendarDropdown.style.width = '95vw';
-                                calendarDropdown.style.maxWidth = '95vw';
-                                calendarDropdown.style.left = '2.5vw';
-                                calendarDropdown.style.transform = 'none';
-                            }
-                        }
-                        
-                        // Ensure buttons are properly sized on mobile
-                        const buttons = historyBarContainer.querySelectorAll('button');
-                        buttons.forEach(button => {
-                            button.style.width = '100%';
-                            button.style.maxWidth = '250px';
-                            button.style.justifyContent = 'center';
-                            button.style.padding = '0.75rem 1rem';
-                            button.style.fontSize = '0.875rem';
-                        });
-                    }
-                }, 100);
-                
-                // Additional mobile gesture support
-                if ('ontouchstart' in window) {
-                    // Add touch-friendly interactions
-                    historyBarContainer.style.touchAction = 'manipulation';
-                }
-                
-                // Add mobile-specific event listeners
-                addMobileEventListeners();
-            }
+            // No mobile-specific modifications - consistent display across all screen sizes
         }
         
-        // Add mobile-specific event listeners for better touch experience
-        function addMobileEventListeners() {
-            const historyBarContainer = document.getElementById('history-bar-container');
-            if (!historyBarContainer) return;
-            
-            // Prevent zoom on double tap for mobile
-            let lastTouchEnd = 0;
-            historyBarContainer.addEventListener('touchend', function (event) {
-                const now = (new Date()).getTime();
-                if (now - lastTouchEnd <= 300) {
-                    event.preventDefault();
-                }
-                lastTouchEnd = now;
-            }, false);
-            
-            // Add swipe gesture support for very small screens
-            if (window.innerWidth <= 480) {
-                let startX = 0;
-                let startY = 0;
-                
-                historyBarContainer.addEventListener('touchstart', function(e) {
-                    startX = e.touches[0].clientX;
-                    startY = e.touches[0].clientY;
-                });
-                
-                historyBarContainer.addEventListener('touchend', function(e) {
-                    if (!startX || !startY) return;
-                    
-                    const endX = e.changedTouches[0].clientX;
-                    const endY = e.changedTouches[0].clientY;
-                    const diffX = startX - endX;
-                    const diffY = startY - endY;
-                    
-                    // If horizontal swipe is more significant than vertical
-                    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-                        if (diffX > 0) {
-                            // Swipe left - go to next snapshot
-                            if (currentSnapshotIndex < availableSnapshots.length - 1) {
-                                goToNextSnapshot();
-                            }
-                        } else {
-                            // Swipe right - go to previous snapshot
-                            if (currentSnapshotIndex > 0) {
-                                goToPreviousSnapshot();
-                            }
-                        }
-                    }
-                    
-                    startX = 0;
-                    startY = 0;
-                });
-            }
-        }
+        // Mobile event listeners removed - consistent behavior across all screen sizes
         
-        // Enhanced mobile detection with better breakpoint support
-        function getMobileBreakpoint() {
-            const width = window.innerWidth;
-            if (width <= 375) return 'xs';
-            if (width <= 480) return 'sm';
-            if (width <= 768) return 'md';
-            if (width <= 1024) return 'lg';
-            return 'xl';
-        }
+        // Mobile breakpoint and layout optimization functions removed - consistent display across all screen sizes
         
-        // Function to optimize layout for current screen size
-        function optimizeLayoutForScreen() {
-            const breakpoint = getMobileBreakpoint();
-            const historyBarContainer = document.getElementById('history-bar-container');
-            
-            if (!historyBarContainer) return;
-            
-            switch (breakpoint) {
-                case 'xs':
-                    // Very small screens - maximize space usage
-                    historyBarContainer.style.padding = '0.5rem';
-                    break;
-                case 'sm':
-                    // Small screens - balanced layout
-                    historyBarContainer.style.padding = '0.75rem';
-                    break;
-                case 'md':
-                    // Medium screens - comfortable spacing
-                    historyBarContainer.style.padding = '1rem';
-                    break;
-                default:
-                    // Large screens - default spacing
-                    historyBarContainer.style.padding = '';
-                    break;
-            }
-        }
-        
-        // Enhanced test function for mobile history bar functionality
-        function testMobileHistoryBar() {
+        // Test function for history bar functionality (mobile-specific features removed)
+        function testHistoryBar() {
             const historyBarContainer = document.getElementById('history-bar-container');
             const toggleBtn = document.getElementById('history-toggle-btn');
             const toggleIcon = document.getElementById('history-toggle-icon');
             
-            console.log('🧪 Testing Enhanced Mobile History Bar...');
-            console.log('📱 Screen size:', window.innerWidth, 'x', window.innerHeight);
-            console.log('📱 User Agent:', navigator.userAgent);
-            console.log('📱 isMobile():', isMobile());
-            console.log('📱 Breakpoint:', getMobileBreakpoint());
+            console.log('🧪 Testing History Bar...');
+            console.log('🔄 Screen size:', window.innerWidth, 'x', window.innerHeight);
             
             if (!historyBarContainer || !toggleBtn || !toggleIcon) {
                 console.error('❌ Test failed: Required elements not found');
@@ -8014,17 +7862,6 @@
             console.log('🔍 History bar container:', historyBarContainer);
             console.log('🔍 Toggle button:', toggleBtn);
             console.log('🔍 Toggle icon:', toggleIcon);
-            
-            // Test mobile-specific features
-            if (isMobile()) {
-                console.log('📱 Mobile optimizations active');
-                console.log('📱 Touch support:', 'ontouchstart' in window);
-                console.log('📱 Max touch points:', navigator.maxTouchPoints);
-                
-                // Test layout optimization
-                optimizeLayoutForScreen();
-                console.log('📱 Layout optimized for:', getMobileBreakpoint());
-            }
             
             // Test initial state
             const initialHidden = historyBarContainer.classList.contains('hidden');
@@ -8065,7 +7902,7 @@
                         console.log('  - Display style:', finalDisplay);
                         console.log('  - Offset height:', finalHeight);
                         
-                        console.log('✅ Mobile History Bar test completed');
+                        console.log('✅ History Bar test completed');
                     }, 100);
                 }, 100);
             }, 100);
@@ -8084,10 +7921,6 @@
             setupKeyboardNavigation();
             
             // Initialize zoom
-            if (isMobile() && !localStorage.getItem('zoomFactor')) { 
-                zoomFactor = 0.6; 
-                localStorage.setItem('zoomFactor', '0.6'); 
-            } 
             applyZoom();
             
             // Initialize color picker
