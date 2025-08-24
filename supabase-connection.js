@@ -61,17 +61,47 @@ function setupRealtimeSubscription() {
             event: 'INSERT', 
             schema: 'public', 
             table: supabaseConfig.tableName 
-        }, handleRealtimeUpdate)
+        }, (payload) => {
+            if (typeof window.handleRealtimeUpdate === 'function') {
+                window.handleRealtimeUpdate(payload);
+            } else {
+                console.log('🔄 INSERT via supabase-connection:', payload);
+                // Fallback: call fetchInitialData directly
+                if (typeof window.fetchInitialData === 'function') {
+                    setTimeout(() => window.fetchInitialData(), 1000);
+                }
+            }
+        })
         .on('postgres_changes', { 
             event: 'UPDATE', 
             schema: 'public', 
             table: supabaseConfig.tableName 
-        }, handleRealtimeUpdate)
+        }, (payload) => {
+            if (typeof window.handleRealtimeUpdate === 'function') {
+                window.handleRealtimeUpdate(payload);
+            } else {
+                console.log('🔄 UPDATE via supabase-connection:', payload);
+                // Fallback: call fetchInitialData directly
+                if (typeof window.fetchInitialData === 'function') {
+                    setTimeout(() => window.fetchInitialData(), 1000);
+                }
+            }
+        })
         .on('postgres_changes', { 
             event: 'DELETE', 
             schema: 'public', 
             table: supabaseConfig.tableName 
-        }, handleRealtimeUpdate)
+        }, (payload) => {
+            if (typeof window.handleRealtimeUpdate === 'function') {
+                window.handleRealtimeUpdate(payload);
+            } else {
+                console.log('🔄 DELETE via supabase-connection:', payload);
+                // Fallback: call fetchInitialData directly
+                if (typeof window.fetchInitialData === 'function') {
+                    setTimeout(() => window.fetchInitialData(), 1000);
+                }
+            }
+        })
         .subscribe(status => {
             console.log('📡 Statut de la subscription temps réel:', status);
             if (status === 'SUBSCRIBED') {
@@ -84,44 +114,7 @@ function setupRealtimeSubscription() {
         });
 }
 
-// Gestion des mises à jour temps réel
-function handleRealtimeUpdate(payload) {
-    console.log('🔄 Mise à jour temps réel reçue:', payload);
-    
-    // Éviter les mises à jour en boucle
-    if (window.isLocalSaveInProgress) {
-        console.log('⚠️ Mise à jour temps réel ignorée (sauvegarde locale en cours)');
-        return;
-    }
-
-    // Traiter la mise à jour selon le type d'événement
-    switch (payload.eventType) {
-        case 'INSERT':
-            console.log('➕ Nouvelle ligne insérée via temps réel');
-            break;
-        case 'UPDATE':
-            console.log('✏️ Ligne mise à jour via temps réel');
-            break;
-        case 'DELETE':
-            console.log('🗑️ Ligne supprimée via temps réel');
-            break;
-    }
-
-    // Rafraîchir les données depuis Supabase
-    setTimeout(() => {
-        if (typeof loadFromSupabase === 'function') {
-            loadFromSupabase().then(data => {
-                if (data && data.length > 0) {
-                    console.log('✅ Données rafraîchies depuis Supabase');
-                    updateStatus('Données synchronisées', 'success');
-                }
-            }).catch(error => {
-                console.error('❌ Erreur lors du rafraîchissement:', error);
-                updateStatus('Erreur de synchronisation', 'error');
-            });
-        }
-    }, 1000);
-}
+// Note: handleRealtimeUpdate is now implemented in index.html to avoid conflicts
 
 // Nettoyage de la subscription temps réel
 function cleanupRealtimeSubscription() {
@@ -266,6 +259,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Configurer la synchronisation temps réel
     setupRealtimeSubscription();
+    
+    // Expose functions globally for reactivation
+    window.setupRealtimeSubscription = setupRealtimeSubscription;
+    window.cleanupRealtimeSubscription = cleanupRealtimeSubscription;
     
     // Nettoyer au déchargement de la page
     window.addEventListener('beforeunload', cleanupRealtimeSubscription);

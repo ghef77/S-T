@@ -172,13 +172,17 @@ class SimpleGallery {
 
     // Intelligent polling as backup for real-time sync
     startIntelligentPolling() {
+        // Always cleanup existing interval first
         if (this.pollingInterval) {
             clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
         }
         
         // Poll every 3 seconds as backup
         this.pollingInterval = setInterval(async () => {
             try {
+                // Additional check to prevent execution if cleaned up
+                if (!this.pollingInterval) return;
                 await this.checkForChanges();
             } catch (error) {
                 console.log('⚠️ Polling error:', error.message);

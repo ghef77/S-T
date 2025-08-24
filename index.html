@@ -1272,7 +1272,7 @@
         }
         
                         // Autosave configuration
-                const AUTOSAVE_DELAY_MS = 1500; // 1.5 seconds after last edit when idle
+                const AUTOSAVE_DELAY_MS = 1000; // 1 second after last edit when idle
         let autosaveTicker = null;
         let lastShownCountdown = null;
         let lastFocusInfo = null;
@@ -4519,16 +4519,18 @@
         
         // Handle realtime updates from Supabase
         function handleRealtimeUpdate(payload) {
-            console.log('🔄 Realtime update received:', payload);
+            console.log('🔄 [REALTIME] Update received:', payload);
+            console.log('🔄 [REALTIME] Event type:', payload.event);
+            console.log('🔄 [REALTIME] Timestamp:', new Date().toISOString());
             
             // Avoid update loops
             if (window.isLocalSaveInProgress) {
-                console.log('⚠️ Realtime update ignored (local save in progress)');
+                console.log('⚠️ [REALTIME] Update BLOCKED - local save in progress');
                 return;
             }
 
             // Process update based on event type
-            switch (payload.eventType) {
+            switch (payload.event) {
                 case 'INSERT':
                     console.log('➕ New row inserted via realtime');
                     break;
@@ -4540,26 +4542,47 @@
                     break;
             }
 
-            // ✅ CORRECTION: Éviter le rechargement automatique qui peut interférer avec la restauration du focus
-            // Seulement recharger si c'est vraiment nécessaire et si aucune restauration de focus n'est en cours
-            if (capturedFocusState && capturedFocusState.element) {
-                console.log('⚠️ Realtime update ignoré - restauration de focus en cours pour éviter les conflits');
+            // ✅ Only block if focus restoration is actively happening (within 2 seconds)
+            if (capturedFocusState && capturedFocusState.element && capturedFocusState.timestamp && (Date.now() - capturedFocusState.timestamp < 2000)) {
+                console.log('⚠️ [REALTIME] Update DELAYED - focus restoration in progress');
+                // Retry after focus restoration is complete
+                setTimeout(() => {
+                    console.log('🔄 [REALTIME] Retrying update after focus restoration...');
+                    if (typeof fetchInitialData === 'function') {
+                        fetchInitialData();
+                    }
+                }, 2500);
                 return;
             }
             
-            // Refresh data from Supabase after a short delay (seulement si nécessaire)
+            console.log('✅ [REALTIME] Proceeding with data refresh...');
+            
+            // Refresh data from Supabase after a short delay
             setTimeout(() => {
                 if (typeof fetchInitialData === 'function') {
-                    console.log('🔄 Refreshing data from Supabase via realtime update...');
+                    console.log('🔄 [REALTIME] Starting data refresh...');
                     fetchInitialData().then(() => {
-                        console.log('✅ Data refreshed from Supabase via realtime');
+                        console.log('✅ [REALTIME] Data refresh completed successfully');
                         updateStatus('Données synchronisées via temps réel', 'success');
+                        
+                        // Force UI refresh to ensure changes are visible
+                        if (typeof renderTable === 'function') {
+                            console.log('🔄 [REALTIME] Force rendering table');
+                            renderTable();
+                        } else {
+                            console.warn('⚠️ [REALTIME] renderTable function not available');
+                        }
+                        
+                        // Trigger table update event for other components
+                        document.dispatchEvent(new CustomEvent('table:updated', { detail: { source: 'realtime', timestamp: new Date().toISOString() } }));
+                        console.log('✅ [REALTIME] Table update event dispatched');
+                        
                     }).catch(error => {
-                        console.error('❌ Error refreshing data via realtime:', error);
+                        console.error('❌ [REALTIME] Data refresh failed:', error);
                         updateStatus('Erreur de synchronisation temps réel', 'error');
                     });
                 } else {
-                    console.warn('⚠️ fetchInitialData function not available for realtime sync');
+                    console.error('❌ [REALTIME] fetchInitialData function not available!');
                 }
             }, 1000);
         }
@@ -8744,6 +8767,7 @@ ${capacityInfo.needsCleanup ?
         window.updateSnapshotBanner = updateSnapshotBanner;
         window.updateHistoryDateButton = updateHistoryDateButton;
         window.fetchInitialData = fetchInitialData;
+        window.handleRealtimeUpdate = handleRealtimeUpdate;
         window.loadTableData = loadTableData;
         window.showMessage = showMessage;
         window.closeImageViewer = closeImageViewer;
@@ -9142,24 +9166,43 @@ ${capacityInfo.needsCleanup ?
                     // Fallback: try to create subscription manually
                     if (window.supabase) {
                         console.log('🔄 Creating manual realtime subscription...');
-                        window.realtimeSubscription = window.supabase.channel('table-changes')
-                            .on('postgres_changes', { 
-                                event: 'INSERT', 
-                                schema: 'public', 
-                                table: 'staffTable' 
-                            }, (payload) => console.log('🔄 INSERT:', payload))
-                            .on('postgres_changes', { 
-                                event: 'UPDATE', 
-                                schema: 'public', 
-                                table: 'staffTable' 
-                            }, (payload) => console.log('🔄 UPDATE:', payload))
-                            .on('postgres_changes', { 
-                                event: 'DELETE', 
-                                schema: 'public', 
-                                table: 'staffTable' 
-                            }, (payload) => console.log('🔄 DELETE:', payload))
-                            .subscribe();
-                        console.log('✅ Manual realtime subscription created');
+                        try {
+                            window.realtimeSubscription = window.supabase.channel('table-changes')
+                                .on('postgres_changes', { 
+                                    event: 'INSERT', 
+                                    schema: 'public', 
+                                    table: 'staffTable' 
+                                }, (payload) => {
+                                    console.log('🔄 INSERT:', payload);
+                                    if (typeof window.fetchInitialData === 'function') {
+                                        setTimeout(() => window.fetchInitialData(), 1000);
+                                    }
+                                })
+                                .on('postgres_changes', { 
+                                    event: 'UPDATE', 
+                                    schema: 'public', 
+                                    table: 'staffTable' 
+                                }, (payload) => {
+                                    console.log('🔄 UPDATE:', payload);
+                                    if (typeof window.fetchInitialData === 'function') {
+                                        setTimeout(() => window.fetchInitialData(), 1000);
+                                    }
+                                })
+                                .on('postgres_changes', { 
+                                    event: 'DELETE', 
+                                    schema: 'public', 
+                                    table: 'staffTable' 
+                                }, (payload) => {
+                                    console.log('🔄 DELETE:', payload);
+                                    if (typeof window.fetchInitialData === 'function') {
+                                        setTimeout(() => window.fetchInitialData(), 1000);
+                                    }
+                                })
+                                .subscribe();
+                            console.log('✅ Manual realtime subscription created');
+                        } catch (error) {
+                            console.error('❌ Error creating manual subscription:', error);
+                        }
                     }
                 }
                 
