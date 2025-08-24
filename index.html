@@ -895,67 +895,46 @@
             <!-- History Bar Container - This is what gets toggled -->
             <div id="history-bar-container" class="flex justify-end">
                 <!-- Enhanced mobile-responsive container -->
-                <div class="flex flex-wrap items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 w-full md:w-1/2 relative z-20">
+                <div class="flex flex-wrap items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 w-full relative z-20">
                     <!-- Navigation buttons - Responsive visibility -->
-                    <div class="flex md:hidden items-center gap-2 w-full justify-center mb-2">
+                    <div class="flex items-center gap-2 w-full justify-center mb-2">
                         <button id="history-back" onclick="goToPreviousSnapshot()" disabled title="Snapshot précédent" aria-label="Snapshot précédent" class="bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-1 max-w-32">
                             <i class="fa-solid fa-chevron-left w-4 h-4 mr-2"></i>
-                            <span class="hidden xs:inline">Précédent</span>
-                            <span class="xs:hidden">Préc</span>
+                            <span>Précédent</span>
                         </button>
             
                         <button id="history-date" onclick="openDatePicker()" title="Choisir une date de snapshot" aria-label="Choisir une date" class="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors font-medium flex items-center justify-center flex-1 max-w-32">
-                            <span id="current-date-text" class="hidden xs:inline">Données en direct</span>
-                            <span class="xs:hidden">Date</span>
+                            <span id="current-date-text">Données en direct</span>
                             <i class="fa-solid fa-calendar ml-2 w-4 h-4"></i>
                         </button>
             
                         <button id="history-next" onclick="goToNextSnapshot()" disabled title="Snapshot suivant" aria-label="Snapshot suivant" class="bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-1 max-w-32">
-                            <span class="hidden xs:inline">Suivant</span>
-                            <span class="xs:hidden">Suiv</span>
+                            <span>Suivant</span>
                             <i class="fa-solid fa-chevron-right w-4 h-4 ml-2"></i>
                         </button>
                     </div>
                     
                     <!-- Desktop navigation buttons -->
-                    <div class="hidden md:flex items-center gap-2">
-                        <button id="history-back-desktop" onclick="goToPreviousSnapshot()" disabled title="Snapshot précédent" aria-label="Snapshot précédent" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                            <i class="fa-solid fa-chevron-left w-3 h-3 mr-1"></i>
-                            Précédent
-                        </button>
-            
-                        <button id="history-date-desktop" onclick="openDatePicker()" title="Choisir une date de snapshot" aria-label="Choisir une date" class="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700 transition-colors font-medium flex items-center justify-center">
-                            <span id="current-date-text-desktop">Données en direct</span>
-                            <i class="fa-solid fa-calendar ml-1 w-3 h-3"></i>
-                        </button>
-            
-                        <button id="history-next-desktop" onclick="goToNextSnapshot()" disabled title="Snapshot suivant" aria-label="Snapshot suivant" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                            <i class="fa-solid fa-chevron-right w-3 h-3 ml-1"></i>
-                            Suivant
-                        </button>
-                    </div>
+
                     
-                    <!-- Action buttons - Enhanced mobile layout -->
-                    <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-center">
-                        <button onclick="refreshTableData()" title="Actualiser le tableau avec les données les plus récentes" aria-label="Actualiser" class="bg-green-600 text-white px-3 py-2 md:px-2 md:py-1 rounded text-sm md:text-xs hover:bg-green-700 transition-colors font-medium flex items-center justify-center flex-1 md:flex-none max-w-32 md:max-w-none">
-                            <i class="fa-solid fa-arrows-rotate mr-2 md:mr-1 w-4 h-4 md:w-3 md:h-3"></i>
-                            <span class="hidden sm:inline">Actualiser</span>
-                            <span class="sm:hidden">Act</span>
+                    <!-- Action buttons - Fixed styling for all screen sizes -->
+                    <div class="flex flex-wrap items-center gap-2 w-full justify-center">
+                        <button onclick="refreshTableData()" title="Actualiser le tableau avec les données les plus récentes" aria-label="Actualiser" class="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors font-medium flex items-center justify-center flex-1 max-w-32">
+                            <i class="fa-solid fa-arrows-rotate mr-2 w-4 h-4"></i>
+                            <span>Actualiser</span>
                         </button>
                         
                         <!-- Bouton Snapshot Manuel -->
-                        <button onclick="console.log('🔴 BUTTON CLICKED!'); window.debugManualSnapshot ? window.debugManualSnapshot() : createManualSnapshot()" title="Créer un snapshot manuel de la table actuelle" aria-label="Snapshot Manuel" class="bg-purple-600 text-white px-3 py-2 md:px-2 md:py-1 rounded text-sm md:text-xs hover:bg-purple-700 transition-colors font-medium flex items-center justify-center flex-1 md:flex-none max-w-32 md:max-w-none">
-                            <i class="fa-solid fa-camera mr-2 md:mr-1 w-4 h-4 md:w-3 md:h-3"></i>
-                            <span class="hidden sm:inline">Snapshot</span>
-                            <span class="sm:hidden">Snap</span>
+                        <button onclick="console.log('🔴 BUTTON CLICKED!'); window.debugManualSnapshot ? window.debugManualSnapshot() : createManualSnapshot()" title="Créer un snapshot manuel de la table actuelle" aria-label="Snapshot Manuel" class="bg-purple-600 text-white px-3 py-2 rounded text-sm hover:bg-purple-700 transition-colors font-medium flex items-center justify-center flex-1 max-w-32">
+                            <i class="fa-solid fa-camera mr-2 w-4 h-4"></i>
+                            <span>Snapshot</span>
                         </button>
                         
                         <!-- Calendar dropdown for snapshot dates -->
-                        <div class="relative z-20 flex-1 md:flex-none max-w-32 md:max-w-none">
-                            <button id="snapshot-calendar-btn" onclick="toggleSnapshotCalendar()" title="Choisir une date de snapshot" aria-label="Calendrier des snapshots" class="bg-indigo-600 text-white px-3 py-2 md:px-2 md:py-1 rounded text-sm md:text-xs hover:bg-indigo-700 transition-colors font-medium flex items-center justify-center w-full">
-                                <i class="fa-solid fa-calendar-days mr-2 md:mr-1 w-4 h-4 md:w-3 md:h-3"></i>
-                                <span id="calendar-btn-text" class="hidden sm:inline">Calendrier</span>
-                                <span class="sm:hidden">Cal</span>
+                        <div class="relative z-20 flex-1 max-w-32">
+                            <button id="snapshot-calendar-btn" onclick="toggleSnapshotCalendar()" title="Choisir une date de snapshot" aria-label="Calendrier des snapshots" class="bg-indigo-600 text-white px-3 py-2 rounded text-sm hover:bg-indigo-700 transition-colors font-medium flex items-center justify-center w-full">
+                                <i class="fa-solid fa-calendar-days mr-2 w-4 h-4"></i>
+                                <span id="calendar-btn-text">Calendrier</span>
                             </button>
                             
                             <!-- Enhanced mobile-friendly calendar dropdown -->
@@ -971,9 +950,9 @@
                         </div>
                     </div>
 
-                    <!-- Current Snapshot Date Display - Mobile responsive -->
-                    <div id="current-snapshot-date-display" class="flex items-center gap-1 px-3 py-2 md:px-2 md:py-1 bg-gray-100 border border-gray-300 rounded-md text-gray-700 text-sm md:text-xs font-medium w-full md:w-auto justify-center">
-                        <i class="fa-solid fa-calendar-day w-4 h-4 md:w-3 md:h-3 text-blue-600"></i>
+                    <!-- Current Snapshot Date Display - Fixed styling for all screen sizes -->
+                    <div id="current-snapshot-date-display" class="flex items-center gap-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700 text-sm font-medium w-full justify-center">
+                        <i class="fa-solid fa-calendar-day w-4 h-4 text-blue-600"></i>
                         <span id="current-snapshot-date-text" class="text-center">Données en direct</span>
                     </div>
                 </div>
