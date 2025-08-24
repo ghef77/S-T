@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moniteur de Timing Cron Job</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .button.danger {
+            background: #dc3545;
+        }
+        .button.danger:hover {
+            background: #c82333;
+        }
+        .button.success {
+            background: #28a745;
+        }
+        .button.success:hover {
+            background: #218838;
+        }
+        .console {
+            background: #000;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .status.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .config {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .config input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🕐 Moniteur de Timing Cron Job</h1>
+        
+        <div class="status info">
+            <strong>📋 Instructions:</strong><br>
+            1. Configurez vos paramètres Supabase ci-dessous<br>
+            2. Choisissez un type de surveillance<br>
+            3. Ouvrez la console (F12) pour voir les résultats détaillés
+        </div>
+
+        <div class="config">
+            <h3>⚙️ Configuration Supabase</h3>
+            <input type="text" id="supabaseUrl" placeholder="URL Supabase (ex: https://your-project.supabase.co)" />
+            <input type="text" id="supabaseKey" placeholder="Clé Anon Supabase" />
+            <button class="button" onclick="updateConfig()">💾 Sauvegarder Config</button>
+        </div>
+
+        <div class="controls">
+            <button class="button success" onclick="quickCheck()">
+                🚀 Vérification Rapide (2 min)
+            </button>
+            <button class="button" onclick="standardMonitor()">
+                📊 Surveillance Standard (10 min)
+            </button>
+            <button class="button" onclick="extendedMonitor()">
+                🔍 Surveillance Étendue (30 min)
+            </button>
+            <button class="button danger" onclick="stopMonitoring()">
+                ⏹️ Arrêter
+            </button>
+        </div>
+
+        <div id="status" class="status info">
+            💡 Prêt à démarrer la surveillance
+        </div>
+
+        <div class="console" id="console">
+            🔥 Console de surveillance - Les résultats apparaîtront ici...
+            
+            📖 Commandes disponibles:
+            - quickCheck() : Vérification rapide de 2 minutes
+            - standardMonitor() : Surveillance de 10 minutes  
+            - extendedMonitor() : Surveillance de 30 minutes
+            - stopMonitoring() : Arrêter la surveillance
+            
+            ⚠️ N'oubliez pas de configurer vos paramètres Supabase d'abord!
+        </div>
+    </div>
+
+    <script>
+        // Configuration par défaut
+        let SUPABASE_URL = '';
+        let SUPABASE_ANON_KEY = '';
+        
+        let isMonitoring = false;
+        let monitoringType = '';
+
+        // Rediriger console.log vers notre interface
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const consoleDiv = document.getElementById('console');
+            const message = args.join(' ');
+            consoleDiv.textContent += '\n' + new Date().toLocaleTimeString() + ' - ' + message;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        };
+
+        // Rediriger console.error
+        const originalError = console.error;
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            const consoleDiv = document.getElementById('console');
+            const message = '❌ ERROR: ' + args.join(' ');
+            consoleDiv.textContent += '\n' + new Date().toLocaleTimeString() + ' - ' + message;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        };
+
+        function updateConfig() {
+            SUPABASE_URL = document.getElementById('supabaseUrl').value.trim();
+            SUPABASE_ANON_KEY = document.getElementById('supabaseKey').value.trim();
+            
+            if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+                updateStatus('⚠️ Veuillez remplir tous les champs de configuration', 'warning');
+                return;
+            }
+            
+            localStorage.setItem('supabaseUrl', SUPABASE_URL);
+            localStorage.setItem('supabaseKey', SUPABASE_ANON_KEY);
+            
+            updateStatus('✅ Configuration sauvegardée avec succès', 'info');
+            console.log('🔧 Configuration Supabase mise à jour');
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+
+        function quickCheck() {
+            if (!validateConfig()) return;
+            
+            isMonitoring = true;
+            monitoringType = 'quick';
+            updateStatus('🚀 Vérification rapide en cours (2 minutes)...', 'info');
+            console.log('🚀 Démarrage de la vérification rapide...');
+            
+            startMonitoring(2 * 60 * 1000); // 2 minutes
+        }
+
+        function standardMonitor() {
+            if (!validateConfig()) return;
+            
+            isMonitoring = true;
+            monitoringType = 'standard';
+            updateStatus('📊 Surveillance standard en cours (10 minutes)...', 'info');
+            console.log('📊 Démarrage de la surveillance standard...');
+            
+            startMonitoring(10 * 60 * 1000); // 10 minutes
+        }
+
+        function extendedMonitor() {
+            if (!validateConfig()) return;
+            
+            isMonitoring = true;
+            monitoringType = 'extended';
+            updateStatus('🔍 Surveillance étendue en cours (30 minutes)...', 'info');
+            console.log('🔍 Démarrage de la surveillance étendue...');
+            
+            startMonitoring(30 * 60 * 1000); // 30 minutes
+        }
+
+        function stopMonitoring() {
+            isMonitoring = false;
+            updateStatus('⏹️ Surveillance arrêtée', 'info');
+            console.log('⏹️ Surveillance arrêtée par l\'utilisateur');
+            generateReport();
+        }
+
+        function validateConfig() {
+            if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+                updateStatus('❌ Veuillez configurer vos paramètres Supabase d\'abord', 'danger');
+                return false;
+            }
+            return true;
+        }
+
+        let executionLog = [];
+        let startTime = null;
+
+        async function startMonitoring(duration) {
+            executionLog = [];
+            startTime = new Date();
+            
+            // Vérification initiale
+            await checkInitialState();
+            
+            // Surveillance en temps réel
+            const checkInterval = setInterval(async () => {
+                if (!isMonitoring) {
+                    clearInterval(checkInterval);
+                    return;
+                }
+                
+                await checkForNewExecutions();
+            }, 10000); // Vérifier toutes les 10 secondes
+            
+            // Arrêt automatique
+            setTimeout(() => {
+                if (isMonitoring) {
+                    isMonitoring = false;
+                    clearInterval(checkInterval);
+                    updateStatus('⏰ Surveillance terminée automatiquement', 'info');
+                    generateReport();
+                }
+            }, duration);
+        }
+
+        async function checkInitialState() {
+            try {
+                console.log('🔍 Vérification de l\'état initial...');
+                
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/table_snapshots_index?select=*&order=created_at.desc&limit=10`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP: ${response.status}`);
+                }
+                
+                const snapshots = await response.json();
+                console.log(`📋 ${snapshots.length} snapshots récents trouvés`);
+                
+                if (snapshots.length > 0) {
+                    const latest = snapshots[0];
+                    const latestTime = new Date(latest.created_at);
+                    const minutesAgo = Math.round((new Date() - latestTime) / 1000 / 60);
+                    
+                    console.log(`📅 Dernier snapshot: ${latestTime.toLocaleString('fr-FR')}`);
+                    console.log(`⏰ Il y a ${minutesAgo} minutes`);
+                    
+                    // Analyser la fréquence récente
+                    if (snapshots.length > 1) {
+                        const intervals = [];
+                        for (let i = 0; i < Math.min(5, snapshots.length - 1); i++) {
+                            const current = new Date(snapshots[i].created_at);
+                            const next = new Date(snapshots[i + 1].created_at);
+                            const intervalMinutes = (current - next) / 1000 / 60;
+                            intervals.push(intervalMinutes);
+                        }
+                        
+                        const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+                        console.log(`📊 Intervalle moyen récent: ${avgInterval.toFixed(1)} minutes`);
+                        
+                        if (avgInterval < 2) {
+                            console.log('🚨 ALERTE: Pattern de cron chaque minute détecté!');
+                            updateStatus('🚨 CRON CHAQUE MINUTE DÉTECTÉ!', 'danger');
+                        } else if (avgInterval > 1000) {
+                            console.log('✅ Pattern de cron quotidien normal');
+                            updateStatus('✅ Pattern normal détecté', 'info');
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Erreur lors de la vérification initiale:', error);
+                updateStatus('❌ Erreur de connexion à Supabase', 'danger');
+            }
+        }
+
+        async function checkForNewExecutions() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/table_snapshots_index?select=*&created_at=gte.${startTime.toISOString()}&order=created_at.desc`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP: ${response.status}`);
+                }
+                
+                const newSnapshots = await response.json();
+                
+                // Filtrer les nouvelles exécutions
+                const newExecutions = newSnapshots.filter(snap => {
+                    return !executionLog.some(log => log.id === snap.id);
+                });
+                
+                if (newExecutions.length > 0) {
+                    console.log(`\n🆕 ${newExecutions.length} nouvelle(s) exécution(s):`);
+                    
+                    newExecutions.forEach(snap => {
+                        const execTime = new Date(snap.created_at);
+                        executionLog.push({
+                            id: snap.id,
+                            time: execTime,
+                            rowCount: snap.row_count,
+                            objectPath: snap.object_path
+                        });
+                        
+                        console.log(`⏰ ${execTime.toLocaleString('fr-FR')} - ${snap.row_count} lignes`);
+                    });
+                    
+                    // Vérifier la fréquence
+                    if (executionLog.length > 3) {
+                        const timeSpan = (executionLog[executionLog.length - 1].time - executionLog[0].time) / 1000 / 60;
+                        const frequency = executionLog.length / (timeSpan / 60);
+                        
+                        if (frequency > 50) {
+                            console.log('🚨 FRÉQUENCE CRITIQUE: Plus de 50 exécutions/heure!');
+                            updateStatus('🚨 CRON CHAQUE MINUTE CONFIRMÉ!', 'danger');
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Erreur lors de la vérification:', error);
+            }
+        }
+
+        function generateReport() {
+            console.log('\n📊 RAPPORT FINAL:');
+            console.log('='.repeat(30));
+            
+            if (executionLog.length === 0) {
+                console.log('✅ Aucune nouvelle exécution pendant la surveillance');
+                console.log('✅ Le cron semble fonctionner normalement');
+                updateStatus('✅ Surveillance terminée - Aucun problème détecté', 'info');
+                return;
+            }
+            
+            const timeSpan = (new Date() - startTime) / 1000 / 60;
+            const frequency = executionLog.length / (timeSpan / 60);
+            
+            console.log(`📈 Exécutions détectées: ${executionLog.length}`);
+            console.log(`⏱️ Durée de surveillance: ${timeSpan.toFixed(1)} minutes`);
+            console.log(`📊 Fréquence: ${frequency.toFixed(2)} exécutions/heure`);
+            
+            if (frequency > 50) {
+                console.log('🚨 PROBLÈME CONFIRMÉ: Cron chaque minute!');
+                updateStatus('🚨 PROBLÈME CONFIRMÉ: Cron chaque minute!', 'danger');
+            } else if (frequency > 5) {
+                console.log('⚠️ Fréquence élevée détectée');
+                updateStatus('⚠️ Fréquence élevée détectée', 'warning');
+            } else {
+                console.log('✅ Fréquence normale');
+                updateStatus('✅ Fréquence normale détectée', 'info');
+            }
+        }
+
+        // Charger la configuration sauvegardée
+        window.onload = function() {
+            const savedUrl = localStorage.getItem('supabaseUrl');
+            const savedKey = localStorage.getItem('supabaseKey');
+            
+            if (savedUrl) {
+                document.getElementById('supabaseUrl').value = savedUrl;
+                SUPABASE_URL = savedUrl;
+            }
+            if (savedKey) {
+                document.getElementById('supabaseKey').value = savedKey;
+                SUPABASE_ANON_KEY = savedKey;
+            }
+        };
+    </script>
+</body>
+</html>

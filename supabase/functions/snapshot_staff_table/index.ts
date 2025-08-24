@@ -78,6 +78,17 @@ serve(async (req) => {
     console.log(`📁 Using daily snapshot path: ${objectPath}`);
 
     // 5. Upload to Storage
+    // Vérifier que le bucket existe
+    const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+    if (bucketError) {
+      throw new Error(`Failed to list buckets: ${bucketError.message}`);
+    }
+    
+    const bucketExists = buckets?.some(bucket => bucket.name === 'table-snapshots');
+    if (!bucketExists) {
+      throw new Error('Bucket "table-snapshots" does not exist. Please create it first.');
+    }
+    
     const { error: uploadError } = await supabase.storage
       .from('table-snapshots')
       .upload(objectPath, jsonContent, {
@@ -105,14 +116,41 @@ serve(async (req) => {
           nextExecution: 'tomorrow at 10:00 AM Europe/Paris'
         }
       }, {
-        onConflict: 'snapshot_date,created_at'
+        onConflict: 'snapshot_date' // ✅ Corrigé : conflit uniquement sur la date
       });
 
     if (indexError) {
-      throw new Error(`Failed to update index: ${indexError.message}`);
+      // Gestion améliorée des erreurs d'index
+      if (indexError.code === '23505') { // Violation de contrainte unique
+        console.warn(`⚠️ Snapshot already exists for date ${snapshotDate}, updating existing record...`);
+        
+        // Essayer de mettre à jour l'enregistrement existant
+        const { error: updateError } = await supabase
+          .from('table_snapshots_index')
+          .update({
+            object_path: objectPath,
+            row_count: rowCount,
+            file_size_bytes: fileSize,
+            metadata: {
+              ...snapshotData.metadata,
+              executionFrequency: 'daily',
+              nextExecution: 'tomorrow at 10:00 AM Europe/Paris',
+              lastUpdated: new Date().toISOString()
+            }
+          })
+          .eq('snapshot_date', snapshotDate);
+        
+        if (updateError) {
+          throw new Error(`Failed to update existing snapshot index: ${updateError.message}`);
+        }
+        
+        console.log(`✅ Existing snapshot index updated for date: ${snapshotDate}`);
+      } else {
+        throw new Error(`Failed to update index: ${indexError.message}`);
+      }
+    } else {
+      console.log(`✅ New snapshot index created for date: ${snapshotDate}`);
     }
-
-    console.log(`✅ Daily snapshot index updated for date: ${snapshotDate}`);
 
     // 7. Return success response
     return new Response(JSON.stringify({

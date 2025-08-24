@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Snapshot Diagnostic</title>
+    <style>
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            line-height: 1.6;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .section {
+            background: #2d2d2d;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #4a9eff;
+        }
+        .button {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 10px 10px 0;
+            font-family: inherit;
+            transition: background 0.3s;
+        }
+        .button:hover {
+            background: #357abd;
+        }
+        .button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        .info { color: #2196F3; }
+        
+        #console {
+            background: #000;
+            color: #0f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            margin-top: 20px;
+        }
+        .console-line {
+            margin: 2px 0;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.success { background: #4CAF50; color: white; }
+        .status.error { background: #f44336; color: white; }
+        .status.warning { background: #ff9800; color: white; }
+        .status.pending { background: #666; color: white; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 Supabase Snapshot Diagnostic</h1>
+        <p>Diagnostic tool to fix "Fichier snapshot introuvable" errors</p>
+    </div>
+
+    <div class="section">
+        <h2>📋 Diagnostic Tests</h2>
+        <p>Run these tests to identify why snapshots are not loading:</p>
+        
+        <button id="runDiagnostic" class="button" onclick="runFullDiagnostic()">
+            🔍 Run Full Diagnostic
+        </button>
+        
+        <button id="createFiles" class="button" onclick="createMissingFiles()" disabled>
+            🔨 Create Missing Files
+        </button>
+        
+        <button id="testSnapshot" class="button" onclick="testSnapshotLoading()" disabled>
+            🧪 Test Snapshot Loading
+        </button>
+        
+        <button id="clearConsole" class="button" onclick="clearConsole()">
+            🧹 Clear Console
+        </button>
+    </div>
+
+    <div class="section">
+        <h2>📊 Test Results</h2>
+        <div id="results">
+            <div>Database Connection: <span id="dbStatus" class="status pending">PENDING</span></div>
+            <div>Snapshots in Database: <span id="snapshotsCount" class="status pending">-</span></div>
+            <div>Files in Storage: <span id="filesCount" class="status pending">-</span></div>
+            <div>Missing Files: <span id="missingCount" class="status pending">-</span></div>
+            <div>Edge Function: <span id="edgeFunctionStatus" class="status pending">PENDING</span></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>💻 Console Output</h2>
+        <div id="console"></div>
+    </div>
+
+    <script>
+        // Configuration
+        const SUPABASE_URL = 'https://fiecugxopjxzqfdnaqsu.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw';
+
+        // Global variables
+        let dbSnapshots = [];
+        let storageFiles = [];
+
+        // Console functions
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const line = document.createElement('div');
+            line.className = `console-line ${type}`;
+            
+            let prefix = '';
+            switch(type) {
+                case 'success': prefix = '✅ '; break;
+                case 'error': prefix = '❌ '; break;
+                case 'warning': prefix = '⚠️ '; break;
+                case 'info': prefix = 'ℹ️ '; break;
+            }
+            
+            line.textContent = `[${timestamp}] ${prefix}${message}`;
+            console.appendChild(line);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '';
+        }
+
+        function updateStatus(elementId, status, text = null) {
+            const element = document.getElementById(elementId);
+            element.className = `status ${status}`;
+            if (text) {
+                element.textContent = text;
+            } else {
+                element.textContent = status.toUpperCase();
+            }
+        }
+
+        // Main diagnostic function
+        async function runFullDiagnostic() {
+            clearConsole();
+            log('🔍 Starting Supabase Snapshot Diagnostic...', 'info');
+            log('=' .repeat(50), 'info');
+
+            // Reset UI
+            updateStatus('dbStatus', 'pending');
+            updateStatus('snapshotsCount', 'pending', '-');
+            updateStatus('filesCount', 'pending', '-');
+            updateStatus('missingCount', 'pending', '-');
+            updateStatus('edgeFunctionStatus', 'pending');
+
+            document.getElementById('runDiagnostic').disabled = true;
+
+            try {
+                // 1. Check database snapshots
+                log('📊 Checking snapshots in database...', 'info');
+                await checkDatabaseSnapshots();
+
+                // 2. Check storage files
+                log('📁 Checking files in storage...', 'info');
+                await checkStorageFiles();
+
+                // 3. Compare and analyze
+                log('🔍 Comparing database vs storage...', 'info');
+                await compareData();
+
+                // 4. Test Edge Function
+                log('⚡ Testing Edge Function...', 'info');
+                await testEdgeFunction();
+
+                log('🎯 Diagnostic complete!', 'success');
+
+            } catch (error) {
+                log(`💥 Diagnostic failed: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('runDiagnostic').disabled = false;
+            }
+        }
+
+        async function checkDatabaseSnapshots() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/table_snapshots_index?select=*&order=created_at.desc&limit=10`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (response.ok) {
+                    dbSnapshots = await response.json();
+                    log(`✅ Found ${dbSnapshots.length} snapshots in database`, 'success');
+                    
+                    dbSnapshots.forEach((snap, i) => {
+                        log(`   ${i+1}. ${snap.snapshot_date} → ${snap.object_path}`, 'info');
+                    });
+
+                    updateStatus('dbStatus', 'success');
+                    updateStatus('snapshotsCount', 'success', dbSnapshots.length.toString());
+                } else {
+                    throw new Error(`Database error: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ Database connection failed: ${error.message}`, 'error');
+                updateStatus('dbStatus', 'error');
+                throw error;
+            }
+        }
+
+        async function checkStorageFiles() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/storage/v1/object/list/table-snapshots`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (response.ok) {
+                    storageFiles = await response.json();
+                    log(`✅ Found ${storageFiles.length} files in storage`, 'success');
+                    
+                    storageFiles.forEach((file, i) => {
+                        log(`   ${i+1}. ${file.name} (${file.metadata?.size || 'unknown'} bytes)`, 'info');
+                    });
+
+                    updateStatus('filesCount', 'success', storageFiles.length.toString());
+                } else {
+                    throw new Error(`Storage error: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ Storage connection failed: ${error.message}`, 'error');
+                updateStatus('filesCount', 'error');
+                // Don't throw - storage might be accessible but empty
+            }
+        }
+
+        async function compareData() {
+            if (dbSnapshots.length === 0) {
+                log('⚠️ No database snapshots to compare', 'warning');
+                return;
+            }
+
+            const fileNames = storageFiles.map(f => f.name);
+            let missingCount = 0;
+
+            dbSnapshots.forEach(snap => {
+                const fileExists = fileNames.includes(snap.object_path);
+                const status = fileExists ? '✅ MATCH' : '❌ MISSING';
+                log(`   ${status}: ${snap.snapshot_date} needs ${snap.object_path}`, fileExists ? 'success' : 'error');
+                
+                if (!fileExists) missingCount++;
+            });
+
+            log('📋 COMPARISON SUMMARY:', 'info');
+            log(`   Database entries: ${dbSnapshots.length}`, 'info');
+            log(`   Storage files: ${storageFiles.length}`, 'info');
+            log(`   Missing files: ${missingCount}`, missingCount > 0 ? 'error' : 'success');
+
+            updateStatus('missingCount', missingCount > 0 ? 'error' : 'success', missingCount.toString());
+
+            if (missingCount > 0) {
+                log('⚠️ PROBLEM IDENTIFIED: Missing storage files!', 'warning');
+                log('This is why you get "Fichier snapshot introuvable"', 'warning');
+                log('Solution: Click "Create Missing Files" button to fix this', 'info');
+                document.getElementById('createFiles').disabled = false;
+            } else {
+                log('✅ All files present - issue might be elsewhere', 'success');
+                document.getElementById('testSnapshot').disabled = false;
+            }
+        }
+
+        async function testEdgeFunction() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/snapshot_staff_table_daily`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ test: true })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`✅ Edge Function works: ${result.message || 'Success'}`, 'success');
+                    updateStatus('edgeFunctionStatus', 'success');
+                } else {
+                    const error = await response.text();
+                    log(`❌ Edge Function error: ${response.status}`, 'error');
+                    log(`   Error details: ${error}`, 'error');
+                    updateStatus('edgeFunctionStatus', 'error');
+                }
+            } catch (error) {
+                log(`❌ Edge Function failed: ${error.message}`, 'error');
+                updateStatus('edgeFunctionStatus', 'error');
+            }
+        }
+
+        async function createMissingFiles() {
+            if (dbSnapshots.length === 0) {
+                log('❌ No database snapshots found. Run diagnostic first.', 'error');
+                return;
+            }
+
+            log('🔨 Creating missing snapshot files...', 'info');
+            document.getElementById('createFiles').disabled = true;
+
+            try {
+                // Get current table data
+                log('📊 Getting current table data...', 'info');
+                const tableResponse = await fetch(`${SUPABASE_URL}/rest/v1/staffTable?select=*&order=No.asc`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (!tableResponse.ok) {
+                    throw new Error('Cannot get table data');
+                }
+
+                const tableData = await tableResponse.json();
+                log(`✅ Got ${tableData.length} rows of table data`, 'success');
+
+                // Create missing files
+                const fileNames = storageFiles.map(f => f.name);
+                let createdCount = 0;
+
+                for (const snap of dbSnapshots) {
+                    if (!fileNames.includes(snap.object_path)) {
+                        log(`🔨 Creating: ${snap.object_path}`, 'info');
+
+                        const snapshotData = {
+                            data: tableData,
+                            metadata: {
+                                table: 'staffTable',
+                                rowCount: tableData.length,
+                                createdAt: snap.created_at,
+                                snapshotDate: snap.snapshot_date,
+                                version: '2.0.0',
+                                type: 'RECREATED_SNAPSHOT',
+                                note: 'File recreated from current table data'
+                            }
+                        };
+
+                        const jsonContent = JSON.stringify(snapshotData, null, 2);
+
+                        try {
+                            const uploadResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/table-snapshots/${snap.object_path}`, {
+                                method: 'POST',
+                                headers: {
+                                    'apikey': SUPABASE_ANON_KEY,
+                                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: jsonContent
+                            });
+
+                            if (uploadResponse.ok) {
+                                log(`   ✅ Created successfully`, 'success');
+                                createdCount++;
+                            } else {
+                                log(`   ❌ Upload failed: ${uploadResponse.status}`, 'error');
+                                const errorText = await uploadResponse.text();
+                                log(`   Error details: ${errorText}`, 'error');
+                            }
+                        } catch (uploadError) {
+                            log(`   ❌ Error: ${uploadError.message}`, 'error');
+                        }
+                    }
+                }
+
+                if (createdCount > 0) {
+                    log(`🎉 Created ${createdCount} missing files!`, 'success');
+                    log('✅ Try clicking on snapshot dates in your app now!', 'success');
+                    document.getElementById('testSnapshot').disabled = false;
+                } else {
+                    log('ℹ️ No files needed to be created', 'info');
+                }
+
+            } catch (error) {
+                log(`❌ File creation failed: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('createFiles').disabled = false;
+            }
+        }
+
+        async function testSnapshotLoading() {
+            log('🧪 Testing snapshot loading functionality...', 'info');
+            
+            if (dbSnapshots.length === 0) {
+                log('❌ No snapshots available to test', 'error');
+                return;
+            }
+
+            const testSnapshot = dbSnapshots[0];
+            log(`🔄 Testing snapshot: ${testSnapshot.snapshot_date}`, 'info');
+
+            try {
+                // Try to download the snapshot file
+                const downloadResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/table-snapshots/${testSnapshot.object_path}`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (downloadResponse.ok) {
+                    const blob = await downloadResponse.blob();
+                    const text = await blob.text();
+                    const data = JSON.parse(text);
+                    
+                    log(`✅ Snapshot file loaded successfully!`, 'success');
+                    log(`   Data rows: ${data.data?.length || 0}`, 'info');
+                    log(`   Metadata: ${JSON.stringify(data.metadata)}`, 'info');
+                    log('🎉 Your snapshots should work now in the main app!', 'success');
+                } else {
+                    log(`❌ Failed to download snapshot: ${downloadResponse.status}`, 'error');
+                    const errorText = await downloadResponse.text();
+                    log(`   Error: ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize
+        log('🚀 Supabase Snapshot Diagnostic Tool Ready', 'success');
+        log('📋 Click "Run Full Diagnostic" to start analyzing your snapshot system', 'info');
+    </script>
+</body>
+</html>

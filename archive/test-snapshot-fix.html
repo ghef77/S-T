@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Test Snapshot Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .console {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+            border: 2px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Snapshot Fix</h1>
+        <p>Cette page teste la fonction createManualSnapshot corrigée.</p>
+        
+        <div class="test-section">
+            <h3>🔧 Test de la Fonction Corrigée</h3>
+            <p>Testez la fonction createManualSnapshot avec la correction de l'initialisation :</p>
+            <button class="btn btn-success" onclick="testSnapshotFunction()">🧪 Tester Snapshot Manuel</button>
+            <div id="test-status"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 Console de Test</h3>
+            <div class="console" id="test-console">
+                <div>Console de test prête...</div>
+                <div>Cliquez sur "Tester Snapshot Manuel" pour commencer</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔍 Vérifications</h3>
+            <p>Après le test, vérifiez :</p>
+            <ul>
+                <li>✅ <strong>Client Supabase créé</strong> : "Client Supabase créé avec la clé de service"</li>
+                <li>✅ <strong>Données récupérées</strong> : "Données récupérées: X lignes"</li>
+                <li>✅ <strong>Snapshot créé</strong> : "Snapshot manuel indexé avec succès"</li>
+                <li>✅ <strong>Message de succès</strong> : "Snapshot manuel créé avec succès!"</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Fonction pour logger dans la console de test
+        function logToTestConsole(message, type = 'info') {
+            const console = document.getElementById('test-console');
+            const time = new Date().toLocaleTimeString('fr-FR');
+            const line = document.createElement('div');
+            line.innerHTML = `[${time}] ${message}`;
+            line.style.color = type === 'error' ? '#ff0000' : type === 'success' ? '#00ff00' : '#00ffff';
+            console.appendChild(line);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        // Test de la fonction createManualSnapshot
+        async function testSnapshotFunction() {
+            const statusDiv = document.getElementById('test-status');
+            statusDiv.innerHTML = '<div class="status info">🔄 Test en cours...</div>';
+            
+            try {
+                logToTestConsole('🧪 Démarrage du test de snapshot manuel...', 'info');
+                
+                // Vérifier que l'interface principale est chargée
+                if (typeof window.createManualSnapshot !== 'function') {
+                    throw new Error('Fonction createManualSnapshot non disponible dans la fenêtre principale');
+                }
+                
+                logToTestConsole('✅ Fonction createManualSnapshot trouvée', 'success');
+                
+                // Lancer le test
+                const result = await window.createManualSnapshot();
+                
+                if (result && result.success) {
+                    logToTestConsole('🎉 Test réussi!', 'success');
+                    logToTestConsole(`📁 Fichier: ${result.objectPath}`, 'success');
+                    logToTestConsole(`📅 Date: ${result.dateString}`, 'success');
+                    logToTestConsole(`📊 Lignes: ${result.rowCount}`, 'success');
+                    logToTestConsole(`💾 Taille: ${(result.fileSize / 1024).toFixed(2)} KB`, 'success');
+                    
+                    statusDiv.innerHTML = '<div class="status success">✅ Test réussi! Snapshot créé avec succès</div>';
+                } else {
+                    throw new Error('Résultat inattendu de la fonction');
+                }
+                
+            } catch (error) {
+                logToTestConsole(`❌ Erreur lors du test: ${error.message}`, 'error');
+                statusDiv.innerHTML = `<div class="status error">❌ Erreur: ${error.message}</div>`;
+                
+                // Afficher plus de détails sur l'erreur
+                if (error.stack) {
+                    logToTestConsole(`📋 Stack trace: ${error.stack}`, 'error');
+                }
+            }
+        }
+
+        // Test automatique au chargement
+        window.addEventListener('load', () => {
+            logToTestConsole('🧪 Page de test chargée', 'info');
+            logToTestConsole('💡 Cliquez sur "Tester Snapshot Manuel" pour commencer', 'info');
+        });
+
+        // Intercepter les logs de la console pour les afficher
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.join(' ');
+            if (message.includes('🔑') || message.includes('📊') || message.includes('✅') || message.includes('❌')) {
+                logToTestConsole(message, 'info');
+            }
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            const message = args.join(' ');
+            logToTestConsole(message, 'error');
+        };
+    </script>
+</body>
+</html>

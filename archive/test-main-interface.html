@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Test Interface Principale - Snapshot Manuel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .console {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            height: 300px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .iframe-container {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Interface Principale - Snapshot Manuel</h1>
+        <p>Cette page teste le bouton de snapshot manuel dans l'interface principale.</p>
+        
+        <div class="test-section">
+            <h3>📋 Test de l'Interface Principale</h3>
+            <p>L'interface principale est chargée ci-dessous. Testez le bouton de snapshot manuel :</p>
+            <div class="iframe-container">
+                <iframe src="index.html" id="main-interface"></iframe>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🚀 Test du Bouton Snapshot Manuel</h3>
+            <p>Instructions pour tester :</p>
+            <ol>
+                <li><strong>Dans l'iframe ci-dessus</strong>, trouvez le bouton violet "📸 Snapshot"</li>
+                <li><strong>Cliquez dessus</strong> pour créer un snapshot manuel</li>
+                <li><strong>Surveillez</strong> les messages de succès/erreur</li>
+                <li><strong>Vérifiez</strong> que le snapshot apparaît dans l'historique</li>
+            </ol>
+            
+            <div class="status info">
+                💡 <strong>Note :</strong> Le bouton se trouve dans la barre d'action, à côté du bouton "Actualiser"
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 Console de Test</h3>
+            <div class="console" id="test-console">
+                <div>Console de test prête...</div>
+                <div>Chargez l'interface principale et testez le bouton snapshot manuel</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔍 Vérifications</h3>
+            <p>Après avoir testé le bouton, vérifiez :</p>
+            <ul>
+                <li>✅ <strong>Message de succès</strong> : "Snapshot manuel créé avec succès!"</li>
+                <li>✅ <strong>Historique mis à jour</strong> : Nouveau snapshot visible</li>
+                <li>✅ <strong>Calendrier mis à jour</strong> : Nouvelle date disponible</li>
+                <li>✅ <strong>Console sans erreurs</strong> : Logs de création</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔄 Rechargement et Tests</h3>
+            <p>Si l'interface ne se charge pas correctement :</p>
+            <button class="btn" onclick="reloadInterface()">🔄 Recharger l'Interface</button>
+            <button class="btn" onclick="checkInterfaceStatus()">🔍 Vérifier État</button>
+            <button class="btn btn-success" onclick="testSnapshotFunction()">🧪 Tester la Fonction</button>
+        </div>
+    </div>
+
+    <script>
+        // Fonction pour logger dans la console de test
+        function logToTestConsole(message, type = 'info') {
+            const console = document.getElementById('test-console');
+            const time = new Date().toLocaleTimeString('fr-FR');
+            const line = document.createElement('div');
+            line.innerHTML = `[${time}] ${message}`;
+            line.style.color = type === 'error' ? '#ff0000' : type === 'success' ? '#00ff00' : '#00ffff';
+            console.appendChild(line);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        // Recharger l'interface
+        function reloadInterface() {
+            const iframe = document.getElementById('main-interface');
+            iframe.src = iframe.src;
+            logToTestConsole('🔄 Interface rechargée', 'info');
+        }
+
+        // Tester la fonction de snapshot manuel
+        async function testSnapshotFunction() {
+            try {
+                logToTestConsole('🧪 Test de la fonction createManualSnapshot...', 'info');
+                
+                // Vérifier que l'interface est chargée
+                const iframe = document.getElementById('main-interface');
+                if (!iframe) {
+                    throw new Error('Iframe non trouvée');
+                }
+                
+                const iframeWindow = iframe.contentWindow;
+                if (!iframeWindow) {
+                    throw new Error('Fenêtre de l\'iframe non accessible');
+                }
+                
+                // Attendre que l'interface soit complètement chargée
+                if (!iframeWindow.supabase || !iframeWindow.supabaseConfig) {
+                    throw new Error('Interface Supabase non encore initialisée');
+                }
+                
+                if (!iframeWindow.createManualSnapshot) {
+                    throw new Error('Fonction createManualSnapshot non disponible');
+                }
+                
+                logToTestConsole('✅ Fonction createManualSnapshot trouvée', 'success');
+                logToTestConsole('🔑 Configuration Supabase vérifiée', 'info');
+                
+                // Vérifier que nous avons des données
+                if (!iframeWindow.tableData || iframeWindow.tableData.length === 0) {
+                    logToTestConsole('⚠️ Aucune donnée disponible, création de données de test...', 'info');
+                    
+                    // Créer des données de test
+                    iframeWindow.tableData = [
+                        { No: 1, Name: 'Test User 1', Department: 'Test Dept', Status: 'Active' },
+                        { No: 2, Name: 'Test User 2', Department: 'Test Dept', Status: 'Inactive' },
+                        { No: 3, Name: 'Test User 3', Department: 'Test Dept', Status: 'Active' }
+                    ];
+                    
+                    logToTestConsole(`📊 Données de test créées: ${iframeWindow.tableData.length} lignes`, 'success');
+                }
+                
+                logToTestConsole('🚀 Lancement du test de snapshot manuel...', 'info');
+                
+                // Tester la fonction
+                const result = await iframeWindow.createManualSnapshot();
+                
+                if (result && result.success) {
+                    logToTestConsole('✅ Test de la fonction réussi!', 'success');
+                    logToTestConsole(`📁 Fichier: ${result.objectPath}`, 'success');
+                    logToTestConsole(`📅 Date: ${result.dateString}`, 'success');
+                    logToTestConsole(`📊 Lignes: ${result.rowCount}`, 'success');
+                    logToTestConsole(`💾 Taille: ${(result.fileSize / 1024).toFixed(2)} KB`, 'success');
+                } else {
+                    throw new Error('Résultat inattendu de la fonction');
+                }
+                
+            } catch (error) {
+                logToTestConsole(`❌ Erreur lors du test: ${error.message}`, 'error');
+                
+                // Afficher plus de détails sur l'erreur
+                if (error.stack) {
+                    logToTestConsole(`📋 Stack trace: ${error.stack}`, 'error');
+                }
+            }
+                }
+        
+        // Vérifier l'état de l'interface
+        function checkInterfaceStatus() {
+            try {
+                logToTestConsole('🔍 Vérification de l\'état de l\'interface...', 'info');
+                
+                const iframe = document.getElementById('main-interface');
+                if (!iframe) {
+                    logToTestConsole('❌ Iframe non trouvée', 'error');
+                    return;
+                }
+                
+                const iframeWindow = iframe.contentWindow;
+                if (!iframeWindow) {
+                    logToTestConsole('❌ Fenêtre de l\'iframe non accessible', 'error');
+                    return;
+                }
+                
+                // Vérifier les composants essentiels
+                const checks = {
+                    'supabase': !!iframeWindow.supabase,
+                    'supabaseConfig': !!iframeWindow.supabaseConfig,
+                    'createManualSnapshot': !!iframeWindow.createManualSnapshot,
+                    'tableData': !!(iframeWindow.tableData && iframeWindow.tableData.length > 0),
+                    'loadAvailableSnapshots': !!iframeWindow.loadAvailableSnapshots
+                };
+                
+                logToTestConsole('📋 État des composants:', 'info');
+                Object.entries(checks).forEach(([component, available]) => {
+                    const status = available ? '✅' : '❌';
+                    logToTestConsole(`${status} ${component}: ${available ? 'Disponible' : 'Manquant'}`, available ? 'success' : 'error');
+                });
+                
+                // Résumé
+                const availableCount = Object.values(checks).filter(Boolean).length;
+                const totalCount = Object.keys(checks).length;
+                
+                if (availableCount === totalCount) {
+                    logToTestConsole(`🎉 Interface complètement chargée (${availableCount}/${totalCount})`, 'success');
+                } else {
+                    logToTestConsole(`⚠️ Interface partiellement chargée (${availableCount}/${totalCount})`, 'warning');
+                }
+                
+            } catch (error) {
+                logToTestConsole(`❌ Erreur lors de la vérification: ${error.message}`, 'error');
+            }
+        }
+        
+        // Intercepter les messages de l'iframe
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'snapshot_created') {
+                logToTestConsole('✅ Snapshot créé depuis l\'interface principale!', 'success');
+                logToTestConsole(`📁 Fichier: ${event.data.objectPath}`, 'success');
+            }
+        });
+
+        // Test automatique au chargement
+        window.addEventListener('load', () => {
+            logToTestConsole('🧪 Page de test chargée', 'info');
+            logToTestConsole('💡 Chargez l\'interface principale et testez le bouton snapshot manuel', 'info');
+        });
+
+        // Intercepter les logs de la console pour les afficher
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.join(' ');
+            if (message.includes('🚀') || message.includes('📊') || message.includes('✅') || message.includes('❌')) {
+                logToTestConsole(message, 'info');
+            }
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            const message = args.join(' ');
+            logToTestConsole(message, 'error');
+        };
+    </script>
+</body>
+</html>

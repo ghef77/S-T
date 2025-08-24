@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic des Snapshots - Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .button.success {
+            background: #28a745;
+        }
+        .button.success:hover {
+            background: #218838;
+        }
+        .button.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .button.warning:hover {
+            background: #e0a800;
+        }
+        .button.danger {
+            background: #dc3545;
+        }
+        .button.danger:hover {
+            background: #c82333;
+        }
+        .console {
+            background: #000;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            height: 500px;
+            overflow-y: auto;
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .status.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .info-panel {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Diagnostic des Snapshots - Debug</h1>
+        
+        <div class="status info">
+            <strong>📋 Instructions:</strong><br>
+            1. Cliquez sur "Diagnostic Complet" pour analyser tous les aspects<br>
+            2. Ou utilisez les tests individuels pour cibler un problème spécifique<br>
+            3. Ouvrez la console (F12) pour voir les résultats détaillés
+        </div>
+
+        <div class="controls">
+            <button class="button success" onclick="runFullDiagnostic()">
+                🔍 Diagnostic Complet
+            </button>
+            <button class="button" onclick="testConnection()">
+                🔌 Test Connexion
+            </button>
+            <button class="button" onclick="testTable()">
+                📋 Test Table
+            </button>
+            <button class="button" onclick="testStorage()">
+                🗄️ Test Stockage
+            </button>
+            <button class="button warning" onclick="clearConsole()">
+                🧹 Nettoyer Console
+            </button>
+        </div>
+
+        <div id="status" class="status info">
+            💡 Prêt à démarrer le diagnostic
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div class="info-panel">
+            <h3>📊 Informations de Configuration</h3>
+            <p><strong>URL Supabase:</strong> https://fiecugxopjxzqfdnaqsu.supabase.co</p>
+            <p><strong>Table cible:</strong> table_snapshots_index</p>
+            <p><strong>Bucket:</strong> table-snapshots</p>
+            <p><strong>Fonction Edge:</strong> snapshot_staff_table</p>
+        </div>
+
+        <div class="console" id="console">
+            🔥 Console de diagnostic - Les résultats apparaîtront ici...
+            
+            📖 Commandes disponibles:
+            - runFullSnapshotDiagnostic() : Diagnostic complet
+            - quickConnectionTest() : Test de connexion rapide
+            - testTableOnly() : Test de la table uniquement
+            - testStorageOnly() : Test du stockage uniquement
+            
+            💡 Cliquez sur "Diagnostic Complet" pour commencer!
+        </div>
+    </div>
+
+    <script>
+        // Rediriger console.log vers notre interface
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const consoleDiv = document.getElementById('console');
+            const message = args.join(' ');
+            consoleDiv.textContent += '\n' + new Date().toLocaleTimeString() + ' - ' + message;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            const consoleDiv = document.getElementById('console');
+            const message = '❌ ERROR: ' + args.join(' ');
+            consoleDiv.textContent += '\n' + new Date().toLocaleTimeString() + ' - ' + message;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            const consoleDiv = document.getElementById('console');
+            const message = '⚠️ WARN: ' + args.join(' ');
+            consoleDiv.textContent += '\n' + new Date().toLocaleTimeString() + ' - ' + message;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        };
+
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+
+        function updateProgress(percent) {
+            const progressFill = document.getElementById('progressFill');
+            progressFill.style.width = percent + '%';
+        }
+
+        function clearConsole() {
+            const consoleDiv = document.getElementById('console');
+            consoleDiv.textContent = '🧹 Console nettoyée - ' + new Date().toLocaleTimeString();
+            updateStatus('Console nettoyée', 'info');
+            updateProgress(0);
+        }
+
+        async function runFullDiagnostic() {
+            updateStatus('🔍 Diagnostic complet en cours...', 'info');
+            updateProgress(10);
+            
+            try {
+                // Charger le script de diagnostic
+                const script = document.createElement('script');
+                script.src = 'debug-snapshots.js';
+                document.head.appendChild(script);
+                
+                script.onload = async () => {
+                    updateProgress(30);
+                    updateStatus('📊 Exécution du diagnostic...', 'info');
+                    
+                    // Attendre que le script soit chargé
+                    setTimeout(async () => {
+                        if (typeof window.runFullSnapshotDiagnostic === 'function') {
+                            updateProgress(50);
+                            await window.runFullSnapshotDiagnostic();
+                            updateProgress(100);
+                            updateStatus('✅ Diagnostic terminé', 'success');
+                        } else {
+                            updateProgress(100);
+                            updateStatus('❌ Script de diagnostic non chargé', 'danger');
+                        }
+                    }, 1000);
+                };
+                
+                script.onerror = () => {
+                    updateProgress(100);
+                    updateStatus('❌ Erreur de chargement du script', 'danger');
+                };
+                
+            } catch (error) {
+                updateProgress(100);
+                updateStatus('❌ Erreur lors du diagnostic: ' + error.message, 'danger');
+                console.error('Erreur:', error);
+            }
+        }
+
+        async function testConnection() {
+            updateStatus('🔌 Test de connexion...', 'info');
+            updateProgress(25);
+            
+            try {
+                const response = await fetch('https://fiecugxopjxzqfdnaqsu.supabase.co/rest/v1/', {
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw'
+                    }
+                });
+                
+                if (response.ok) {
+                    updateProgress(100);
+                    updateStatus('✅ Connexion réussie', 'success');
+                    console.log('✅ Test de connexion réussi');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+            } catch (error) {
+                updateProgress(100);
+                updateStatus('❌ Erreur de connexion: ' + error.message, 'danger');
+                console.error('❌ Erreur de connexion:', error);
+            }
+        }
+
+        async function testTable() {
+            updateStatus('📋 Test de la table...', 'info');
+            updateProgress(25);
+            
+            try {
+                const response = await fetch('https://fiecugxopjxzqfdnaqsu.supabase.co/rest/v1/table_snapshots_index?select=count', {
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw'
+                    }
+                });
+                
+                if (response.ok) {
+                    updateProgress(100);
+                    updateStatus('✅ Table accessible', 'success');
+                    console.log('✅ Test de la table réussi');
+                } else if (response.status === 404) {
+                    updateProgress(100);
+                    updateStatus('❌ Table n\'existe pas', 'danger');
+                    console.log('❌ Table table_snapshots_index n\'existe pas');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+            } catch (error) {
+                updateProgress(100);
+                updateStatus('❌ Erreur d\'accès à la table: ' + error.message, 'danger');
+                console.error('❌ Erreur d\'accès à la table:', error);
+            }
+        }
+
+        async function testStorage() {
+            updateStatus('🗄️ Test du stockage...', 'info');
+            updateProgress(25);
+            
+            try {
+                const response = await fetch('https://fiecugxopjxzqfdnaqsu.supabase.co/storage/v1/bucket/table-snapshots', {
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw'
+                    }
+                });
+                
+                if (response.ok) {
+                    updateProgress(100);
+                    updateStatus('✅ Stockage accessible', 'success');
+                    console.log('✅ Test du stockage réussi');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+            } catch (error) {
+                updateProgress(100);
+                updateStatus('❌ Erreur d\'accès au stockage: ' + error.message, 'danger');
+                console.error('❌ Erreur d\'accès au stockage:', error);
+            }
+        }
+
+        // Instructions d'utilisation
+        console.log('🔍 INTERFACE DE DIAGNOSTIC DES SNAPSHOTS CHARGÉE');
+        console.log('================================================');
+        console.log('🚀 Utilisation:');
+        console.log('   - Cliquez sur "Diagnostic Complet" pour un test complet');
+        console.log('   - Ou utilisez les tests individuels pour cibler un problème');
+        console.log('   - Tous les résultats apparaîtront dans cette console');
+        console.log('');
+        console.log('💡 Commencez par le diagnostic complet!');
+    </script>
+</body>
+</html>

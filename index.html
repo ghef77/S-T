@@ -7462,6 +7462,88 @@
             }
         }
         
+        // Function to delete a snapshot
+        async function deleteSnapshot(snapshotId, snapshotDate, objectPath, isCurrentSnapshot = false) {
+            try {
+                // Confirmation de suppression
+                const confirmMessage = isCurrentSnapshot 
+                    ? `⚠️ ATTENTION: Vous êtes actuellement dans ce snapshot!\n\nÊtes-vous sûr de vouloir le supprimer ?\n\nDate: ${snapshotDate}\nID: ${snapshotId}`
+                    : `Êtes-vous sûr de vouloir supprimer ce snapshot ?\n\nDate: ${snapshotDate}\nID: ${snapshotId}`;
+                
+                if (!confirm(confirmMessage)) {
+                    return;
+                }
+                
+                console.log(`🗑️ Suppression du snapshot: ${snapshotId} (${snapshotDate})`);
+                
+                // Si c'est le snapshot actuel, sortir du mode snapshot d'abord
+                if (isCurrentSnapshot) {
+                    console.log('🔄 Sortie du mode snapshot avant suppression...');
+                    await exitSnapshotMode();
+                }
+                
+                // Créer un client Supabase avec la clé de service pour la suppression
+                const { createClient: createClientService } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+                const supabaseService = createClientService(supabaseConfig.supabaseUrl, supabaseConfig.supabaseServiceKey);
+                
+                // 1. Supprimer le fichier du stockage
+                console.log('🗑️ Suppression du fichier du stockage...');
+                const { error: storageError } = await supabaseService.storage
+                    .from('table-snapshots')
+                    .remove([objectPath]);
+                
+                if (storageError) {
+                    console.warn('⚠️ Erreur lors de la suppression du fichier:', storageError);
+                    // Continuer même si le fichier n'existe pas
+                } else {
+                    console.log('✅ Fichier supprimé du stockage');
+                }
+                
+                // 2. Supprimer l'enregistrement de la base de données
+                console.log('🗑️ Suppression de l\'enregistrement de la base...');
+                const { error: dbError } = await supabaseService
+                    .from('table_snapshots_index')
+                    .delete()
+                    .eq('id', snapshotId);
+                
+                if (dbError) {
+                    throw new Error(`Erreur lors de la suppression de l'enregistrement: ${dbError.message}`);
+                }
+                
+                console.log('✅ Enregistrement supprimé de la base');
+                
+                // 3. Supprimer l'entrée du log de restauration
+                console.log('🗑️ Suppression de l\'entrée du log...');
+                const { error: logError } = await supabaseService
+                    .from('snapshot_restore_log')
+                    .delete()
+                    .eq('snapshot_id', snapshotId);
+                
+                if (logError) {
+                    console.warn('⚠️ Erreur lors de la suppression du log:', logError);
+                    // Continuer même si l'entrée n'existe pas
+                } else {
+                    console.log('✅ Entrée du log supprimée');
+                }
+                
+                // 4. Mettre à jour la liste des snapshots disponibles
+                console.log('🔄 Mise à jour de la liste des snapshots...');
+                await loadAvailableSnapshots();
+                
+                // 5. Rafraîchir l'affichage du calendrier
+                populateSnapshotCalendar();
+                
+                // 6. Afficher le message de succès
+                showMessage(`✅ Snapshot supprimé avec succès: ${snapshotDate}`, 'success');
+                
+                console.log('🎉 Snapshot supprimé avec succès!');
+                
+            } catch (error) {
+                console.error('❌ Erreur lors de la suppression du snapshot:', error);
+                showMessage(`❌ Erreur lors de la suppression: ${error.message}`, 'error');
+            }
+        }
+
         // Function to show snapshots for a specific month
         function showMonthSnapshots(monthYear) {
             const datesList = document.getElementById('snapshot-dates-list');
@@ -7581,7 +7663,7 @@
                     
                     dateItem.innerHTML = `
                         <div class="flex items-center justify-between">
-                            <div class="flex flex-col">
+                            <div class="flex flex-col flex-1 cursor-pointer" onclick="enterSnapshotModeByUniqueId(${JSON.stringify(snapshot).replace(/"/g, '&quot;')})">
                                 <span class="${isCurrent ? 'font-semibold text-blue-700' : 'text-gray-700'}">${formattedDate}</span>
                                 <span class="text-xs text-gray-400">${timeString}</span>
                                 <span class="text-xs text-gray-300">ID: ${uniqueTimeId}</span>
@@ -7589,15 +7671,17 @@
                             <div class="flex items-center gap-2">
                                 <span class="text-xs text-gray-500">${snapshot.row_count} lignes</span>
                                 ${isCurrent ? '<span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Actuel</span>' : ''}
+                                <button onclick="event.stopPropagation(); deleteSnapshot('${snapshot.id}', '${snapshot.snapshot_date}', '${snapshot.object_path}', ${isCurrent})" 
+                                        class="text-red-500 hover:text-red-700 p-1.5 rounded hover:bg-red-50 transition-colors ml-2" 
+                                        title="Supprimer ce snapshot">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
                             </div>
                         </div>
                     `;
                     
-                    dateItem.onclick = () => {
-                        // Use unique identifier for snapshot selection
-                        enterSnapshotModeByUniqueId(snapshot);
-                        toggleSnapshotCalendar(); // Close dropdown
-                    };
+                    // Remove the old onclick handler since we now handle clicks on the content div
+                    // and the delete button has its own handler
                     
                     monthContent.appendChild(dateItem);
                 });
@@ -8702,6 +8786,7 @@
         // Expose snapshot system functions
         window.loadAvailableSnapshots = loadAvailableSnapshots;
         window.enterSnapshotMode = enterSnapshotMode;
+        window.enterSnapshotModeByUniqueId = enterSnapshotModeByUniqueId;
         window.returnToToday = returnToToday; // Use the existing function instead
         window.goToPreviousSnapshot = goToPreviousSnapshot;
         window.goToNextSnapshot = goToNextSnapshot;
@@ -8776,6 +8861,7 @@
         window.monitorStorageHealth = monitorStorageHealth;
         window.forceStorageCleanup = forceStorageCleanup;
         window.calculateOptimalSnapshotCount = calculateOptimalSnapshotCount;
+        window.deleteSnapshot = deleteSnapshot;
         
         // Timer cleanup function to prevent infinite loops
         function cleanupAllTimers() {

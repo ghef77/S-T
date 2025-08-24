@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snapshot Functionality Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .logs {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Snapshot Functionality Test Suite</h1>
+    
+    <div class="test-section">
+        <h2>🔧 Configuration</h2>
+        <div id="config-info"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>1️⃣ Database Connection Test</h2>
+        <button onclick="testDatabaseConnection()">Test Connection</button>
+        <div id="db-connection-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2️⃣ Table Structure Verification</h2>
+        <button onclick="checkTableStructure()">Check Tables</button>
+        <div id="table-structure-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3️⃣ Storage Bucket Verification</h2>
+        <button onclick="checkStorageBucket()">Check Storage</button>
+        <div id="storage-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4️⃣ Edge Function Test</h2>
+        <button onclick="testEdgeFunction()">Test Edge Function</button>
+        <div id="edge-function-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5️⃣ Manual Snapshot Test</h2>
+        <button onclick="createManualSnapshot()">Create Manual Snapshot</button>
+        <div id="manual-snapshot-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>6️⃣ Load Snapshots Test</h2>
+        <button onclick="testLoadSnapshots()">Test Load Snapshots</button>
+        <div id="load-snapshots-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>7️⃣ Permissions Test</h2>
+        <button onclick="testPermissions()">Test Permissions</button>
+        <div id="permissions-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Test Logs</h2>
+        <button onclick="clearLogs()">Clear Logs</button>
+        <div id="test-logs" class="logs"></div>
+    </div>
+
+    <script type="module">
+        // Import Supabase
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+        
+        // Configuration
+        const supabaseConfig = { 
+            supabaseUrl: 'https://fiecugxopjxzqfdnaqsu.supabase.co', 
+            supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw', 
+            tableName: 'staffTable', 
+            primaryKeyColumn: 'No' 
+        };
+
+        // Initialize Supabase client
+        const supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
+        
+        // Logging utility
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('test-logs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `test-result ${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="test-result ${type}">${message}</div>`;
+        }
+
+        // Display configuration
+        function displayConfig() {
+            const configElement = document.getElementById('config-info');
+            configElement.innerHTML = `
+                <div class="test-result info">
+                    <strong>Supabase URL:</strong> ${supabaseConfig.supabaseUrl}<br>
+                    <strong>Table Name:</strong> ${supabaseConfig.tableName}<br>
+                    <strong>Primary Key:</strong> ${supabaseConfig.primaryKeyColumn}
+                </div>
+            `;
+        }
+
+        // Test 1: Database Connection
+        window.testDatabaseConnection = async function() {
+            log('Testing database connection...', 'info');
+            try {
+                const { data, error } = await supabase.from('staffTable').select('count').limit(1);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                log('✅ Database connection successful', 'success');
+                showResult('db-connection-result', '✅ Database connection successful', 'success');
+                return true;
+            } catch (error) {
+                log(`❌ Database connection failed: ${error.message}`, 'error');
+                showResult('db-connection-result', `❌ Database connection failed: ${error.message}`, 'error');
+                return false;
+            }
+        };
+
+        // Test 2: Check Table Structure
+        window.checkTableStructure = async function() {
+            log('Checking table structures...', 'info');
+            let results = [];
+            
+            // Check main table
+            try {
+                const { data: staffData, error: staffError } = await supabase
+                    .from('staffTable')
+                    .select('*')
+                    .limit(1);
+                
+                if (staffError) throw new Error(`staffTable: ${staffError.message}`);
+                
+                results.push('✅ staffTable exists');
+                log(`✅ staffTable exists (${staffData?.length || 0} rows sampled)`, 'success');
+            } catch (error) {
+                results.push(`❌ staffTable: ${error.message}`);
+                log(`❌ staffTable: ${error.message}`, 'error');
+            }
+
+            // Check snapshots index table
+            try {
+                const { data: indexData, error: indexError } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*')
+                    .limit(1);
+                
+                if (indexError) throw new Error(`table_snapshots_index: ${indexError.message}`);
+                
+                results.push('✅ table_snapshots_index exists');
+                log(`✅ table_snapshots_index exists (${indexData?.length || 0} rows)`, 'success');
+            } catch (error) {
+                results.push(`❌ table_snapshots_index: ${error.message}`);
+                log(`❌ table_snapshots_index: ${error.message}`, 'error');
+            }
+
+            // Check restore log table
+            try {
+                const { data: logData, error: logError } = await supabase
+                    .from('snapshot_restore_log')
+                    .select('*')
+                    .limit(1);
+                
+                if (logError) throw new Error(`snapshot_restore_log: ${logError.message}`);
+                
+                results.push('✅ snapshot_restore_log exists');
+                log(`✅ snapshot_restore_log exists (${logData?.length || 0} rows)`, 'success');
+            } catch (error) {
+                results.push(`❌ snapshot_restore_log: ${error.message}`);
+                log(`❌ snapshot_restore_log: ${error.message}`, 'error');
+            }
+
+            showResult('table-structure-result', results.join('<br>'), 
+                      results.some(r => r.includes('❌')) ? 'error' : 'success');
+        };
+
+        // Test 3: Check Storage Bucket
+        window.checkStorageBucket = async function() {
+            log('Checking storage bucket...', 'info');
+            try {
+                // List files in the bucket to test access
+                const { data: files, error } = await supabase.storage
+                    .from('table-snapshots')
+                    .list('', { limit: 5 });
+                
+                if (error) throw error;
+                
+                log(`✅ Storage bucket accessible (${files?.length || 0} files found)`, 'success');
+                
+                let bucketInfo = `✅ Storage bucket 'table-snapshots' is accessible<br>`;
+                bucketInfo += `📁 Found ${files?.length || 0} files/folders<br>`;
+                
+                if (files && files.length > 0) {
+                    bucketInfo += `<br><strong>Recent files:</strong><br>`;
+                    files.slice(0, 3).forEach(file => {
+                        bucketInfo += `• ${file.name} (${file.updated_at})<br>`;
+                    });
+                }
+                
+                showResult('storage-result', bucketInfo, 'success');
+            } catch (error) {
+                log(`❌ Storage bucket check failed: ${error.message}`, 'error');
+                showResult('storage-result', `❌ Storage bucket error: ${error.message}`, 'error');
+            }
+        };
+
+        // Test 4: Test Edge Function
+        window.testEdgeFunction = async function() {
+            log('Testing Edge Function...', 'info');
+            try {
+                const functionUrl = `${supabaseConfig.supabaseUrl}/functions/v1/snapshot_staff_table_daily`;
+                
+                log(`Calling Edge Function: ${functionUrl}`, 'info');
+                
+                const response = await fetch(functionUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${supabaseConfig.supabaseAnonKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    log('✅ Edge Function executed successfully', 'success');
+                    showResult('edge-function-result', 
+                        `✅ Edge Function successful<br>
+                         📊 Snapshot Date: ${result.data?.snapshotDate}<br>
+                         📝 Rows: ${result.data?.rowCount}<br>
+                         💾 File Size: ${result.data?.fileSize} bytes<br>
+                         📁 Path: ${result.data?.objectPath}`, 'success');
+                } else {
+                    throw new Error(`Function failed: ${result.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                log(`❌ Edge Function test failed: ${error.message}`, 'error');
+                showResult('edge-function-result', `❌ Edge Function error: ${error.message}`, 'error');
+            }
+        };
+
+        // Test 5: Create Manual Snapshot
+        window.createManualSnapshot = async function() {
+            log('Creating manual snapshot...', 'info');
+            try {
+                // Get current data
+                const { data: tableData, error: fetchError } = await supabase
+                    .from('staffTable')
+                    .select('*')
+                    .order('No', { ascending: true });
+
+                if (fetchError) throw fetchError;
+
+                const now = new Date();
+                const snapshotDate = now.toISOString().split('T')[0];
+                const timestamp = now.toISOString().replace(/[:.]/g, '-');
+                
+                // Prepare snapshot data
+                const snapshotData = {
+                    data: tableData || [],
+                    metadata: {
+                        table: 'staffTable',
+                        rowCount: tableData?.length || 0,
+                        createdAt: now.toISOString(),
+                        snapshotDate,
+                        version: '2.0.0',
+                        type: 'MANUAL_TEST',
+                        createdBy: 'test-suite'
+                    }
+                };
+
+                const jsonContent = JSON.stringify(snapshotData, null, 2);
+                const fileSize = new TextEncoder().encode(jsonContent).length;
+                
+                // Generate path
+                const objectPath = `test/${snapshotDate}/MANUAL_TEST_${timestamp}.json`;
+
+                // Upload to storage
+                const { error: uploadError } = await supabase.storage
+                    .from('table-snapshots')
+                    .upload(objectPath, jsonContent, {
+                        contentType: 'application/json',
+                        upsert: true
+                    });
+
+                if (uploadError) throw uploadError;
+
+                // Add to index
+                const { error: indexError } = await supabase
+                    .from('table_snapshots_index')
+                    .insert({
+                        snapshot_date: snapshotDate,
+                        object_path: objectPath,
+                        row_count: tableData?.length || 0,
+                        file_size_bytes: fileSize,
+                        metadata: snapshotData.metadata
+                    });
+
+                if (indexError) {
+                    log(`⚠️ Index insert failed: ${indexError.message}`, 'warning');
+                }
+
+                log('✅ Manual snapshot created successfully', 'success');
+                showResult('manual-snapshot-result', 
+                    `✅ Manual snapshot created<br>
+                     📁 Path: ${objectPath}<br>
+                     📊 Rows: ${tableData?.length || 0}<br>
+                     💾 Size: ${(fileSize / 1024).toFixed(2)} KB`, 'success');
+                
+            } catch (error) {
+                log(`❌ Manual snapshot creation failed: ${error.message}`, 'error');
+                showResult('manual-snapshot-result', `❌ Manual snapshot error: ${error.message}`, 'error');
+            }
+        };
+
+        // Test 6: Test Load Snapshots
+        window.testLoadSnapshots = async function() {
+            log('Testing load snapshots functionality...', 'info');
+            try {
+                // Query the snapshots index
+                const { data: snapshots, error } = await supabase
+                    .from('table_snapshots_index')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+
+                if (error) throw error;
+
+                log(`✅ Found ${snapshots?.length || 0} snapshots in index`, 'success');
+                
+                let resultHTML = `✅ Snapshots loaded successfully<br>📊 Total snapshots: ${snapshots?.length || 0}<br><br>`;
+                
+                if (snapshots && snapshots.length > 0) {
+                    resultHTML += '<strong>Recent snapshots:</strong><br>';
+                    snapshots.slice(0, 5).forEach(snapshot => {
+                        resultHTML += `• ${snapshot.snapshot_date} - ${snapshot.row_count} rows (${(snapshot.file_size_bytes / 1024).toFixed(2)} KB)<br>`;
+                    });
+                    
+                    // Test loading one snapshot file
+                    const testSnapshot = snapshots[0];
+                    try {
+                        const { data: fileData, error: downloadError } = await supabase.storage
+                            .from('table-snapshots')
+                            .download(testSnapshot.object_path);
+                        
+                        if (downloadError) {
+                            resultHTML += `<br>⚠️ Could not download snapshot file: ${downloadError.message}`;
+                        } else {
+                            const text = await fileData.text();
+                            const parsed = JSON.parse(text);
+                            resultHTML += `<br>✅ Successfully downloaded and parsed snapshot (${parsed.data?.length || 0} rows)`;
+                        }
+                    } catch (downloadError) {
+                        resultHTML += `<br>⚠️ Snapshot file access error: ${downloadError.message}`;
+                    }
+                } else {
+                    resultHTML += '⚠️ No snapshots found in database';
+                }
+
+                showResult('load-snapshots-result', resultHTML, 
+                          snapshots?.length > 0 ? 'success' : 'warning');
+                
+            } catch (error) {
+                log(`❌ Load snapshots test failed: ${error.message}`, 'error');
+                showResult('load-snapshots-result', `❌ Load snapshots error: ${error.message}`, 'error');
+            }
+        };
+
+        // Test 7: Test Permissions
+        window.testPermissions = async function() {
+            log('Testing permissions...', 'info');
+            let results = [];
+            
+            // Test table read permission
+            try {
+                const { data, error } = await supabase.from('staffTable').select('No').limit(1);
+                if (error) throw error;
+                results.push('✅ staffTable read permission');
+                log('✅ staffTable read permission OK', 'success');
+            } catch (error) {
+                results.push(`❌ staffTable read: ${error.message}`);
+                log(`❌ staffTable read permission failed: ${error.message}`, 'error');
+            }
+
+            // Test snapshots index read permission
+            try {
+                const { data, error } = await supabase.from('table_snapshots_index').select('id').limit(1);
+                if (error) throw error;
+                results.push('✅ table_snapshots_index read permission');
+                log('✅ table_snapshots_index read permission OK', 'success');
+            } catch (error) {
+                results.push(`❌ table_snapshots_index read: ${error.message}`);
+                log(`❌ table_snapshots_index read permission failed: ${error.message}`, 'error');
+            }
+
+            // Test storage read permission
+            try {
+                const { data, error } = await supabase.storage.from('table-snapshots').list('', { limit: 1 });
+                if (error) throw error;
+                results.push('✅ Storage read permission');
+                log('✅ Storage read permission OK', 'success');
+            } catch (error) {
+                results.push(`❌ Storage read: ${error.message}`);
+                log(`❌ Storage read permission failed: ${error.message}`, 'error');
+            }
+
+            // Test storage write permission (create a small test file)
+            try {
+                const testContent = JSON.stringify({ test: true, timestamp: new Date().toISOString() });
+                const testPath = `test/permissions-test-${Date.now()}.json`;
+                
+                const { error: uploadError } = await supabase.storage
+                    .from('table-snapshots')
+                    .upload(testPath, testContent, { contentType: 'application/json' });
+                
+                if (uploadError) throw uploadError;
+                
+                // Clean up test file
+                await supabase.storage.from('table-snapshots').remove([testPath]);
+                
+                results.push('✅ Storage write permission');
+                log('✅ Storage write permission OK', 'success');
+            } catch (error) {
+                results.push(`❌ Storage write: ${error.message}`);
+                log(`❌ Storage write permission failed: ${error.message}`, 'error');
+            }
+
+            showResult('permissions-result', results.join('<br>'), 
+                      results.some(r => r.includes('❌')) ? 'error' : 'success');
+        };
+
+        // Clear logs
+        window.clearLogs = function() {
+            document.getElementById('test-logs').innerHTML = '';
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            displayConfig();
+            log('🧪 Test suite initialized', 'info');
+        });
+    </script>
+</body>
+</html>

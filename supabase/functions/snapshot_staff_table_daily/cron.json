@@ -1,0 +1,4 @@
+{
+  "cron": "0 10 * * *",
+  "timezone": "Europe/Paris"
+}

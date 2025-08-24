@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Correction Cron - Snapshots Quotidiens</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .step {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 5px solid #3498db;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .step h3 {
+            color: #2980b9;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .step p {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+        
+        .btn-danger:hover {
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+        
+        .btn-success:hover {
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+        }
+        
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .console {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+            border: 2px solid #333;
+        }
+        
+        .console-line {
+            margin: 5px 0;
+            padding: 2px 0;
+        }
+        
+        .console-time {
+            color: #888;
+        }
+        
+        .console-info {
+            color: #00ffff;
+        }
+        
+        .console-success {
+            color: #00ff00;
+        }
+        
+        .console-warning {
+            color: #ffff00;
+        }
+        
+        .console-error {
+            color: #ff0000;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .file-upload {
+            border: 2px dashed #3498db;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+        
+        .file-upload:hover {
+            border-color: #2980b9;
+            background: #e3f2fd;
+        }
+        
+        .file-upload input[type="file"] {
+            display: none;
+        }
+        
+        .file-upload label {
+            cursor: pointer;
+            color: #3498db;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .file-upload label:hover {
+            color: #2980b9;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .btn {
+                display: block;
+                width: 100%;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Correction Cron</h1>
+            <p>Transformation des snapshots chaque minute → Snapshots quotidiens à 10h00</p>
+        </div>
+        
+        <div class="content">
+            <!-- Section 1: Diagnostic -->
+            <div class="section">
+                <h2>🔍 Diagnostic du Problème</h2>
+                <div class="step">
+                    <h3>Problème Identifié</h3>
+                    <p>Le cron job crée des snapshots <strong>chaque minute</strong> au lieu de <strong>chaque jour à 10h00</strong>.</p>
+                    <div class="status warning">
+                        ⚠️ <strong>Cause probable :</strong> Ancienne fonction Edge encore active avec cron chaque minute
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <h3>Solution Appliquée</h3>
+                    <p>Nous avons créé des scripts pour :</p>
+                    <ul style="margin-left: 20px; color: #555;">
+                        <li>Nettoyer la table des snapshots</li>
+                        <li>Supprimer les anciens cron jobs</li>
+                        <li>Créer un nouveau cron quotidien</li>
+                        <li>Surveiller que la correction fonctionne</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Section 2: Actions de Correction -->
+            <div class="section">
+                <h2>🛠️ Actions de Correction</h2>
+                
+                <div class="step">
+                    <h3>Étape 1: Exécuter le Script SQL</h3>
+                    <p>Copiez et exécutez ce script dans votre SQL Editor Supabase :</p>
+                    <div class="file-upload">
+                        <label for="sql-file">
+                            📁 Cliquez pour ouvrir fix-cron-daily-only.sql
+                        </label>
+                        <input type="file" id="sql-file" accept=".sql" onchange="loadSQLFile(this)">
+                    </div>
+                    <button class="btn btn-success" onclick="copySQLToClipboard()">📋 Copier le Script SQL</button>
+                </div>
+                
+                <div class="step">
+                    <h3>Étape 2: Surveillance en Temps Réel</h3>
+                    <p>Chargez le script de surveillance pour vérifier que la correction fonctionne :</p>
+                    <button class="btn" onclick="loadMonitoringScript()">📊 Charger Script de Surveillance</button>
+                    <button class="btn btn-success" onclick="startMonitoring()">🚀 Démarrer Surveillance</button>
+                    <button class="btn btn-danger" onclick="stopMonitoring()">⏹️ Arrêter Surveillance</button>
+                </div>
+                
+                <div class="step">
+                    <h3>Étape 3: Vérification Rapide</h3>
+                    <p>Testez rapidement l'état du cron :</p>
+                    <button class="btn" onclick="quickCheck()">🔍 Vérification Rapide</button>
+                </div>
+            </div>
+            
+            <!-- Section 3: Console de Surveillance -->
+            <div class="section">
+                <h2>📊 Console de Surveillance</h2>
+                <div class="console" id="console">
+                    <div class="console-line console-info">
+                        <span class="console-time">[11:42:00]</span> Console de surveillance prête
+                    </div>
+                    <div class="console-line console-info">
+                        <span class="console-time">[11:42:00]</span> Chargez le script de surveillance pour commencer
+                    </div>
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                
+                <div class="status info" id="status-info">
+                    💡 Prêt à démarrer la surveillance du cron
+                </div>
+            </div>
+            
+            <!-- Section 4: Instructions -->
+            <div class="section">
+                <h2>📋 Instructions d'Utilisation</h2>
+                
+                <div class="step">
+                    <h3>Ordre des Opérations</h3>
+                    <ol style="margin-left: 20px; color: #555; line-height: 1.8;">
+                        <li><strong>Exécuter le script SQL</strong> dans Supabase SQL Editor</li>
+                        <li><strong>Charger le script de surveillance</strong> (bouton ci-dessus)</li>
+                        <li><strong>Démarrer la surveillance</strong> pour vérifier la correction</li>
+                        <li><strong>Attendre 2-4 heures</strong> pour confirmer que le cron est quotidien</li>
+                    </ol>
+                </div>
+                
+                <div class="step">
+                    <h3>Résultat Attendu</h3>
+                    <div class="status success">
+                        ✅ <strong>Succès :</strong> Moins d'1 snapshot par heure (au lieu de 60 par heure)
+                    </div>
+                    <div class="status warning">
+                        ⚠️ <strong>Attention :</strong> Si plus de 50 snapshots/heure, le problème persiste
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Variables globales
+        let monitoringActive = false;
+        let consoleElement;
+        let statusElement;
+        let progressElement;
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            consoleElement = document.getElementById('console');
+            statusElement = document.getElementById('status-info');
+            progressElement = document.getElementById('progress-fill');
+        });
+        
+        // Fonctions de console
+        function logToConsole(message, type = 'info') {
+            const time = new Date().toLocaleTimeString('fr-FR');
+            const line = document.createElement('div');
+            line.className = `console-line console-${type}`;
+            line.innerHTML = `<span class="console-time">[${time}]</span> ${message}`;
+            
+            consoleElement.appendChild(line);
+            consoleElement.scrollTop = consoleElement.scrollHeight;
+        }
+        
+        function updateStatus(message, type = 'info') {
+            statusElement.className = `status ${type}`;
+            statusElement.innerHTML = message;
+        }
+        
+        function updateProgress(percentage) {
+            progressElement.style.width = percentage + '%';
+        }
+        
+        // Chargement du fichier SQL
+        function loadSQLFile(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    // Afficher le contenu dans la console
+                    logToConsole('📁 Fichier SQL chargé: ' + file.name, 'success');
+                    logToConsole('Contenu du fichier:', 'info');
+                    logToConsole(content, 'info');
+                };
+                reader.readAsText(file);
+            }
+        }
+        
+        // Copier le script SQL
+        function copySQLToClipboard() {
+            const sqlContent = `-- Script de correction du cron
+-- Exécutez ceci dans Supabase SQL Editor
+
+-- 1. Nettoyer la table
+DELETE FROM table_snapshots_index;
+
+-- 2. Désactiver les anciens cron jobs
+UPDATE cron.job SET active = false WHERE command LIKE '%snapshot_staff_table%';
+
+-- 3. Créer un nouveau cron quotidien
+INSERT INTO cron.job (schedule, command, active, jobname) 
+VALUES ('0 10 * * *', 'SELECT cron.snapshot_staff_table_daily();', true, 'snapshot_staff_table_daily');`;
+            
+            navigator.clipboard.writeText(sqlContent).then(() => {
+                logToConsole('📋 Script SQL copié dans le presse-papiers!', 'success');
+                updateStatus('✅ Script SQL copié! Collez-le dans Supabase SQL Editor', 'success');
+            }).catch(() => {
+                logToConsole('❌ Erreur lors de la copie', 'error');
+                updateStatus('❌ Erreur lors de la copie', 'error');
+            });
+        }
+        
+        // Charger le script de surveillance
+        function loadMonitoringScript() {
+            logToConsole('📊 Chargement du script de surveillance...', 'info');
+            
+            const script = document.createElement('script');
+            script.src = 'monitor-cron-fix.js';
+            script.onload = function() {
+                logToConsole('✅ Script de surveillance chargé avec succès!', 'success');
+                updateStatus('✅ Script chargé! Vous pouvez maintenant démarrer la surveillance', 'success');
+            };
+            script.onerror = function() {
+                logToConsole('❌ Erreur lors du chargement du script', 'error');
+                updateStatus('❌ Erreur lors du chargement du script', 'error');
+            };
+            
+            document.head.appendChild(script);
+        }
+        
+        // Démarrer la surveillance
+        function startMonitoring() {
+            if (typeof window.startCronMonitoring === 'function') {
+                logToConsole('🚀 Démarrage de la surveillance...', 'info');
+                updateStatus('🔄 Surveillance en cours...', 'warning');
+                updateProgress(25);
+                
+                // Démarrer la surveillance
+                window.startCronMonitoring();
+                
+                // Simuler la progression
+                let progress = 25;
+                const progressInterval = setInterval(() => {
+                    progress += 1;
+                    updateProgress(progress);
+                    
+                    if (progress >= 100) {
+                        clearInterval(progressInterval);
+                        updateStatus('✅ Surveillance terminée! Vérifiez les résultats', 'success');
+                    }
+                }, 1000);
+                
+            } else {
+                logToConsole('❌ Script de surveillance non chargé!', 'error');
+                updateStatus('❌ Chargez d\'abord le script de surveillance', 'error');
+            }
+        }
+        
+        // Arrêter la surveillance
+        function stopMonitoring() {
+            if (typeof window.stopCronMonitoring === 'function') {
+                logToConsole('⏹️ Arrêt de la surveillance...', 'info');
+                window.stopCronMonitoring();
+                updateStatus('⏹️ Surveillance arrêtée', 'info');
+                updateProgress(0);
+            } else {
+                logToConsole('❌ Script de surveillance non chargé!', 'error');
+            }
+        }
+        
+        // Vérification rapide
+        function quickCheck() {
+            if (typeof window.quickCheck === 'function') {
+                logToConsole('🔍 Vérification rapide...', 'info');
+                window.quickCheck();
+            } else {
+                logToConsole('❌ Script de surveillance non chargé!', 'error');
+                updateStatus('❌ Chargez d\'abord le script de surveillance', 'error');
+            }
+        }
+        
+        // Intercepter les logs de la console pour les afficher
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.join(' ');
+            if (message.includes('🕐') || message.includes('📊') || message.includes('✅') || message.includes('❌')) {
+                logToConsole(message, 'info');
+            }
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            const message = args.join(' ');
+            logToConsole(message, 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            const message = args.join(' ');
+            logToConsole(message, 'warning');
+        };
+    </script>
+</body>
+</html>
