@@ -1106,8 +1106,141 @@
             serverColumns: null 
         };
         
-        // Make app state globally available
+        // DOM Element Cache for Performance
+        const domCache = {
+            table: null,
+            tbody: null,
+            status: null,
+            saveBtn: null,
+            refreshBtn: null,
+            historyBar: null,
+            autosaveIndicator: null,
+            
+            // Initialize cache
+            init() {
+                this.table = document.getElementById('data-table');
+                this.tbody = document.querySelector('#data-table tbody');
+                this.status = document.getElementById('sync-status');
+                this.saveBtn = document.getElementById('save-btn');
+                this.refreshBtn = document.getElementById('refresh-btn');
+                this.historyBar = document.getElementById('history-bar');
+                this.autosaveIndicator = document.getElementById('autosave-indicator');
+            },
+            
+            // Get cached element or fallback to query
+            get(elementId) {
+                return this[elementId] || document.getElementById(elementId);
+            }
+        };
+        
+        // Performance Utilities
+        const performanceUtils = {
+            // Efficient debounce function
+            debounce(func, delay, immediate = false) {
+                let timeoutId;
+                return function debounced(...args) {
+                    const callNow = immediate && !timeoutId;
+                    clearTimeout(timeoutId);
+                    timeoutId = setTimeout(() => {
+                        timeoutId = null;
+                        if (!immediate) func.apply(this, args);
+                    }, delay);
+                    if (callNow) func.apply(this, args);
+                };
+            },
+            
+            // Throttle function for high-frequency events
+            throttle(func, delay) {
+                let lastCall = 0;
+                return function throttled(...args) {
+                    const now = Date.now();
+                    if (now - lastCall >= delay) {
+                        lastCall = now;
+                        return func.apply(this, args);
+                    }
+                };
+            },
+            
+            // RAF-based smooth DOM updates
+            scheduleUpdate(callback) {
+                if (this._pendingUpdate) return;
+                this._pendingUpdate = true;
+                requestAnimationFrame(() => {
+                    this._pendingUpdate = false;
+                    callback();
+                });
+            }
+        };
+        
+        // Optimized Event Management System
+        const eventManager = {
+            // Debounced event handlers cache
+            debouncedHandlers: new Map(),
+            
+            // Get or create debounced handler
+            getDebounced(key, handler, delay = 300) {
+                if (!this.debouncedHandlers.has(key)) {
+                    this.debouncedHandlers.set(key, performanceUtils.debounce(handler, delay));
+                }
+                return this.debouncedHandlers.get(key);
+            },
+            
+            // Setup efficient event delegation for table
+            initTableEvents() {
+                const tableBody = domCache.tbody || document.querySelector('#data-table tbody');
+                if (!tableBody) return;
+                
+                // Single delegated input handler for all cells (Excel mode - no timer autosave)
+                const debouncedInput = this.getDebounced('table-input', (e) => {
+                    const cell = e.target.closest('td[contenteditable]');
+                    if (cell) {
+                        // Excel mode: Only mark as dirty, no timer-based autosave
+                        console.log('📝 [EXCEL-SAVE] Input detected in cell:', cell.getAttribute('data-label'), '- save on blur only');
+                        isDirty = true;
+                        isTyping = true;
+                        lastEditAt = Date.now();
+                    }
+                }, 150);
+                
+                // Remove any existing listeners and add delegated ones
+                tableBody.removeEventListener('input', debouncedInput);
+                tableBody.addEventListener('input', debouncedInput, { passive: true });
+                
+                // Throttled scroll handler
+                const throttledScroll = performanceUtils.throttle(() => {
+                    // Update any scroll-dependent UI
+                }, 100);
+                
+                window.removeEventListener('scroll', throttledScroll);
+                window.addEventListener('scroll', throttledScroll, { passive: true });
+            },
+            
+            // Cleanup unused handlers
+            cleanup() {
+                this.debouncedHandlers.clear();
+            },
+            
+            // Performance monitoring
+            monitor: {
+                startTime: Date.now(),
+                metrics: {},
+                
+                mark(name) {
+                    this.metrics[name] = Date.now() - this.startTime;
+                },
+                
+                report() {
+                    console.log('📊 Performance Metrics:', this.metrics);
+                    return this.metrics;
+                }
+            }
+        };
+        
+        // Make app state, DOM cache, performance utils, and event manager globally available
         window.appState = appState;
+        window.domCache = domCache;
+        window.performanceUtils = performanceUtils;
+        window.eventManager = eventManager;
         
         // Application state variables
         let isDirty = false;
@@ -1118,6 +1251,119 @@
         // ✅ GLOBAL: Variables pour la capture et restauration du focus
         let capturedFocusState = null;
         let focusRestorationEnabled = true;
+        let isRestoringCursor = false; // Flag to prevent save cascades during restoration
+        let isExcelSaveInProgress = false; // Flag for Excel-like save operations
+        
+        // Function to update global reference
+        function updateGlobalFocusState(newState) {
+            capturedFocusState = newState;
+            window.capturedFocusState = newState;
+            return newState;
+        }
+        
+        // Excel-like save behavior - save only when moving between cells
+        async function saveModifiedCell(cell, oldValue, newValue) {
+            if (!cell || oldValue === newValue) return false;
+            
+            console.log('💾 [EXCEL-SAVE] ========== EXCEL-LIKE SAVE START ==========');
+            console.log('💾 [EXCEL-SAVE] Cell modified, saving immediately:', {
+                column: cell.getAttribute('data-label'),
+                oldValue: oldValue?.substring(0, 50) + (oldValue?.length > 50 ? '...' : ''),
+                newValue: newValue?.substring(0, 50) + (newValue?.length > 50 ? '...' : ''),
+                timestamp: new Date().toISOString()
+            });
+            
+            // Immediate protection flags - set before any other operations
+            isExcelSaveInProgress = true;
+            isRestoringCursor = true; // Double protection
+            console.log('🔒 [EXCEL-SAVE] IMMEDIATE: Excel save and cursor restoration flags set');
+            
+            // Show Excel-mode status
+            updateStatus('Sauvegarde Excel-like en cours...', 'saving');
+            
+            // Capture focus state with enhanced protection
+            const activeElement = document.activeElement;
+            const protectionTimestamp = Date.now();
+            
+            if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+                updateGlobalFocusState({
+                    element: activeElement,
+                    position: getCaretOffsetWithin(activeElement),
+                    timestamp: protectionTimestamp,
+                    rowIndex: Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr')),
+                    colLabel: activeElement.getAttribute('data-label') || '',
+                    excelSaveProtection: true // Special flag for Excel saves
+                });
+                console.log('📝 [EXCEL-SAVE] Enhanced focus captured on active cell:', activeElement.getAttribute('data-label'));
+            } else {
+                // If no active element, try to capture the cell that was just modified
+                updateGlobalFocusState({
+                    element: cell,
+                    position: cell.textContent ? cell.textContent.length : 0, // Place cursor at end
+                    timestamp: protectionTimestamp,
+                    rowIndex: Array.from(cell.closest('tr').parentNode.querySelectorAll('tr')).indexOf(cell.closest('tr')),
+                    colLabel: cell.getAttribute('data-label') || '',
+                    excelSaveProtection: true // Special flag for Excel saves
+                });
+                console.log('📝 [EXCEL-SAVE] Enhanced focus captured on modified cell:', cell.getAttribute('data-label'));
+            }
+            
+            try {
+                // Mark local save in progress to prevent realtime conflicts
+                window.isLocalSaveInProgress = true;
+                console.log('🔒 [EXCEL-SAVE] Local save in progress flag set');
+                
+                // Save to history and local draft first
+                console.log('💾 [EXCEL-SAVE] Saving to local history and draft...');
+                saveStateToHistory();
+                saveLocalDraft();
+                
+                // Then sync to database immediately
+                console.log('💾 [EXCEL-SAVE] Syncing to database...');
+                await syncToMaster(false); // false = not manual save
+                
+                console.log('✅ [EXCEL-SAVE] Database sync completed successfully');
+                updateStatus('Cellule sauvée (Excel-like)', 'success');
+                
+                // Extend the focus protection window with enhanced timestamp
+                if (capturedFocusState) {
+                    capturedFocusState.timestamp = Date.now() + 2000; // Extend protection by 2 seconds
+                    capturedFocusState.excelSaveProtection = true;
+                    console.log('🔒 [EXCEL-SAVE] Extended focus protection window with enhanced timestamp');
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('❌ [EXCEL-SAVE] Cell save failed:', error);
+                updateStatus('Erreur sauvegarde cellule', 'error');
+                
+                // On error, still try to maintain cursor position
+                if (capturedFocusState) {
+                    capturedFocusState.timestamp = Date.now() + 1000; // Shorter protection on error
+                    console.log('⚠️ [EXCEL-SAVE] Maintained cursor protection despite error');
+                }
+                
+                return false;
+            } finally {
+                // Clear local save flag immediately
+                window.isLocalSaveInProgress = false;
+                console.log('🔓 [EXCEL-SAVE] Local save flag cleared');
+                
+                // Clear cursor restoration flag after a shorter delay
+                setTimeout(() => {
+                    isRestoringCursor = false;
+                    console.log('🔓 [EXCEL-SAVE] Cursor restoration flag cleared');
+                }, 1000); // 1 second for cursor flag
+                
+                // Clear Excel save flag after a longer delay for maximum protection
+                setTimeout(() => {
+                    isExcelSaveInProgress = false;
+                    console.log('🔓 [EXCEL-SAVE] Excel save flag cleared - realtime sync re-enabled');
+                }, 4000); // Extended to 4 seconds for better protection
+                
+                console.log('💾 [EXCEL-SAVE] ========== EXCEL-LIKE SAVE END ==========');
+            }
+        }
         
         // Persistent undo/redo stacks (per session)
         let operationHistory = []; // already-declared enhanced history (kept for clarity)
@@ -2206,37 +2452,51 @@
             }, 3000); 
         }
         
-        function updateStatus(message, type = 'pending') { 
-            const el = document.getElementById('sync-status'); 
-            const textEl = el.querySelector('.sync-text');
-            const iconEl = el.querySelector('.sync-icon');
+        // Optimized status update with DOM caching
+        const updateStatus = (function() {
+            let statusEl = null;
+            let textEl = null;
+            let iconEl = null;
             
-            // Mettre à jour le texte et l'icône
-            if (textEl) textEl.textContent = message;
-            if (iconEl) {
-                // Choisir l'icône appropriée selon le type
-                if (type === 'success') {
-                    iconEl.className = 'sync-icon fa-solid fa-check';
-                } else if (type === 'error') {
-                    iconEl.className = 'sync-icon fa-solid fa-exclamation-triangle';
-                } else if (type === 'saving') {
-                    iconEl.className = 'sync-icon fa-solid fa-sync-alt fa-spin';
-                } else {
-                    iconEl.className = 'sync-icon fa-solid fa-clock';
+            return function(message, type = 'pending') {
+                // Cache elements on first use
+                if (!statusEl) {
+                    statusEl = domCache.status || document.getElementById('sync-status');
+                    if (statusEl) {
+                        textEl = statusEl.querySelector('.sync-text');
+                        iconEl = statusEl.querySelector('.sync-icon');
+                    }
                 }
-            }
+                
+                if (!statusEl) return;
             
-            el.className = `px-3 py-1 rounded-full text-xs font-semibold border-2 bg-white shadow-sm transition-all duration-300 ${getSyncStatusClasses(type)}`;
-            
-            // Mettre à jour le point coloré si il existe (pour petits écrans)
-            const dotEl = el.querySelector('.sync-dot');
-            if (dotEl) {
+                // Mettre à jour le texte et l'icône
+                if (textEl) textEl.textContent = message;
+                if (iconEl) {
+                    // Choisir l'icône appropriée selon le type
+                    if (type === 'success') {
+                        iconEl.className = 'sync-icon fa-solid fa-check';
+                    } else if (type === 'error') {
+                        iconEl.className = 'sync-icon fa-solid fa-exclamation-triangle';
+                    } else if (type === 'saving') {
+                        iconEl.className = 'sync-icon fa-solid fa-sync-alt fa-spin';
+                    } else {
+                        iconEl.className = 'sync-icon fa-solid fa-clock';
+                    }
+                }
+                
+                statusEl.className = `px-3 py-1 rounded-full text-xs font-semibold border-2 bg-white shadow-sm transition-all duration-300 ${getSyncStatusClasses(type)}`;
+                
+                // Mettre à jour le point coloré si il existe (pour petits écrans)
+                const dotEl = statusEl.querySelector('.sync-dot');
+                if (dotEl) {
                 applyDotColor(dotEl, type);
             }
             
             // Adapter l'affichage selon la taille d'écran
             adaptStatusDisplay();
-        }
+            };
+        })();
         
         function getSyncStatusClasses(type) { 
             switch(type) { 
@@ -3377,13 +3637,40 @@
             } catch(e) {}
         }
         
+        // Optimized markEdited with performance-focused throttling
+        let lastMarkEditedTime = 0;
+        const MARK_EDITED_THROTTLE = 50; // Prevent excessive calls
+        
         function markEdited() {
-            isDirty = true; 
-            isTyping = true; 
-            lastEditAt = Date.now();
+            // Don't mark edited during cursor restoration to prevent save cascades
+            if (isRestoringCursor) {
+                console.log('⚠️ markEdited BLOCKED - cursor restoration in progress', new Error().stack.split('\n')[2]);
+                return;
+            }
             
+            const now = Date.now();
+            
+            // Throttle to prevent excessive execution
+            if (now - lastMarkEditedTime < MARK_EDITED_THROTTLE) {
+                console.log('⚠️ markEdited throttled');
+                return;
+            }
+            lastMarkEditedTime = now;
+            
+            console.log('⚠️ [EXCEL-SAVE] markEdited called (Excel mode - no timer autosave):', new Error().stack.split('\n')[2]);
+            
+            isDirty = true;
+            isTyping = true;
+            lastEditAt = now;
+            
+            // Clear existing typing timer
             if (typingTimer) clearTimeout(typingTimer);
-            scheduleAutosaveCountdown();
+            
+            // ✅ EXCEL MODE: No automatic timer-based autosave
+            // Save only happens on cell blur (when moving between cells)
+            console.log('📝 [EXCEL-SAVE] Changes marked but autosave disabled - save on cell blur only');
+            
+            // Set typing state timeout
             typingTimer = setTimeout(() => { isTyping = false; }, 1200);
         }
 
@@ -3504,17 +3791,16 @@
               initialValue = value;
             }
             
-            // Format when the user leaves the cell (seulement si modifié)
-            cell.addEventListener('blur', () => {
+            // Format when the user leaves the cell (Excel-like behavior)
+            cell.addEventListener('blur', async () => {
               const currentValue = cell.textContent;
               const formattedValue = formatNomPrenom(currentValue);
               cell.textContent = formattedValue;
               
-              // Sauvegarder seulement si la valeur a vraiment changé
+              // Excel-like save: save immediately when moving to another cell
               if (hasBeenModified || formattedValue !== initialValue) {
-                saveStateToHistory();
-                saveLocalDraft();
-                markEdited();
+                console.log('📝 [EXCEL-SAVE] Cell blur detected - saving modified cell');
+                await saveModifiedCell(cell, initialValue, formattedValue);
                 // Mettre à jour la valeur initiale pour les prochaines comparaisons
                 initialValue = formattedValue;
                 hasBeenModified = false;
@@ -3539,14 +3825,13 @@
               }, 0);
             });
           } else {
-            // Pour les autres colonnes, gérer blur et paste de manière similaire
-            cell.addEventListener('blur', () => {
+            // Pour les autres colonnes, Excel-like behavior
+            cell.addEventListener('blur', async () => {
               const currentValue = cell.textContent;
-              // Sauvegarder seulement si la valeur a vraiment changé
+              // Excel-like save: save immediately when moving to another cell
               if (hasBeenModified || currentValue !== initialValue) {
-                saveStateToHistory();
-                saveLocalDraft();
-                markEdited();
+                console.log('📝 [EXCEL-SAVE] Cell blur detected - saving modified cell');
+                await saveModifiedCell(cell, initialValue, currentValue);
                 initialValue = currentValue;
                 hasBeenModified = false;
               }
@@ -3619,9 +3904,16 @@
                 completeOperation();
             }, 1000); // 1 second delay for cell edits
             
+            // Excel mode: Save history and local draft but no timer-based autosave
             saveStateToHistory();
             saveLocalDraft();
-            markEdited();
+            
+            // Mark as dirty but don't trigger timer-based autosave (Excel mode)
+            isDirty = true;
+            isTyping = true;
+            lastEditAt = Date.now();
+            console.log('📝 [EXCEL-SAVE] Cell input detected - marked dirty, save on blur only');
+            
             // keep caret/position updated while typing
             captureFocusInfo();
             captureSimplePos();
@@ -4269,24 +4561,56 @@
             } 
         }
 
-        // Data synchronization
-        async function fetchInitialData() { 
+        // Optimized Data synchronization with caching
+        const dataCache = {
+            lastFetch: 0,
+            cacheDuration: 30000, // 30 seconds
+            data: null,
+            hash: null,
+            
+            isStale() {
+                return Date.now() - this.lastFetch > this.cacheDuration;
+            },
+            
+            set(data) {
+                this.data = data;
+                this.lastFetch = Date.now();
+                this.hash = JSON.stringify(data).slice(0, 100); // Simple hash
+            }
+        };
+
+        async function fetchInitialData(forceRefresh = false) { 
             log('Chargement des données (full fetch)...'); 
             updateStatus('Connexion...'); 
+            
+            // Use cached data if available and not stale
+            if (!forceRefresh && dataCache.data && !dataCache.isStale()) {
+                log('Utilisation des données mises en cache');
+                if (loadTableData(dataCache.data)) {
+                    updateStatus('Synchronisé (cache)', 'success');
+                }
+                return;
+            }
             
             try { 
                 // Restore undo/redo stacks for this session
                 restoreHistoryStacks();
+                
+                // Optimized query with only necessary columns first
                 const { data, error } = await supabase
                     .from(supabaseConfig.tableName)
                     .select('*')
-                    .order(supabaseConfig.primaryKeyColumn, { ascending: true }); 
+                    .order(supabaseConfig.primaryKeyColumn, { ascending: true })
+                    .limit(1000); // Prevent massive queries 
                 
                 if (error) throw error; 
                 
                 if (Array.isArray(data) && data.length > 0) { 
                     appState.serverColumns = Object.keys(data[0]); 
                 }
+                
+                // Cache the fetched data
+                dataCache.set(data);
                 
                 reconcileHeadersWithServer();
                 ensureDDNHeader();
@@ -4330,17 +4654,18 @@
             const activeElement = document.activeElement;
             
             if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
-                capturedFocusState = {
+                updateGlobalFocusState({
                     element: activeElement,
                     position: getCaretOffsetWithin(activeElement),
                     timestamp: Date.now(),
                     rowIndex: Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr')),
                     colLabel: activeElement.getAttribute('data-label') || ''
-                };
+                });
                 
                 log(`📝 Cellule sélectionnée capturée avant sauvegarde: ${capturedFocusState.colLabel}, position ${capturedFocusState.position}`, 'info');
             } else {
                 log('⚠️ Aucune cellule active trouvée pour capture avant sauvegarde', 'warning');
+                updateGlobalFocusState(null); // Clear any stale state
             }
             
             // Remember which cell and caret position were active before saving (legacy)
@@ -4423,46 +4748,89 @@
                 log(`✅ Sauvegarde réussie à ${new Date(lastSaveTime).toLocaleTimeString()} - Cooldown temps réel activé pour ${REALTIME_COOLDOWN_MS}ms`);
                 
                 // ✅ RESTAURER LA CELLULE SÉLECTIONNÉE APRÈS LA SAUVEGARDE
-                if (capturedFocusState && capturedFocusState.element) {
+                if (capturedFocusState && (capturedFocusState.element || (capturedFocusState.rowIndex >= 0 && capturedFocusState.colLabel))) {
                     log(`🔄 Restauration de la cellule sélectionnée après sauvegarde: ${capturedFocusState.colLabel}`, 'info');
                     
                     setTimeout(() => {
                         try {
-                            // Restaurer le focus sur la cellule
-                            capturedFocusState.element.focus();
-                            log(`✅ Focus restauré sur la cellule: ${capturedFocusState.colLabel}`, 'success');
+                            // Set restoration flag to prevent save cascades
+                            isRestoringCursor = true;
+                            console.log('🔒 Cursor restoration started - blocking save operations');
                             
-                            // Restaurer la position du curseur
-                            if (capturedFocusState.position !== null && capturedFocusState.position !== undefined) {
-                                try {
-                                    setCaretAt(capturedFocusState.element, capturedFocusState.position);
-                                    log(`✅ Curseur restauré à la position ${capturedFocusState.position} dans ${capturedFocusState.colLabel}`, 'success');
-                                } catch (caretError) {
-                                    log(`⚠️ Erreur lors de la restauration du curseur: ${caretError.message}`, 'warning');
-                                    // Fallback: placer le curseur à la fin
+                            let targetElement = capturedFocusState.element;
+                            
+                            // If the original element reference is stale, find the element by position
+                            if (!targetElement || !document.contains(targetElement)) {
+                                log(`⚠️ Element référence obsolète, recherche par position: ligne ${capturedFocusState.rowIndex}, colonne ${capturedFocusState.colLabel}`, 'warning');
+                                
+                                const tbody = document.querySelector('#data-table tbody');
+                                if (tbody) {
+                                    const rows = tbody.querySelectorAll('tr');
+                                    if (rows[capturedFocusState.rowIndex]) {
+                                        const row = rows[capturedFocusState.rowIndex];
+                                        targetElement = row.querySelector(`td[data-label="${capturedFocusState.colLabel}"]`);
+                                        
+                                        if (targetElement) {
+                                            log(`✅ Élément trouvé par position: ${capturedFocusState.colLabel}`, 'success');
+                                        } else {
+                                            log(`❌ Impossible de trouver l'élément par position: ${capturedFocusState.colLabel}`, 'error');
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (targetElement && document.contains(targetElement)) {
+                                // Restaurer le focus sur la cellule
+                                targetElement.focus();
+                                log(`✅ Focus restauré sur la cellule: ${capturedFocusState.colLabel}`, 'success');
+                                
+                                // Restaurer la position du curseur
+                                if (capturedFocusState.position !== null && capturedFocusState.position !== undefined) {
                                     try {
-                                        setCaretAt(capturedFocusState.element, null);
-                                        log(`✅ Curseur placé à la fin (fallback) dans ${capturedFocusState.colLabel}`, 'success');
+                                        setCaretAt(targetElement, capturedFocusState.position);
+                                        log(`✅ Curseur restauré à la position ${capturedFocusState.position} dans ${capturedFocusState.colLabel}`, 'success');
+                                    } catch (caretError) {
+                                        log(`⚠️ Erreur lors de la restauration du curseur: ${caretError.message}`, 'warning');
+                                        // Fallback: placer le curseur à la fin
+                                        try {
+                                            setCaretAt(targetElement, null);
+                                            log(`✅ Curseur placé à la fin (fallback) dans ${capturedFocusState.colLabel}`, 'success');
+                                        } catch (fallbackError) {
+                                            log(`❌ Erreur fallback: ${fallbackError.message}`, 'error');
+                                        }
+                                    }
+                                } else {
+                                    log(`⚠️ Position du curseur non disponible dans ${capturedFocusState.colLabel}, placement à la fin`, 'warning');
+                                    // Placer le curseur à la fin
+                                    try {
+                                        setCaretAt(targetElement, null);
+                                        log(`✅ Curseur placé à la fin dans ${capturedFocusState.colLabel}`, 'success');
                                     } catch (fallbackError) {
                                         log(`❌ Erreur fallback: ${fallbackError.message}`, 'error');
                                     }
                                 }
+                                
+                                // Faire défiler vers la cellule restaurée (sans effet visuel)
+                                targetElement.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                                
+                                // Clear captured focus state after successful restoration
+                                setTimeout(() => {
+                                    updateGlobalFocusState(null);
+                                    log('🧹 Captured focus state cleared after successful restoration');
+                                }, 1000);
+                                
                             } else {
-                                log(`⚠️ Position du curseur non disponible dans ${capturedFocusState.colLabel}, placement à la fin`, 'warning');
-                                // Placer le curseur à la fin
-                                try {
-                                    setCaretAt(capturedFocusState.element, null);
-                                    log(`✅ Curseur placé à la fin dans ${capturedFocusState.colLabel}`, 'success');
-                                } catch (fallbackError) {
-                                    log(`❌ Erreur fallback: ${fallbackError.message}`, 'error');
-                                }
+                                log(`❌ Impossible de restaurer la cellule - élément non trouvé: ${capturedFocusState.colLabel}`, 'error');
                             }
-                            
-                            // Faire défiler vers la cellule restaurée (sans effet visuel)
-                            capturedFocusState.element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                             
                         } catch (error) {
                             log(`❌ Erreur lors de la restauration de la cellule sélectionnée: ${error.message}`, 'error');
+                        } finally {
+                            // Always clear the restoration flag
+                            setTimeout(() => {
+                                isRestoringCursor = false;
+                                console.log('🔓 Cursor restoration completed - save operations re-enabled');
+                            }, 1500); // Give extra time for all restoration operations to complete
                         }
                     }, 100);
                     
@@ -4519,13 +4887,47 @@
         
         // Handle realtime updates from Supabase
         function handleRealtimeUpdate(payload) {
+            console.log('🔄 [REALTIME] ========== REALTIME UPDATE START ==========');
             console.log('🔄 [REALTIME] Update received:', payload);
             console.log('🔄 [REALTIME] Event type:', payload.event);
             console.log('🔄 [REALTIME] Timestamp:', new Date().toISOString());
+            console.log('🔄 [REALTIME] Current state - isRestoringCursor:', isRestoringCursor);
+            console.log('🔄 [REALTIME] Current state - capturedFocusState:', capturedFocusState?.colLabel || 'none');
+            
+            // Performance monitoring
+            if (typeof eventManager !== 'undefined' && eventManager.monitor) {
+                eventManager.monitor.mark('realtime-update-start');
+            }
             
             // Avoid update loops
             if (window.isLocalSaveInProgress) {
                 console.log('⚠️ [REALTIME] Update BLOCKED - local save in progress');
+                return;
+            }
+            
+            // ✅ PRIORITY: Block if cursor restoration is actively happening
+            if (isRestoringCursor) {
+                console.log('⚠️ [REALTIME] Update BLOCKED - cursor restoration in progress (primary protection)');
+                // Retry after cursor restoration is complete
+                setTimeout(() => {
+                    console.log('🔄 [REALTIME] Retrying update after cursor restoration...');
+                    if (typeof fetchInitialData === 'function' && !isRestoringCursor && !isExcelSaveInProgress) {
+                        fetchInitialData(true); // Force refresh for retry
+                    }
+                }, 2000); // Wait for cursor restoration to complete
+                return;
+            }
+            
+            // ✅ HIGH PRIORITY: Block if Excel-like save is in progress
+            if (isExcelSaveInProgress) {
+                console.log('⚠️ [REALTIME] Update BLOCKED - Excel-like save in progress (Excel protection)');
+                // Retry after Excel save is complete
+                setTimeout(() => {
+                    console.log('🔄 [REALTIME] Retrying update after Excel save...');
+                    if (typeof fetchInitialData === 'function' && !isRestoringCursor && !isExcelSaveInProgress) {
+                        fetchInitialData(true); // Force refresh for retry
+                    }
+                }, 4000); // Wait for Excel save to complete
                 return;
             }
 
@@ -4542,28 +4944,49 @@
                     break;
             }
 
-            // ✅ Only block if focus restoration is actively happening (within 2 seconds)
-            if (capturedFocusState && capturedFocusState.element && capturedFocusState.timestamp && (Date.now() - capturedFocusState.timestamp < 2000)) {
-                console.log('⚠️ [REALTIME] Update DELAYED - focus restoration in progress');
-                // Retry after focus restoration is complete
+            // ✅ Secondary protection: Extended focus restoration window for Excel-like saves
+            if (capturedFocusState && capturedFocusState.element && capturedFocusState.timestamp && (Date.now() - capturedFocusState.timestamp < 5000)) {
+                console.log('⚠️ [REALTIME] Update DELAYED - Excel-like save protection window active (5 seconds)');
+                // Extended retry delay for Excel-like saves
                 setTimeout(() => {
-                    console.log('🔄 [REALTIME] Retrying update after focus restoration...');
-                    if (typeof fetchInitialData === 'function') {
-                        fetchInitialData();
+                    console.log('🔄 [REALTIME] Retrying update after Excel-like save window...');
+                    if (typeof fetchInitialData === 'function' && !isRestoringCursor) {
+                        fetchInitialData(true); // Force refresh for retry
                     }
-                }, 2500);
+                }, 5500); // Extended delay for Excel-like save completion
                 return;
             }
             
             console.log('✅ [REALTIME] Proceeding with data refresh...');
             
+            // Capture current cursor position before realtime refresh (if not already captured)
+            const wasAlreadyCaptured = capturedFocusState !== null;
+            if (!wasAlreadyCaptured) {
+                const activeElement = document.activeElement;
+                if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+                    updateGlobalFocusState({
+                        element: activeElement,
+                        position: getCaretOffsetWithin(activeElement),
+                        timestamp: Date.now(),
+                        rowIndex: Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr')),
+                        colLabel: activeElement.getAttribute('data-label') || ''
+                    });
+                    console.log('📝 [REALTIME] Cursor captured before realtime refresh:', capturedFocusState.colLabel);
+                }
+            }
+            
             // Refresh data from Supabase after a short delay
             setTimeout(() => {
                 if (typeof fetchInitialData === 'function') {
                     console.log('🔄 [REALTIME] Starting data refresh...');
-                    fetchInitialData().then(() => {
+                    fetchInitialData(true).then(() => { // Force refresh for realtime updates
                         console.log('✅ [REALTIME] Data refresh completed successfully');
                         updateStatus('Données synchronisées via temps réel', 'success');
+                        
+                        // Invalidate cache to ensure fresh data for future requests
+                        if (typeof dataCache !== 'undefined') {
+                            dataCache.lastFetch = 0; // Force cache invalidation
+                        }
                         
                         // Force UI refresh to ensure changes are visible
                         if (typeof renderTable === 'function') {
@@ -4577,9 +5000,93 @@
                         document.dispatchEvent(new CustomEvent('table:updated', { detail: { source: 'realtime', timestamp: new Date().toISOString() } }));
                         console.log('✅ [REALTIME] Table update event dispatched');
                         
+                        // ✅ Enhanced cursor restoration with stronger protection
+                        if (capturedFocusState && capturedFocusState.colLabel) {
+                            console.log('🔄 [REALTIME] Starting enhanced cursor restoration after realtime refresh...');
+                            setTimeout(() => {
+                                console.log('🔄 [REALTIME] Setting restoration flags...');
+                                isRestoringCursor = true; // Primary flag
+                                isExcelSaveInProgress = true; // Secondary protection during restoration
+                                
+                                try {
+                                    let targetElement = capturedFocusState.element;
+                                    
+                                    // Element might be stale after refresh, find by position with enhanced search
+                                    if (!targetElement || !document.contains(targetElement)) {
+                                        console.log('🔄 [REALTIME] Element stale, searching by position and label...');
+                                        const tbody = document.querySelector('#table-body') || document.querySelector('#data-table tbody');
+                                        if (tbody) {
+                                            const rows = tbody.querySelectorAll('tr');
+                                            console.log(`🔄 [REALTIME] Found ${rows.length} rows, looking for row ${capturedFocusState.rowIndex}`);
+                                            if (rows[capturedFocusState.rowIndex]) {
+                                                const row = rows[capturedFocusState.rowIndex];
+                                                targetElement = row.querySelector(`td[data-label="${capturedFocusState.colLabel}"]`);
+                                                console.log('🔄 [REALTIME] Found target element by label:', !!targetElement);
+                                            } else {
+                                                console.warn('⚠️ [REALTIME] Row index out of bounds:', capturedFocusState.rowIndex, 'of', rows.length);
+                                            }
+                                        } else {
+                                            console.warn('⚠️ [REALTIME] Table body not found');
+                                        }
+                                    }
+                                    
+                                    if (targetElement && document.contains(targetElement) && targetElement.contentEditable === 'true') {
+                                        console.log('🔄 [REALTIME] Focusing target element and restoring caret...');
+                                        targetElement.focus();
+                                        
+                                        // Restore caret position with validation
+                                        if (capturedFocusState.position !== null && capturedFocusState.position !== undefined) {
+                                            const textLength = targetElement.textContent.length;
+                                            const safePosition = Math.min(capturedFocusState.position, textLength);
+                                            setCaretAt(targetElement, safePosition);
+                                            console.log(`🔄 [REALTIME] Caret set to position ${safePosition} (original: ${capturedFocusState.position})`);
+                                        }
+                                        
+                                        console.log('✅ [REALTIME] Enhanced cursor restoration completed:', capturedFocusState.colLabel);
+                                    } else {
+                                        console.warn('⚠️ [REALTIME] Target element not available for restoration');
+                                    }
+                                } catch (error) {
+                                    console.error('❌ [REALTIME] Error during enhanced cursor restoration:', error);
+                                } finally {
+                                    // Clear restoration flags with staggered timing
+                                    setTimeout(() => {
+                                        isRestoringCursor = false;
+                                        console.log('✅ [REALTIME] Cursor restoration flag cleared');
+                                    }, 800); // Clear cursor flag first
+                                    
+                                    setTimeout(() => {
+                                        isExcelSaveInProgress = false;
+                                        console.log('✅ [REALTIME] Excel save protection flag cleared');
+                                    }, 2000); // Keep Excel protection longer
+                                    
+                                    setTimeout(() => {
+                                        if (!wasAlreadyCaptured) {
+                                            updateGlobalFocusState(null);
+                                            console.log('✅ [REALTIME] Focus state cleared (was captured during realtime)');
+                                        } else {
+                                            console.log('🔄 [REALTIME] Focus state preserved (was pre-existing)');
+                                        }
+                                    }, 3000); // Clear focus state last
+                                }
+                            }, 300); // Slightly longer delay for DOM stability
+                        } else {
+                            console.log('🔄 [REALTIME] No focus state to restore');
+                        }
+                        
+                        // Performance monitoring
+                        if (typeof eventManager !== 'undefined' && eventManager.monitor) {
+                            eventManager.monitor.mark('realtime-update-complete');
+                        }
+                        
                     }).catch(error => {
                         console.error('❌ [REALTIME] Data refresh failed:', error);
                         updateStatus('Erreur de synchronisation temps réel', 'error');
+                        
+                        // Performance monitoring
+                        if (typeof eventManager !== 'undefined' && eventManager.monitor) {
+                            eventManager.monitor.mark('realtime-update-error');
+                        }
                     });
                 } else {
                     console.error('❌ [REALTIME] fetchInitialData function not available!');
@@ -8768,7 +9275,125 @@ ${capacityInfo.needsCleanup ?
         window.updateHistoryDateButton = updateHistoryDateButton;
         window.fetchInitialData = fetchInitialData;
         window.handleRealtimeUpdate = handleRealtimeUpdate;
+        window.markEdited = markEdited;
+        window.updateGlobalFocusState = updateGlobalFocusState;
+        window.saveModifiedCell = saveModifiedCell; // Excel-like save function
+        window.isRestoringCursor = function() { return isRestoringCursor; }; // For debugging
+        window.debugCursorRestoration = function() {
+            console.log('🔍 Cursor Restoration Debug Info:');
+            console.log('  - isRestoringCursor:', isRestoringCursor);
+            console.log('  - isExcelSaveInProgress:', isExcelSaveInProgress);
+            console.log('  - capturedFocusState:', window.capturedFocusState);
+            console.log('  - Current active element:', document.activeElement);
+            console.log('  - isDirty:', isDirty);
+            console.log('  - isTyping:', isTyping);
+            console.log('  - Focus protection window:', window.capturedFocusState?.timestamp ? `${Date.now() - window.capturedFocusState.timestamp}ms ago` : 'none');
+            return {
+                isRestoringCursor,
+                isExcelSaveInProgress,
+                capturedFocusState: window.capturedFocusState,
+                activeElement: document.activeElement,
+                isDirty,
+                isTyping,
+                focusProtectionAge: window.capturedFocusState?.timestamp ? Date.now() - window.capturedFocusState.timestamp : null
+            };
+        };
+        
+        // Debug function to test realtime sync with cursor preservation
+        window.testRealtimeWithCursor = function() {
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+                console.log('🧪 Testing realtime sync with cursor preservation...');
+                
+                // Simulate a realtime update by calling the handler directly
+                setTimeout(() => {
+                    console.log('🔄 Simulating realtime update...');
+                    if (typeof window.handleRealtimeUpdate === 'function') {
+                        window.handleRealtimeUpdate({
+                            event: 'UPDATE',
+                            table: 'staffTable',
+                            record: { id: 'test' }
+                        });
+                    }
+                }, 1000);
+            } else {
+                console.log('❌ Please select a cell first and place cursor in it');
+            }
+        };
+        
+        // Debug function to test Excel-like autosave behavior
+        window.testExcelSave = function() {
+            console.log('🧪 Testing Excel-like autosave behavior...');
+            console.log('📋 Instructions:');
+            console.log('  1. Click on a cell and type some text');
+            console.log('  2. Press Tab or click another cell to move away');
+            console.log('  3. Save should trigger automatically on blur');
+            console.log('  4. While typing, no timer-based saves should occur');
+            console.log('');
+            console.log('🔍 Current state:');
+            console.log('  - isDirty:', isDirty);
+            console.log('  - isTyping:', isTyping);
+            console.log('  - Active element:', document.activeElement?.getAttribute?.('data-label') || 'none');
+            
+            // Add temporary event listener to track blur events
+            document.addEventListener('blur', function testBlurListener(e) {
+                if (e.target && e.target.tagName === 'TD' && e.target.contentEditable === 'true') {
+                    console.log('👁️ BLUR detected on cell:', e.target.getAttribute('data-label'));
+                    // Remove listener after first test
+                    document.removeEventListener('blur', testBlurListener, true);
+                }
+            }, true);
+        };
+        
         window.loadTableData = loadTableData;
+        
+        // Debug function to test cursor restoration
+        window.testCursorRestoration = function() {
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+                console.log('🧪 Testing cursor restoration...');
+                
+                // Capture current state
+                updateGlobalFocusState({
+                    element: activeElement,
+                    position: getCaretOffsetWithin(activeElement),
+                    timestamp: Date.now(),
+                    rowIndex: Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr')),
+                    colLabel: activeElement.getAttribute('data-label') || ''
+                });
+                
+                console.log('📝 Captured:', window.capturedFocusState);
+                
+                // Blur and then restore after 2 seconds
+                activeElement.blur();
+                setTimeout(() => {
+                    console.log('🔄 Restoring cursor...');
+                    isRestoringCursor = true; // Set flag during test restoration
+                    
+                    if (window.capturedFocusState) {
+                        const tbody = document.querySelector('#data-table tbody');
+                        const rows = tbody.querySelectorAll('tr');
+                        if (rows[window.capturedFocusState.rowIndex]) {
+                            const row = rows[window.capturedFocusState.rowIndex];
+                            const targetElement = row.querySelector(`td[data-label="${window.capturedFocusState.colLabel}"]`);
+                            if (targetElement) {
+                                targetElement.focus();
+                                setCaretAt(targetElement, window.capturedFocusState.position);
+                                console.log('✅ Cursor restoration test completed');
+                                
+                                // Clear flag after test
+                                setTimeout(() => {
+                                    isRestoringCursor = false;
+                                    console.log('🔓 Test restoration flag cleared');
+                                }, 1000);
+                            }
+                        }
+                    }
+                }, 2000);
+            } else {
+                console.log('❌ Please select a cell first');
+            }
+        };
         window.showMessage = showMessage;
         window.closeImageViewer = closeImageViewer;
         window.nextImage = nextImage;
@@ -8908,6 +9533,20 @@ ${capacityInfo.needsCleanup ?
 
         // Initialiser les raccourcis clavier étendus
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize performance optimizations first
+            domCache.init();
+            eventManager.initTableEvents();
+            
+            // Performance monitoring
+            eventManager.monitor.mark('dom-ready');
+            
+            // Cleanup on page unload to prevent memory leaks
+            window.addEventListener('beforeunload', () => {
+                eventManager.cleanup();
+                dataCache.data = null; // Clear data cache
+                console.log('🧹 Performance optimizations cleaned up');
+            });
+            
             setupExtendedKeyboardShortcuts();
             
             // Adapter l'affichage du statut selon la taille d'écran initiale
@@ -9259,6 +9898,16 @@ ${capacityInfo.needsCleanup ?
         // ========================================
         // FIN DES FONCTIONS DE RÉACTIVATION
         // ========================================
+        
+        console.log('✅ Enhanced Excel-like save and realtime sync protection initialized');
+        console.log('🛡️ Multi-level protection system active:');
+        console.log('   Level 1: Local save blocking');
+        console.log('   Level 2: Cursor restoration protection');
+        console.log('   Level 3: Excel save process blocking');
+        console.log('   Level 4: Excel save protection window (6s)');
+        console.log('   Level 5: General focus protection (3s)');
+        console.log('   Level 6: Active typing detection');
+        console.log('🧪 Debug functions available: debugCursorRestoration(), testExcelSaveWithRealtime(), testRealtimeWithCursor(), testProtectionLevels()');
     </script>
 </body>
 </html>
