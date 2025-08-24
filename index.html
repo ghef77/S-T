@@ -894,28 +894,16 @@
 
             <!-- History Bar Container - This is what gets toggled -->
             <div id="history-bar-container" class="flex justify-end">
-                <!-- Enhanced mobile-responsive container -->
-                <div class="flex flex-wrap items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 w-full relative z-20">
+                <!-- Single line container for all snapshot controls -->
+                <div class="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 w-full relative z-20">
                     <!-- Navigation buttons - Responsive visibility -->
-                    <div class="flex items-center gap-2 w-full justify-center mb-2">
-                        <button id="history-back" onclick="goToPreviousSnapshot()" disabled title="Snapshot précédent" aria-label="Snapshot précédent" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                            <i class="fa-solid fa-chevron-left w-3 h-3"></i>
-                        </button>
-            
-                        <button id="history-date" onclick="openDatePicker()" title="Choisir une date de snapshot" aria-label="Choisir une date" class="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700 transition-colors font-medium flex items-center justify-center">
-                            <i class="fa-solid fa-calendar w-3 h-3"></i>
-                        </button>
-            
-                        <button id="history-next" onclick="goToNextSnapshot()" disabled title="Snapshot suivant" aria-label="Snapshot suivant" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                            <i class="fa-solid fa-chevron-right w-3 h-3"></i>
-                        </button>
-                    </div>
+
                     
                     <!-- Desktop navigation buttons -->
 
                     
                     <!-- Action buttons - Fixed styling for all screen sizes -->
-                    <div class="flex flex-wrap items-center gap-2 w-full justify-center">
+                    <div class="flex items-center gap-2 justify-center">
                         <button onclick="refreshTableData()" title="Actualiser le tableau avec les données les plus récentes" aria-label="Actualiser" class="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700 transition-colors font-medium flex items-center justify-center">
                             <i class="fa-solid fa-arrows-rotate w-3 h-3"></i>
                         </button>
