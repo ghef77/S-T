@@ -67,7 +67,7 @@
         #data-table thead { 
             position: sticky !important; 
             top: 0 !important; 
-            z-index: 1000 !important; 
+            z-index: 100 !important; 
             background-color: var(--primary-color) !important;
             color: white !important;
             font-weight: 600 !important;
@@ -108,7 +108,7 @@
           position: fixed;
           right: 16px;
           bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
-          z-index: 60;
+          z-index: 50;
           width: 56px;
           height: 56px;
           border-radius: 9999px;
@@ -213,12 +213,12 @@
         }
         
         /* History bar responsive design */
-        /* Hide history bar and snapshot banner on medium and small screens */
+        /* Enhanced mobile support for history bar */
         @media (max-width: 1023px) {
-            #history-bar,
             #snapshot-banner {
                 display: none !important;
             }
+            /* Don't hide history bar on mobile - make it responsive instead */
         }
         
         /* Utility classes */
@@ -352,7 +352,7 @@
             margin-top: 4px;
             border-radius: 0.5rem;
             box-shadow: var(--shadow-lg);
-            z-index: 100;
+            z-index: 40;
             opacity: 0;
             transition: opacity 0.5s, transform 0.5s;
             max-width: 90vw;
@@ -460,7 +460,7 @@
             position: sticky !important;
             left: 0 !important;
             top: 0 !important;
-            z-index: 1001 !important;
+            z-index: 101 !important;
             background-color: var(--primary-color) !important;
             /* ✅ GARANTIR que la première colonne reste visible */
             will-change: transform !important;
@@ -482,7 +482,7 @@
             position: sticky !important;
             left: 0 !important;
             top: 0 !important;
-            z-index: 1001 !important;
+            z-index: 101 !important;
             background-color: var(--primary-color) !important;
             /* ✅ GARANTIR que les colonnes gelées restent visibles */
             will-change: transform !important;
@@ -498,7 +498,7 @@
             /* ✅ Forcer le comportement sticky même pendant les opérations */
             position: sticky !important;
             top: 0 !important;
-            z-index: 1000 !important;
+            z-index: 100 !important;
             /* ✅ Optimisations pour la performance */
             will-change: transform !important;
             transform: translateZ(0) !important;
@@ -512,7 +512,7 @@
         /* ✅ En-têtes de colonnes gelées avec priorité maximale */
         #data-table th:first-child,
         .frozen-column-header.frozen-1 {
-            z-index: 1001 !important;
+            z-index: 101 !important;
             left: 0 !important;
             top: 0 !important;
         }
@@ -695,21 +695,123 @@
                 -webkit-overflow-scrolling: touch;
             }
             
-            /* History bar responsive adjustments */
+                    /* History bar responsive adjustments */
+        #history-bar-container {
+            padding: 0.5rem !important;
+        }
+        
+        #history-bar-container button {
+            font-size: 0.75rem !important;
+            padding: 0.25rem 0.5rem !important;
+            min-height: 2rem !important;
+        }
+        
+        #history-bar-container .fa-solid {
+            width: 0.875rem !important;
+            height: 0.875rem !important;
+        }
+        
+        /* Enhanced mobile layout for history bar */
+        @media (max-width: 768px) {
             #history-bar-container {
+                width: 100% !important;
+                max-width: 100% !important;
+                justify-content: center !important;
+            }
+            
+            #history-bar-container > div {
+                width: 100% !important;
+                max-width: 100% !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                gap: 0.5rem !important;
+            }
+            
+            /* Stack buttons vertically on mobile */
+            #history-bar-container .flex.flex-wrap {
+                flex-direction: column !important;
+                align-items: center !important;
+                gap: 0.5rem !important;
+            }
+            
+            /* Make buttons full width on mobile */
+            #history-bar-container button {
+                width: 100% !important;
+                max-width: 200px !important;
+                justify-content: center !important;
                 padding: 0.5rem !important;
+                font-size: 0.875rem !important;
+            }
+            
+            /* Calendar dropdown full width on mobile */
+            #snapshot-calendar-dropdown {
+                width: 90vw !important;
+                max-width: 90vw !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+            }
+        }
+        
+        /* Extra small screen optimizations */
+        @media (max-width: 480px) {
+            #history-bar-container > div {
+                padding: 0.75rem !important;
+                gap: 0.75rem !important;
             }
             
             #history-bar-container button {
-                font-size: 0.75rem !important;
-                padding: 0.25rem 0.5rem !important;
-                min-height: 2rem !important;
+                padding: 0.75rem 1rem !important;
+                font-size: 1rem !important;
+                min-height: 3rem !important;
             }
             
             #history-bar-container .fa-solid {
-                width: 0.875rem !important;
-                height: 0.875rem !important;
+                width: 1.125rem !important;
+                height: 1.125rem !important;
             }
+            
+            /* Ensure calendar dropdown is mobile-friendly */
+            #snapshot-calendar-dropdown {
+                width: 95vw !important;
+                max-width: 95vw !important;
+                left: 2.5vw !important;
+                transform: none !important;
+                max-height: 70vh !important;
+            }
+        }
+        
+        /* Touch-friendly interactions */
+        @media (hover: none) and (pointer: coarse) {
+            #history-bar-container button {
+                min-height: 2.5rem !important;
+                touch-action: manipulation !important;
+            }
+            
+            #history-toggle-btn {
+                min-width: 2rem !important;
+                min-height: 2rem !important;
+            }
+        }
+        
+        /* Extra small screen breakpoint (xs) */
+        @media (max-width: 375px) {
+            #history-bar-container > div {
+                padding: 0.5rem !important;
+                gap: 0.5rem !important;
+            }
+            
+            #history-bar-container button {
+                padding: 0.5rem !important;
+                font-size: 0.875rem !important;
+                min-height: 2.5rem !important;
+            }
+            
+            /* Ensure text doesn't overflow on very small screens */
+            #current-snapshot-date-text {
+                font-size: 0.75rem !important;
+                line-height: 1.2 !important;
+            }
+        }
         }
         
         /* Small screen adjustments (sm breakpoint) */
@@ -1189,60 +1291,88 @@
 
             <!-- History Bar Container - This is what gets toggled -->
             <div id="history-bar-container" class="flex justify-end">
-                <!-- All buttons in one responsive row with reduced width -->
-                <div class="flex flex-wrap items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 w-1/2 relative z-20">
-                    <!-- Navigation buttons - Hidden on small screens -->
+                <!-- Enhanced mobile-responsive container -->
+                <div class="flex flex-wrap items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 w-full md:w-1/2 relative z-20">
+                    <!-- Navigation buttons - Responsive visibility -->
+                    <div class="flex md:hidden items-center gap-2 w-full justify-center mb-2">
+                        <button id="history-back" onclick="goToPreviousSnapshot()" disabled title="Snapshot précédent" aria-label="Snapshot précédent" class="bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-1 max-w-32">
+                            <i class="fa-solid fa-chevron-left w-4 h-4 mr-2"></i>
+                            <span class="hidden xs:inline">Précédent</span>
+                            <span class="xs:hidden">Préc</span>
+                        </button>
+            
+                        <button id="history-date" onclick="openDatePicker()" title="Choisir une date de snapshot" aria-label="Choisir une date" class="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors font-medium flex items-center justify-center flex-1 max-w-32">
+                            <span id="current-date-text" class="hidden xs:inline">Données en direct</span>
+                            <span class="xs:hidden">Date</span>
+                            <i class="fa-solid fa-calendar ml-2 w-4 h-4"></i>
+                        </button>
+            
+                        <button id="history-next" onclick="goToNextSnapshot()" disabled title="Snapshot suivant" aria-label="Snapshot suivant" class="bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-1 max-w-32">
+                            <span class="hidden xs:inline">Suivant</span>
+                            <span class="xs:hidden">Suiv</span>
+                            <i class="fa-solid fa-chevron-right w-4 h-4 ml-2"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Desktop navigation buttons -->
                     <div class="hidden md:flex items-center gap-2">
-                        <button id="history-back" onclick="goToPreviousSnapshot()" disabled title="Snapshot précédent" aria-label="Snapshot précédent" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                        <button id="history-back-desktop" onclick="goToPreviousSnapshot()" disabled title="Snapshot précédent" aria-label="Snapshot précédent" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
                             <i class="fa-solid fa-chevron-left w-3 h-3 mr-1"></i>
                             Précédent
                         </button>
             
-                        <button id="history-date" onclick="openDatePicker()" title="Choisir une date de snapshot" aria-label="Choisir une date" class="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700 transition-colors font-medium flex items-center justify-center">
-                            <span id="current-date-text">Données en direct</span>
+                        <button id="history-date-desktop" onclick="openDatePicker()" title="Choisir une date de snapshot" aria-label="Choisir une date" class="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700 transition-colors font-medium flex items-center justify-center">
+                            <span id="current-date-text-desktop">Données en direct</span>
                             <i class="fa-solid fa-calendar ml-1 w-3 h-3"></i>
                         </button>
             
-                        <button id="history-next" onclick="goToNextSnapshot()" disabled title="Snapshot suivant" aria-label="Snapshot suivant" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                        <button id="history-next-desktop" onclick="goToNextSnapshot()" disabled title="Snapshot suivant" aria-label="Snapshot suivant" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
                             <i class="fa-solid fa-chevron-right w-3 h-3 ml-1"></i>
                             Suivant
                         </button>
                     </div>
                     
-                    <!-- Action buttons - Always visible, smaller on mobile -->
-                    <button onclick="refreshTableData()" title="Actualiser le tableau avec les données les plus récentes" aria-label="Actualiser" class="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700 transition-colors font-medium flex items-center justify-center">
-                        <i class="fa-solid fa-arrows-rotate mr-1 w-3 h-3"></i>
-                        <span class="hidden sm:inline">Actualiser</span>
-                        <span class="sm:hidden">Act</span>
-                    </button>
-                    
-                    <!-- Calendar dropdown for snapshot dates -->
-                    <div class="relative z-20">
-                        <button id="snapshot-calendar-btn" onclick="toggleSnapshotCalendar()" title="Choisir une date de snapshot" aria-label="Calendrier des snapshots" class="bg-indigo-600 text-white px-2 py-1 rounded text-xs hover:bg-indigo-700 transition-colors font-medium flex items-center justify-center">
-                            <i class="fa-solid fa-calendar-days mr-1 w-3 h-3"></i>
-                            <span id="calendar-btn-text" class="hidden sm:inline">Calendrier</span>
-                            <span class="sm:hidden">Cal</span>
+                    <!-- Action buttons - Enhanced mobile layout -->
+                    <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-center">
+                        <button onclick="refreshTableData()" title="Actualiser le tableau avec les données les plus récentes" aria-label="Actualiser" class="bg-green-600 text-white px-3 py-2 md:px-2 md:py-1 rounded text-sm md:text-xs hover:bg-green-700 transition-colors font-medium flex items-center justify-center flex-1 md:flex-none max-w-32 md:max-w-none">
+                            <i class="fa-solid fa-arrows-rotate mr-2 md:mr-1 w-4 h-4 md:w-3 md:h-3"></i>
+                            <span class="hidden sm:inline">Actualiser</span>
+                            <span class="sm:hidden">Act</span>
                         </button>
                         
-                        <!-- Calendar dropdown -->
-                        <div id="snapshot-calendar-dropdown" class="hidden absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg z-[60] min-w-64 max-h-96 overflow-y-auto">
-                            <div class="p-3 border-b border-gray-200">
-                                <h3 class="text-sm font-semibold text-gray-700 mb-2">📅 Snapshots disponibles</h3>
-                                <div class="text-xs text-gray-500">Cliquez sur une date pour charger le snapshot</div>
-                            </div>
-                            <div id="snapshot-dates-list" class="p-2">
-                                <!-- Dates will be populated here -->
+                        <!-- Bouton Snapshot Manuel -->
+                        <button onclick="console.log('🔴 BUTTON CLICKED!'); window.debugManualSnapshot ? window.debugManualSnapshot() : createManualSnapshot()" title="Créer un snapshot manuel de la table actuelle" aria-label="Snapshot Manuel" class="bg-purple-600 text-white px-3 py-2 md:px-2 md:py-1 rounded text-sm md:text-xs hover:bg-purple-700 transition-colors font-medium flex items-center justify-center flex-1 md:flex-none max-w-32 md:max-w-none">
+                            <i class="fa-solid fa-camera mr-2 md:mr-1 w-4 h-4 md:w-3 md:h-3"></i>
+                            <span class="hidden sm:inline">Snapshot</span>
+                            <span class="sm:hidden">Snap</span>
+                        </button>
+                        
+                        <!-- Calendar dropdown for snapshot dates -->
+                        <div class="relative z-20 flex-1 md:flex-none max-w-32 md:max-w-none">
+                            <button id="snapshot-calendar-btn" onclick="toggleSnapshotCalendar()" title="Choisir une date de snapshot" aria-label="Calendrier des snapshots" class="bg-indigo-600 text-white px-3 py-2 md:px-2 md:py-1 rounded text-sm md:text-xs hover:bg-indigo-700 transition-colors font-medium flex items-center justify-center w-full">
+                                <i class="fa-solid fa-calendar-days mr-2 md:mr-1 w-4 h-4 md:w-3 md:h-3"></i>
+                                <span id="calendar-btn-text" class="hidden sm:inline">Calendrier</span>
+                                <span class="sm:hidden">Cal</span>
+                            </button>
+                            
+                            <!-- Enhanced mobile-friendly calendar dropdown -->
+                            <div id="snapshot-calendar-dropdown" class="hidden absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-64 max-h-96 overflow-y-auto">
+                                <div class="p-3 border-b border-gray-200">
+                                    <h3 class="text-sm font-semibold text-gray-700 mb-2">📅 Snapshots disponibles</h3>
+                                    <div class="text-xs text-gray-500">Cliquez sur une date pour charger le snapshot</div>
+                                </div>
+                                <div id="snapshot-dates-list" class="p-2">
+                                    <!-- Dates will be populated here -->
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Current Snapshot Date Display - Next to calendar button -->
-                    <div id="current-snapshot-date-display" class="flex items-center gap-1 px-2 py-1 bg-gray-100 border border-gray-300 rounded-md text-gray-700 text-xs font-medium ml-2">
-                        <i class="fa-solid fa-calendar-day w-3 h-3 text-blue-600"></i>
-                        <span id="current-snapshot-date-text">Données en direct</span>
+                    <!-- Current Snapshot Date Display - Mobile responsive -->
+                    <div id="current-snapshot-date-display" class="flex items-center gap-1 px-3 py-2 md:px-2 md:py-1 bg-gray-100 border border-gray-300 rounded-md text-gray-700 text-sm md:text-xs font-medium w-full md:w-auto justify-center">
+                        <i class="fa-solid fa-calendar-day w-4 h-4 md:w-3 md:h-3 text-blue-600"></i>
+                        <span id="current-snapshot-date-text" class="text-center">Données en direct</span>
                     </div>
-                    
-
                 </div>
             </div>
         </div>
@@ -6112,6 +6242,300 @@
             }
         }
         
+        // DEBUG WRAPPER for manual snapshot button
+        async function debugManualSnapshot() {
+            console.log('🚀 DEBUG: Manual Snapshot Button Clicked!');
+            console.log('=' .repeat(60));
+            
+            // Debug current state
+            console.log('📊 DEBUG: Current App State:');
+            console.log('   - snapshotMode:', window.snapshotMode || 'undefined');
+            console.log('   - currentSnapshotDate:', window.currentSnapshotDate || 'undefined');
+            console.log('   - availableSnapshots count:', window.availableSnapshots?.length || 0);
+            
+            // Debug window.tableData
+            console.log('📋 DEBUG: window.tableData status:');
+            console.log('   - Exists:', typeof window.tableData !== 'undefined');
+            console.log('   - Is Array:', Array.isArray(window.tableData));
+            console.log('   - Length:', window.tableData?.length || 0);
+            if (window.tableData && window.tableData.length > 0) {
+                console.log('   - First row keys:', Object.keys(window.tableData[0] || {}));
+                console.log('   - First row sample:', JSON.stringify(window.tableData[0], null, 2));
+            }
+            
+            // Debug DOM table data
+            console.log('🏗️ DEBUG: DOM Table Analysis:');
+            const table = document.getElementById('data-table');
+            if (table) {
+                const tbody = table.querySelector('tbody');
+                const rows = tbody?.querySelectorAll('tr') || [];
+                console.log('   - Table found:', !!table);
+                console.log('   - Rows in DOM:', rows.length);
+                
+                if (rows.length > 0) {
+                    const firstRow = rows[0];
+                    const cells = firstRow.querySelectorAll('td');
+                    console.log('   - Cells in first row:', cells.length);
+                    
+                    // Sample cell values
+                    const cellValues = Array.from(cells).slice(0, 3).map(cell => {
+                        const input = cell.querySelector('input, textarea, select');
+                        return input ? input.value : cell.textContent.trim();
+                    });
+                    console.log('   - First 3 cell values:', cellValues);
+                }
+            } else {
+                console.log('   - Table NOT found in DOM!');
+            }
+            
+            // Extract current data from DOM for comparison
+            console.log('🔍 DEBUG: Extracting current data from DOM...');
+            const domData = extractDOMTableData();
+            console.log('   - DOM extraction result:', domData?.length || 0, 'rows');
+            if (domData && domData.length > 0) {
+                console.log('   - DOM first row:', JSON.stringify(domData[0], null, 2));
+            }
+            
+            // Update window.tableData with current DOM state
+            if (domData && domData.length > 0) {
+                console.log('🔄 DEBUG: Updating window.tableData with current DOM data...');
+                window.tableData = domData;
+                console.log('   - window.tableData updated with', domData.length, 'rows');
+            }
+            
+            console.log('🎯 DEBUG: About to call createManualSnapshot()...');
+            console.log('=' .repeat(60));
+            
+            // Call the actual function
+            try {
+                await createManualSnapshot();
+                console.log('✅ DEBUG: createManualSnapshot() completed');
+            } catch (error) {
+                console.error('❌ DEBUG: createManualSnapshot() failed:', error);
+            }
+        }
+        
+        // Helper function to extract data from DOM
+        function extractDOMTableData() {
+            const table = document.getElementById('data-table');
+            if (!table) return null;
+            
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return null;
+            
+            const headerRow = table.querySelector('thead tr');
+            const headers = Array.from(headerRow?.querySelectorAll('th') || []).map(th => 
+                th.textContent.trim()
+            );
+            
+            const rows = tbody.querySelectorAll('tr');
+            const data = [];
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const rowData = {};
+                
+                cells.forEach((cell, index) => {
+                    if (headers[index]) {
+                        const input = cell.querySelector('input, textarea, select');
+                        let value = input ? input.value : cell.textContent.trim();
+                        
+                        // Convert numbers
+                        if (!isNaN(value) && value !== '' && !isNaN(parseFloat(value))) {
+                            value = parseFloat(value);
+                        }
+                        
+                        rowData[headers[index]] = value;
+                    }
+                });
+                
+                if (Object.keys(rowData).length > 0) {
+                    data.push(rowData);
+                }
+            });
+            
+            return data;
+        }
+        
+        // Create a manual snapshot with current table data
+        async function createManualSnapshot() {
+            console.log('🎯 FUNCTION CALLED: createManualSnapshot() STARTED');
+            console.log('⏰ Timestamp:', new Date().toISOString());
+            try {
+                console.log('🚀 Création d\'un snapshot manuel...');
+                
+                // Créer un client Supabase avec la clé de service pour contourner les politiques RLS
+                console.log('🔑 Création du client Supabase avec la clé de service...');
+                
+                // Utiliser une approche simple et robuste
+                let supabaseService;
+                try {
+                    // Essayer d'importer et créer le client
+                    const { createClient: createClientService } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+                    supabaseService = createClientService(supabaseConfig.supabaseUrl, supabaseConfig.supabaseServiceKey);
+                    console.log('✅ Client Supabase créé avec la clé de service');
+                } catch (error) {
+                    console.error('❌ Erreur lors de la création du client Supabase:', error);
+                    throw new Error(`Impossible de créer le client Supabase: ${error.message}`);
+                }
+                
+                // 🔧 FIXED: Capturer les données actuellement éditées dans le navigateur
+                console.log('📊 Capture des données actuelles du tableau (état édité)...');
+                
+                let tableData = null;
+                
+                // PRIORITÉ 1: Utiliser les données éditées actuellement dans le navigateur
+                if (window.tableData && Array.isArray(window.tableData) && window.tableData.length > 0) {
+                    tableData = window.tableData;
+                    console.log(`✅ Données capturées depuis le navigateur (état édité): ${tableData.length} lignes`);
+                    console.log('📝 DEBUG: Premier élément des données éditées:', JSON.stringify(tableData[0], null, 2));
+                } else {
+                    // FALLBACK: Si pas de données éditées, récupérer depuis la base
+                    console.log('⚠️ Aucune donnée éditée trouvée, récupération depuis la base de données...');
+                    const { data: dbData, error: fetchError } = await supabaseService
+                        .from('staffTable')
+                        .select('*')
+                        .order('No', { ascending: true });
+                    
+                    if (fetchError) {
+                        throw new Error(`Erreur lors de la récupération des données: ${fetchError.message}`);
+                    }
+                    
+                    tableData = dbData;
+                    console.log(`📊 Données récupérées depuis la base: ${tableData?.length || 0} lignes`);
+                }
+                
+                if (!tableData || tableData.length === 0) {
+                    showMessage('❌ Aucune donnée trouvée (ni éditée, ni en base)', 'error');
+                    return;
+                }
+                
+                console.log(`📊 Données récupérées: ${tableData.length} lignes`);
+                
+                // Vérifier la capacité de stockage
+                const capacityInfo = await checkStorageCapacity();
+                if (capacityInfo.needsCleanup) {
+                    await cleanupOldSnapshots(capacityInfo.target);
+                }
+                
+                // Générer un nom de fichier unique avec timestamp
+                const now = new Date();
+                const timestamp = now.getTime();
+                const dateString = now.toISOString().split('T')[0];
+                const timeString = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+                
+                // Créer le chemin de stockage : YYYY/MM/DD/MANUAL_HH-MM-SS_staffTable.json
+                const year = now.getFullYear();
+                const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                const day = now.getDate().toString().padStart(2, '0');
+                const objectPath = `${year}/${month}/${day}/MANUAL_${timeString}_staffTable.json`;
+                
+                // Préparer les données du snapshot
+                const snapshotData = {
+                    data: tableData,
+                    metadata: {
+                        table: 'staffTable',
+                        rowCount: tableData.length,
+                        createdAt: now.toISOString(),
+                        snapshotDate: dateString,
+                        type: 'MANUAL_SNAPSHOT',
+                        version: '2.0.0',
+                        description: 'Snapshot manuel créé par l\'utilisateur',
+                        timestamp: timestamp,
+                        userAction: 'manual_creation'
+                    }
+                };
+                
+                // Sérialiser en JSON
+                const jsonContent = JSON.stringify(snapshotData, null, 2);
+                const fileSize = new TextEncoder().encode(jsonContent).length;
+                
+                console.log(`📊 Création du snapshot manuel: ${tableData.length} lignes, ${(fileSize / 1024).toFixed(2)} KB`);
+                console.log(`📁 Object path: ${objectPath}`);
+                console.log(`🔑 Using service client: ${!!supabaseService}`);
+                
+                // Upload vers le stockage avec le client de service
+                console.log(`📤 DEBUT UPLOAD vers table-snapshots...`);
+                const uploadResult = await supabaseService.storage
+                    .from('table-snapshots')
+                    .upload(objectPath, jsonContent, {
+                        contentType: 'application/json',
+                        upsert: true
+                    });
+                
+                console.log(`📤 RESULTAT UPLOAD:`, uploadResult);
+                
+                if (uploadResult.error) {
+                    console.error(`❌ ERREUR UPLOAD:`, uploadResult.error);
+                    throw new Error(`Erreur lors de l'upload: ${uploadResult.error.message}`);
+                }
+                
+                console.log(`💾 Snapshot manuel uploadé vers: ${objectPath}`);
+                console.log(`✅ Upload data:`, uploadResult.data);
+                
+                // Créer l'enregistrement dans l'index avec le client de service
+                const { error: indexError } = await supabaseService
+                    .from('table_snapshots_index')
+                    .insert({
+                        snapshot_date: dateString,
+                        object_path: objectPath,
+                        row_count: tableData.length,
+                        file_size_bytes: fileSize,
+                        metadata: snapshotData.metadata
+                    });
+                
+                if (indexError) {
+                    throw new Error(`Erreur lors de la création de l'index: ${indexError.message}`);
+                }
+                
+                console.log(`✅ Snapshot manuel indexé avec succès pour la date: ${dateString}`);
+                
+                // Log dans le journal de restauration avec le client de service
+                try {
+                    await supabaseService
+                        .from('snapshot_restore_log')
+                        .insert({
+                            snapshot_date: dateString,
+                            restored_at: now.toISOString(),
+                            restored_by: 'user_manual',
+                            restore_reason: 'Snapshot manuel créé par l\'utilisateur'
+                        });
+                    console.log('📝 Entrée de log créée dans snapshot_restore_log');
+                } catch (logError) {
+                    console.warn(`⚠️ Warning: Impossible de créer l'entrée de log: ${logError.message}`);
+                }
+                
+                // Recharger les snapshots disponibles
+                await loadAvailableSnapshots();
+                
+                // Mettre à jour l'interface
+                populateSnapshotCalendar();
+                updateHistoryNavigation();
+                
+                // Message de succès
+                showMessage(`✅ Snapshot manuel créé avec succès! ${tableData.length} lignes sauvegardées`, 'success');
+                
+                // Monitoring de la santé du stockage
+                await monitorStorageHealth();
+                
+                // Retourner le résultat pour les tests
+                return {
+                    success: true,
+                    objectPath: objectPath,
+                    dateString: dateString,
+                    rowCount: tableData.length,
+                    fileSize: fileSize
+                };
+                
+            } catch (error) {
+                console.error('❌ Erreur lors de la création du snapshot manuel:', error);
+                showMessage(`❌ Erreur lors de la création du snapshot: ${error.message}`, 'error');
+                
+                // Retourner l'erreur pour les tests
+                throw error;
+            }
+        }
+        
         // Load available snapshots from the database
         async function loadAvailableSnapshots() {
             try {
@@ -6228,21 +6652,27 @@
             }
         }
         
-        // Update history navigation buttons state
+        // Enhanced mobile-responsive history navigation update function
         function updateHistoryNavigation() {
+            // Update both mobile and desktop buttons
             const backBtn = document.getElementById('history-back');
             const nextBtn = document.getElementById('history-next');
+            const backBtnDesktop = document.getElementById('history-back-desktop');
+            const nextBtnDesktop = document.getElementById('history-next-desktop');
             
-            // Always update button states
-            
+            // Always update button states for both mobile and desktop
             if (snapshotMode === 'live') {
                 // Enable back/next if snapshots exist
                 if (backBtn) backBtn.disabled = availableSnapshots.length === 0;
                 if (nextBtn) nextBtn.disabled = availableSnapshots.length === 0;
+                if (backBtnDesktop) backBtnDesktop.disabled = availableSnapshots.length === 0;
+                if (nextBtnDesktop) nextBtnDesktop.disabled = availableSnapshots.length === 0;
             } else {
                 // Update back/next button states
                 if (backBtn) backBtn.disabled = currentSnapshotIndex <= 0;
                 if (nextBtn) nextBtn.disabled = currentSnapshotIndex >= availableSnapshots.length - 1;
+                if (backBtnDesktop) backBtnDesktop.disabled = currentSnapshotIndex <= 0;
+                if (nextBtnDesktop) nextBtnDesktop.disabled = currentSnapshotIndex >= availableSnapshots.length - 1;
             }
             
             // Update calendar button text if calendar is open
@@ -6251,32 +6681,40 @@
                 calendarBtnText.textContent = `Calendrier (${availableSnapshots.length})`;
             }
             
-            // Update current snapshot date display
+            // Update current snapshot date display for both mobile and desktop
             const currentSnapshotDateText = document.getElementById('current-snapshot-date-text');
-            if (currentSnapshotDateText) {
-                if (snapshotMode === 'live') {
-                    currentSnapshotDateText.textContent = 'Données en direct';
-                } else if (currentSnapshotDate && currentSnapshotIndex >= 0) {
-                    // Get the current snapshot info for better display
-                    const currentSnapshot = availableSnapshots[currentSnapshotIndex];
-                    if (currentSnapshot) {
-                        const date = new Date(currentSnapshot.snapshot_date);
-                        const createdTime = new Date(currentSnapshot.created_at);
-                        const formattedDate = date.toLocaleDateString('fr-FR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                        });
-                        const timeString = createdTime.toLocaleTimeString('fr-FR', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        });
-                        currentSnapshotDateText.textContent = `Snapshot du ${formattedDate} à ${timeString}`;
-                    } else {
-                        currentSnapshotDateText.textContent = 'Snapshot en cours...';
+            const currentSnapshotDateTextDesktop = document.getElementById('current-snapshot-date-text-desktop');
+            
+            const updateDateText = (element) => {
+                if (element) {
+                    if (snapshotMode === 'live') {
+                        element.textContent = 'Données en direct';
+                    } else if (currentSnapshotDate && currentSnapshotIndex >= 0) {
+                        // Get the current snapshot info for better display
+                        const currentSnapshot = availableSnapshots[currentSnapshotIndex];
+                        if (currentSnapshot) {
+                            const date = new Date(currentSnapshot.snapshot_date);
+                            const createdTime = new Date(currentSnapshot.created_at);
+                            const formattedDate = date.toLocaleDateString('fr-FR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            });
+                            const timeString = createdTime.toLocaleTimeString('fr-FR', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                            element.textContent = `Snapshot du ${formattedDate} à ${timeString}`;
+                        } else {
+                            element.textContent = 'Snapshot en cours...';
+                        }
                     }
                 }
-            }
+            };
+            
+            // Update both mobile and desktop date displays
+            updateDateText(currentSnapshotDateText);
+            updateDateText(currentSnapshotDateTextDesktop);
         }
         
         // Check and fix inconsistencies between database and storage
@@ -6477,8 +6915,8 @@
                     // METHOD 1: Fresh Supabase client download
                     console.log('🔄 METHOD 1: Fresh Supabase client download...');
                     
-                    // Use the full path for hierarchical paths, filename for flat paths
-                    const downloadPath = isHierarchicalPath ? snapshotInfo.object_path : fileName;
+                    // Always use the full object path for download
+                    const downloadPath = snapshotInfo.object_path;
                     console.log('📁 Téléchargement avec chemin:', downloadPath);
                     
                     const result = await freshSupabase.storage
@@ -6503,7 +6941,7 @@
                     try {
                         console.log('🔄 METHOD 2: Direct URL with cache busting...');
                         const timestamp = Date.now();
-                        const downloadPath = isHierarchicalPath ? snapshotInfo.object_path : fileName;
+                        const downloadPath = snapshotInfo.object_path;
                         const directUrl = `https://fiecugxopjxzqfdnaqsu.supabase.co/storage/v1/object/public/table-snapshots/${downloadPath}?t=${timestamp}`;
                         
                         const response = await fetch(directUrl, {
@@ -6536,7 +6974,7 @@
                                 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDUwNTY1NywiZXhwIjoyMDcwMDgxNjU3fQ.5m7nLHxHxOkxQf8maZis7Y7jynqu2dWqIzEbgWvOTcE'
                             );
                             
-                            const downloadPath = isHierarchicalPath ? snapshotInfo.object_path : fileName;
+                            const downloadPath = snapshotInfo.object_path;
                             const serviceResult = await serviceSupabase.storage
                                 .from('table-snapshots')
                                 .download(downloadPath);
@@ -6603,36 +7041,82 @@
         
         // Enter snapshot mode using unique snapshot object (fixes multiple snapshots per day issue)
         async function enterSnapshotModeByUniqueId(snapshotInfo) {
+            console.log('🚀 DEBUG: enterSnapshotModeByUniqueId called with:', {
+                snapshotInfo,
+                currentMode: snapshotMode,
+                currentDate: currentSnapshotDate,
+                currentIndex: currentSnapshotIndex,
+                availableCount: availableSnapshots?.length || 0
+            });
+            
             if (snapshotMode === 'snapshot' && currentSnapshotDate === snapshotInfo.snapshot_date && 
                 currentSnapshotIndex >= 0 && availableSnapshots[currentSnapshotIndex]?.id === snapshotInfo.id) {
+                console.log('⚠️ DEBUG: Already in this snapshot, returning early');
                 return; // Already in this exact snapshot
             }
             
             try {
                 console.log('🔄 enterSnapshotModeByUniqueId: Loading snapshot with ID:', snapshotInfo.id);
+                console.log('📊 DEBUG: Full snapshot info:', JSON.stringify(snapshotInfo, null, 2));
                 
                 // Check if the file exists in storage first
+                // For organized paths like "2025/08/24/file.json", extract the folder
+                const pathParts = snapshotInfo.object_path.split('/');
+                const searchPath = pathParts.length > 1 ? pathParts.slice(0, -1).join('/') : '';
+                
+                console.log('📁 DEBUG: Searching in folder:', searchPath || 'root');
+                
                 const { data: fileList, error: listError } = await supabase.storage
                     .from('table-snapshots')
-                    .list('', { limit: 100 });
+                    .list(searchPath, { limit: 200 });
                 
                 if (listError) {
                     console.warn('⚠️ Could not list storage files:', listError);
                 } else {
-                    // Extract filename from object_path for comparison
+                    console.log('📁 DEBUG: Files in storage folder:', fileList?.map(f => f.name) || []);
+                    console.log('🔍 DEBUG: Looking for file path:', snapshotInfo.object_path);
+                    
+                    // Extract filename from object_path since we're searching in the specific folder
                     const fileName = snapshotInfo.object_path.split('/').pop() || snapshotInfo.object_path;
-                    const fileExists = fileList?.some(file => file.name === fileName);
-                    if (!fileExists) {
-                        console.warn(`⚠️ File not found in storage: ${fileName} (from path: ${snapshotInfo.object_path})`);
+                    console.log('🔍 DEBUG: Looking for filename:', fileName);
+                    
+                    // Look for the file in the folder
+                    const fileMatch = fileList?.find(file => file.name === fileName);
+                    console.log('🎯 DEBUG: File found in folder:', !!fileMatch);
+                    
+                    let actualFilePath = null;
+                    let fileExists = false;
+                    
+                    if (fileMatch) {
+                        actualFilePath = snapshotInfo.object_path;
+                        fileExists = true;
+                        console.log('✅ DEBUG: File found in organized folder structure');
+                    } else {
+                        // Fallback: try to find by filename pattern matching
+                        const fallbackMatch = fileList?.find(file => 
+                            file.name.includes(fileName.replace('_staffTable.json', '')) ||
+                            fileName.includes(file.name.replace('_staffTable.json', ''))
+                        );
                         
-                        // Try to find a similar file or suggest cleanup
-                        const similarFiles = fileList?.filter(f => f.name.includes('staffTable_'));
-                        if (similarFiles && similarFiles.length > 0) {
-                            console.log('📋 Similar files found:', similarFiles.map(f => f.name));
-                            showMessage('Fichier snapshot introuvable. Utilisez le bouton "Nettoyer" pour corriger.', 'warning');
-                            return;
+                        if (fallbackMatch) {
+                            actualFilePath = searchPath ? `${searchPath}/${fallbackMatch.name}` : fallbackMatch.name;
+                            fileExists = true;
+                            console.log('✅ DEBUG: Fallback filename match found:', fallbackMatch.name);
                         }
                     }
+                    
+                    if (!fileExists) {
+                        console.log('❌ DEBUG: No file found in folder');
+                        console.log('🔍 DEBUG: Available files:', fileList?.map(f => f.name) || []);
+                        console.log('🔍 DEBUG: Searched for:', fileName);
+                        showMessage(`❌ Fichier snapshot introuvable: ${fileName}`, 'error');
+                        return;
+                    }
+                    
+                    // File exists, proceed with loading
+                    console.log('✅ DEBUG: Using file path:', actualFilePath);
+                    // Update the snapshotInfo to use the actual file path
+                    snapshotInfo.object_path = actualFilePath;
                 }
                 
                 // Get snapshot data from storage - Handle both old and new path formats
@@ -6676,8 +7160,8 @@
                     // METHOD 1: Fresh Supabase client download
                     console.log('🔄 METHOD 1: Fresh Supabase client download...');
                     
-                    // Use the full path for hierarchical paths, filename for flat paths
-                    const downloadPath = isHierarchicalPath ? snapshotInfo.object_path : fileName;
+                    // Always use the full object path for download
+                    const downloadPath = snapshotInfo.object_path;
                     console.log('📁 Téléchargement avec chemin:', downloadPath);
                     
                     const result = await freshSupabase.storage
@@ -6702,7 +7186,7 @@
                     try {
                         console.log('🔄 METHOD 2: Direct URL with cache busting...');
                         const timestamp = Date.now();
-                        const downloadPath = isHierarchicalPath ? snapshotInfo.object_path : fileName;
+                        const downloadPath = snapshotInfo.object_path;
                         const directUrl = `https://fiecugxopjxzqfdnaqsu.supabase.co/storage/v1/object/public/table-snapshots/${downloadPath}?t=${timestamp}`;
                         
                         const response = await fetch(directUrl, {
@@ -6735,7 +7219,7 @@
                                 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDUwNTY1NywiZXhwIjoyMDcwMDgxNjU3fQ.5m7nLHxHxOkxQf8maZis7Y7jynqu2dWqIzEbgWvOTcE'
                             );
                             
-                            const downloadPath = isHierarchicalPath ? snapshotInfo.object_path : fileName;
+                            const downloadPath = snapshotInfo.object_path;
                             const serviceResult = await serviceSupabase.storage
                                 .from('table-snapshots')
                                 .download(downloadPath);
@@ -7230,7 +7714,7 @@
             });
         }
         
-        // Simple and robust history bar toggle function
+        // Enhanced mobile-responsive history bar toggle function
         function toggleHistoryBarSimple() {
             // Debug: Vérifier que le DOM est chargé
             if (document.readyState !== 'complete') {
@@ -7276,12 +7760,12 @@
                 console.log('🔼 History bar shown');
             }
             
-            // Force a reflow on mobile to ensure proper rendering
+            // Enhanced mobile-specific optimizations
             if (isMobile()) {
-                // Force reflow multiple
+                // Force reflow for proper rendering
                 historyBarContainer.offsetHeight;
                 
-                // Additional mobile-specific adjustments
+                // Mobile-specific layout adjustments
                 setTimeout(() => {
                     if (window.innerWidth <= 768) {
                         // Ensure proper mobile layout
@@ -7291,30 +7775,151 @@
                         // Force another reflow
                         historyBarContainer.offsetHeight;
                         
-                        // Additional mobile optimization
+                        // Enhanced mobile optimization for very small screens
                         if (window.innerWidth <= 480) {
                             // Very small screens - ensure vertical stacking
                             const innerContainer = historyBarContainer.querySelector('div');
                             if (innerContainer) {
                                 innerContainer.style.flexDirection = 'column';
                                 innerContainer.style.alignItems = 'center';
+                                innerContainer.style.gap = '0.5rem';
+                            }
+                            
+                            // Make calendar dropdown more mobile-friendly
+                            const calendarDropdown = document.getElementById('snapshot-calendar-dropdown');
+                            if (calendarDropdown) {
+                                calendarDropdown.style.width = '95vw';
+                                calendarDropdown.style.maxWidth = '95vw';
+                                calendarDropdown.style.left = '2.5vw';
+                                calendarDropdown.style.transform = 'none';
                             }
                         }
+                        
+                        // Ensure buttons are properly sized on mobile
+                        const buttons = historyBarContainer.querySelectorAll('button');
+                        buttons.forEach(button => {
+                            button.style.width = '100%';
+                            button.style.maxWidth = '250px';
+                            button.style.justifyContent = 'center';
+                            button.style.padding = '0.75rem 1rem';
+                            button.style.fontSize = '0.875rem';
+                        });
                     }
-                }, 50);
+                }, 100);
+                
+                // Additional mobile gesture support
+                if ('ontouchstart' in window) {
+                    // Add touch-friendly interactions
+                    historyBarContainer.style.touchAction = 'manipulation';
+                }
+                
+                // Add mobile-specific event listeners
+                addMobileEventListeners();
             }
         }
         
-        // Test function for mobile history bar functionality
+        // Add mobile-specific event listeners for better touch experience
+        function addMobileEventListeners() {
+            const historyBarContainer = document.getElementById('history-bar-container');
+            if (!historyBarContainer) return;
+            
+            // Prevent zoom on double tap for mobile
+            let lastTouchEnd = 0;
+            historyBarContainer.addEventListener('touchend', function (event) {
+                const now = (new Date()).getTime();
+                if (now - lastTouchEnd <= 300) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+            
+            // Add swipe gesture support for very small screens
+            if (window.innerWidth <= 480) {
+                let startX = 0;
+                let startY = 0;
+                
+                historyBarContainer.addEventListener('touchstart', function(e) {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                });
+                
+                historyBarContainer.addEventListener('touchend', function(e) {
+                    if (!startX || !startY) return;
+                    
+                    const endX = e.changedTouches[0].clientX;
+                    const endY = e.changedTouches[0].clientY;
+                    const diffX = startX - endX;
+                    const diffY = startY - endY;
+                    
+                    // If horizontal swipe is more significant than vertical
+                    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+                        if (diffX > 0) {
+                            // Swipe left - go to next snapshot
+                            if (currentSnapshotIndex < availableSnapshots.length - 1) {
+                                goToNextSnapshot();
+                            }
+                        } else {
+                            // Swipe right - go to previous snapshot
+                            if (currentSnapshotIndex > 0) {
+                                goToPreviousSnapshot();
+                            }
+                        }
+                    }
+                    
+                    startX = 0;
+                    startY = 0;
+                });
+            }
+        }
+        
+        // Enhanced mobile detection with better breakpoint support
+        function getMobileBreakpoint() {
+            const width = window.innerWidth;
+            if (width <= 375) return 'xs';
+            if (width <= 480) return 'sm';
+            if (width <= 768) return 'md';
+            if (width <= 1024) return 'lg';
+            return 'xl';
+        }
+        
+        // Function to optimize layout for current screen size
+        function optimizeLayoutForScreen() {
+            const breakpoint = getMobileBreakpoint();
+            const historyBarContainer = document.getElementById('history-bar-container');
+            
+            if (!historyBarContainer) return;
+            
+            switch (breakpoint) {
+                case 'xs':
+                    // Very small screens - maximize space usage
+                    historyBarContainer.style.padding = '0.5rem';
+                    break;
+                case 'sm':
+                    // Small screens - balanced layout
+                    historyBarContainer.style.padding = '0.75rem';
+                    break;
+                case 'md':
+                    // Medium screens - comfortable spacing
+                    historyBarContainer.style.padding = '1rem';
+                    break;
+                default:
+                    // Large screens - default spacing
+                    historyBarContainer.style.padding = '';
+                    break;
+            }
+        }
+        
+        // Enhanced test function for mobile history bar functionality
         function testMobileHistoryBar() {
             const historyBarContainer = document.getElementById('history-bar-container');
             const toggleBtn = document.getElementById('history-toggle-btn');
             const toggleIcon = document.getElementById('history-toggle-icon');
             
-            console.log('🧪 Testing Mobile History Bar...');
+            console.log('🧪 Testing Enhanced Mobile History Bar...');
             console.log('📱 Screen size:', window.innerWidth, 'x', window.innerHeight);
             console.log('📱 User Agent:', navigator.userAgent);
             console.log('📱 isMobile():', isMobile());
+            console.log('📱 Breakpoint:', getMobileBreakpoint());
             
             if (!historyBarContainer || !toggleBtn || !toggleIcon) {
                 console.error('❌ Test failed: Required elements not found');
@@ -7325,6 +7930,17 @@
             console.log('🔍 History bar container:', historyBarContainer);
             console.log('🔍 Toggle button:', toggleBtn);
             console.log('🔍 Toggle icon:', toggleIcon);
+            
+            // Test mobile-specific features
+            if (isMobile()) {
+                console.log('📱 Mobile optimizations active');
+                console.log('📱 Touch support:', 'ontouchstart' in window);
+                console.log('📱 Max touch points:', navigator.maxTouchPoints);
+                
+                // Test layout optimization
+                optimizeLayoutForScreen();
+                console.log('📱 Layout optimized for:', getMobileBreakpoint());
+            }
             
             // Test initial state
             const initialHidden = historyBarContainer.classList.contains('hidden');
@@ -8096,6 +8712,63 @@
         window.openDatePicker = openDatePicker;
         window.formatDateForDisplay = formatDateForDisplay;
         window.disableTableEditing = disableTableEditing;
+        window.createManualSnapshot = createManualSnapshot;
+        
+        // Add debug wrapper to window
+        window.debugManualSnapshot = async function() {
+            try {
+                console.log('🚀 DEBUG: Manual Snapshot Button Clicked!');
+                console.log('🎯 About to call createManualSnapshot...');
+                
+                await createManualSnapshot();
+                console.log('✅ DEBUG: createManualSnapshot completed');
+                
+            } catch (error) {
+                console.error('❌ DEBUG ERROR:', error);
+            }
+        };
+        
+        // Add DOM extraction helper to window
+        window.extractDOMTableData = function() {
+            const table = document.getElementById('data-table');
+            if (!table) return null;
+            
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return null;
+            
+            const headerRow = table.querySelector('thead tr');
+            const headers = Array.from(headerRow?.querySelectorAll('th') || []).map(th => 
+                th.textContent.trim()
+            );
+            
+            const rows = tbody.querySelectorAll('tr');
+            const data = [];
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const rowData = {};
+                
+                cells.forEach((cell, index) => {
+                    if (headers[index]) {
+                        const input = cell.querySelector('input, textarea, select');
+                        let value = input ? input.value : cell.textContent.trim();
+                        
+                        // Convert numbers
+                        if (!isNaN(value) && value !== '' && !isNaN(parseFloat(value))) {
+                            value = parseFloat(value);
+                        }
+                        
+                        rowData[headers[index]] = value;
+                    }
+                });
+                
+                if (Object.keys(rowData).length > 0) {
+                    data.push(rowData);
+                }
+            });
+            
+            return data;
+        };
         
         // Expose storage management functions globally
         window.cleanupOldSnapshots = cleanupOldSnapshots;
