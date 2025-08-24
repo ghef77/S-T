@@ -152,6 +152,8 @@ serve(async (req) => {
       console.log(`✅ New snapshot index created for date: ${snapshotDate}`);
     }
 
+    console.log(`✅ Daily snapshot index updated for date: ${snapshotDate}`);
+
     // 7. Return success response
     return new Response(JSON.stringify({
       success: true,

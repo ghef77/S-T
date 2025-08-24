@@ -9453,6 +9453,206 @@ ${capacityInfo.needsCleanup ?
 
         // Initialize when DOM is ready
         window.addEventListener('load', initializeApp);
+
+        // ========================================
+        // SUPPORT TACTILE MOBILE - BOUTON +
+        // ========================================
+        
+        // Gestion des événements tactiles pour mobile - SOLUTION RECOMMANDÉE
+        function addTouchSupport() {
+            const addButton = document.querySelector('.add-snapshot-btn, .btn-add-snapshot, button[onclick*="createManualSnapshot"], .fa-plus, [class*="add"], [class*="plus"]');
+            
+            if (addButton) {
+                console.log('🔍 Bouton trouvé:', addButton);
+                
+                // Supprimer les anciens événements pour éviter les doublons
+                addButton.removeEventListener('click', handleButtonClick);
+                addButton.removeEventListener('touchstart', handleTouchStart);
+                addButton.removeEventListener('touchend', handleTouchEnd);
+                
+                // Gestion des clics (PC)
+                addButton.addEventListener('click', handleButtonClick);
+                
+                // Gestion des événements tactiles (Mobile)
+                addButton.addEventListener('touchstart', handleTouchStart);
+                addButton.addEventListener('touchend', handleTouchEnd);
+                
+                console.log('✅ Événements tactiles ajoutés au bouton');
+            } else {
+                console.log('❌ Bouton non trouvé, recherche alternative...');
+                // Recherche alternative
+                const alternativeButtons = document.querySelectorAll('button, .btn, [onclick], .fa-plus, [class*="add"]');
+                console.log('🔍 Boutons alternatifs trouvés:', alternativeButtons);
+                
+                alternativeButtons.forEach(btn => {
+                    if (btn.textContent.includes('+') || btn.innerHTML.includes('+') || btn.className.includes('add') || btn.className.includes('plus')) {
+                        console.log('🎯 Bouton alternatif identifié:', btn);
+                        addTouchEventsToButton(btn);
+                    }
+                });
+            }
+        }
+
+        // Gestionnaire de clic
+        function handleButtonClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('✅ Clic détecté sur le bouton');
+            openSnapshotBar();
+        }
+
+        // Gestionnaire de touch start
+        function handleTouchStart(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log(' Touch start détecté');
+        }
+
+        // Gestionnaire de touch end
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('📱 Touch end détecté');
+            
+            // Petit délai pour éviter les doubles déclenchements
+            setTimeout(() => {
+                openSnapshotBar();
+            }, 100);
+        }
+
+        // Fonction pour ajouter les événements à un bouton
+        function addTouchEventsToButton(button) {
+            button.addEventListener('click', handleButtonClick);
+            button.addEventListener('touchstart', handleTouchStart);
+            button.addEventListener('touchend', handleTouchEnd);
+            console.log('✅ Événements tactiles ajoutés au bouton alternatif');
+        }
+
+        // Fonction pour ouvrir la barre de snapshot (à adapter selon votre code)
+        function openSnapshotBar() {
+            console.log('🚀 Ouverture de la barre de snapshot...');
+            
+            // Si vous avez une fonction existante, appelez-la
+            if (typeof createManualSnapshot === 'function') {
+                console.log('✅ Appel de createManualSnapshot');
+                createManualSnapshot();
+            } else if (typeof showSnapshotModal === 'function') {
+                console.log('✅ Appel de showSnapshotModal');
+                showSnapshotModal();
+            } else if (typeof toggleSnapshotBar === 'function') {
+                console.log('✅ Appel de toggleSnapshotBar');
+                toggleSnapshotBar();
+            } else {
+                console.log('⚠️ Aucune fonction de snapshot trouvée, création d\'une fonction par défaut');
+                createDefaultSnapshotBar();
+            }
+        }
+
+        // Fonction par défaut si aucune fonction n'existe
+        function createDefaultSnapshotBar() {
+            console.log('🔧 Création d\'une barre de snapshot par défaut...');
+            
+            // Créer une barre de snapshot simple
+            const snapshotBar = document.createElement('div');
+            snapshotBar.id = 'defaultSnapshotBar';
+            snapshotBar.style.cssText = `
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                border-top: 2px solid #007bff;
+                padding: 20px;
+                z-index: 10000;
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+                transform: translateY(100%);
+                transition: transform 0.3s ease;
+            `;
+            
+            snapshotBar.innerHTML = `
+                <h3>Créer un Snapshot</h3>
+                <p>Fonctionnalité de snapshot en cours de développement...</p>
+                <button onclick="this.parentElement.style.transform='translateY(100%)'" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px;">
+                    Fermer
+                </button>
+            `;
+            
+            document.body.appendChild(snapshotBar);
+            
+            // Afficher la barre
+            setTimeout(() => {
+                snapshotBar.style.transform = 'translateY(0)';
+            }, 100);
+        }
+
+        // Fonction de débogage pour mobile
+        function debugMobileButton() {
+            console.log('🔍 === DÉBOGAGE MOBILE ===');
+            
+            const addButton = document.querySelector('.add-snapshot-btn, .btn-add-snapshot, button[onclick*="createManualSnapshot"], .fa-plus, [class*="add"], [class*="plus"]');
+            
+            if (addButton) {
+                console.log('🔍 Bouton trouvé:', addButton);
+                console.log('📱 Bouton visible:', addButton.offsetParent !== null);
+                console.log('📏 Dimensions:', addButton.offsetWidth, 'x', addButton.offsetHeight);
+                console.log('📍 Position:', addButton.offsetLeft, addButton.offsetTop);
+                console.log('🎯 Z-index:', window.getComputedStyle(addButton).zIndex);
+                console.log('📱 Classes:', addButton.className);
+                console.log(' HTML:', addButton.outerHTML);
+            } else {
+                console.log('❌ Bouton non trouvé');
+                
+                // Recherche de tous les boutons
+                const allButtons = document.querySelectorAll('button, .btn, [onclick]');
+                console.log('🔍 Tous les boutons trouvés:', allButtons.length);
+                
+                allButtons.forEach((btn, index) => {
+                    console.log(` Bouton ${index}:`, {
+                        text: btn.textContent,
+                        classes: btn.className,
+                        onclick: btn.onclick,
+                        html: btn.outerHTML
+                    });
+                });
+            }
+        }
+
+        // Initialisation au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Initialisation du support tactile mobile...');
+            
+            // Attendre un peu que la page soit complètement chargée
+            setTimeout(() => {
+                addTouchSupport();
+                debugMobileButton();
+            }, 500);
+            
+            // Réessayer après un délai plus long (au cas où)
+            setTimeout(() => {
+                addTouchSupport();
+            }, 2000);
+        });
+
+        // Réinitialiser lors des changements de contenu
+        if (typeof MutationObserver !== 'undefined') {
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList') {
+                        // Vérifier si de nouveaux boutons ont été ajoutés
+                        setTimeout(addTouchSupport, 100);
+                    }
+                });
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
+
+        // ========================================
+        // FIN DU SUPPORT TACTILE MOBILE
+        // ========================================
     </script>
 </body>
 </html>
