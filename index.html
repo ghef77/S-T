@@ -303,7 +303,7 @@
         @media (max-width: 640px) {
             #button-bar {
                 position: fixed !important;
-                top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
+                top: calc(env(safe-area-inset-top, 0px) + 20px) !important; /* Increased upper padding */
                 left: 0 !important;
                 right: 0 !important;
                 z-index: 1000 !important;
@@ -321,6 +321,13 @@
                 opacity: 1 !important;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
             }
+            
+            /* Ensure buttons maintain original desktop size on mobile */
+            #button-bar button {
+                /* Remove any mobile size overrides - keep original desktop sizing */
+                transform: scale(1.2) !important; /* Original desktop size */
+                transform-origin: center !important;
+            }
         }
 
         /* Additional mobile button visibility fixes */
@@ -330,7 +337,7 @@
                 visibility: visible !important;
                 opacity: 1 !important;
                 position: fixed !important;
-                top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
+                top: calc(env(safe-area-inset-top, 0px) + 20px) !important; /* Increased upper padding */
                 left: 0 !important;
                 right: 0 !important;
                 width: 100% !important;
@@ -345,13 +352,13 @@
             
             /* Add top margin to table container to prevent overlap with fixed button bar */
             #table-container {
-                margin-top: calc(env(safe-area-inset-top, 0px) + 80px) !important;
+                margin-top: calc(env(safe-area-inset-top, 0px) + 100px) !important; /* Increased to account for larger button bar */
             }
             
             /* Ensure table header is visible below the fixed button bar */
             #data-table thead {
                 position: sticky !important;
-                top: calc(env(safe-area-inset-top, 0px) + 80px) !important;
+                top: calc(env(safe-area-inset-top, 0px) + 100px) !important; /* Increased to account for larger button bar */
                 z-index: 100 !important;
             }
         }
@@ -9535,7 +9542,7 @@ ${capacityInfo.needsCleanup ?
                     buttonBar.style.visibility = 'visible';
                     buttonBar.style.opacity = '1';
                     buttonBar.style.position = 'fixed';
-                    buttonBar.style.top = 'calc(env(safe-area-inset-top, 0px) + 8px)';
+                    buttonBar.style.top = 'calc(env(safe-area-inset-top, 0px) + 20px)'; // Increased upper padding
                     buttonBar.style.left = '0';
                     buttonBar.style.right = '0';
                     buttonBar.style.width = '100%';
@@ -9550,12 +9557,14 @@ ${capacityInfo.needsCleanup ?
                     buttonBar.style.zIndex = '1000';
                     buttonBar.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
                     
-                    // Ensure all buttons are visible
+                    // Ensure all buttons are visible with original desktop sizing
                     const buttons = buttonBar.querySelectorAll('button');
                     buttons.forEach(button => {
                         button.style.display = 'flex';
                         button.style.visibility = 'visible';
                         button.style.opacity = '1';
+                        button.style.transform = 'scale(1.2)'; // Original desktop size
+                        button.style.transformOrigin = 'center';
                     });
                     
                     console.log('📱 Mobile button visibility enforced with browser bar positioning');
