@@ -285,38 +285,75 @@
             right: auto; 
             z-index: 20; 
             margin-left: auto; /* Push buttons to the right side of the header */
-            max-width: 60%; /* Limit width to prevent overflow */
-            min-width: 300px; /* Ensure minimum width for buttons */
+            max-width: 80%; /* Increased width to show more buttons */
+            min-width: 400px; /* Increased minimum width for better button visibility */
             flex-wrap: nowrap !important; /* Never wrap buttons to multiple lines */
             padding: 0.5rem 1rem !important; /* Ensure consistent padding for button visibility */
+            scroll-behavior: smooth !important; /* Smooth scrolling */
+            scrollbar-width: thin !important; /* Thin scrollbar for Firefox */
+            scroll-snap-type: x mandatory !important; /* Enable scroll snapping */
+            scroll-padding-left: 0 !important; /* Ensure left edge is reachable */
+            scroll-padding-right: 0 !important; /* Ensure right edge is reachable */
         }
         
 
         
         /* Custom scrollbar styling for button bar */
         #button-bar::-webkit-scrollbar {
-            height: 8px; /* Horizontal scrollbar height */
+            height: 12px; /* Increased height for better visibility */
         }
         
         #button-bar::-webkit-scrollbar-track {
-            background: #f1f5f9; /* Light gray track */
-            border-radius: 4px;
+            background: #e2e8f0; /* Slightly darker track for better visibility */
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
         }
         
         #button-bar::-webkit-scrollbar-thumb {
-            background: #cbd5e1; /* Medium gray thumb */
-            border-radius: 4px;
-            border: 1px solid #e2e8f0;
+            background: #64748b; /* Darker thumb for better contrast */
+            border-radius: 6px;
+            border: 1px solid #475569;
         }
         
         #button-bar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8; /* Darker on hover */
+            background: #475569; /* Even darker on hover */
         }
         
         /* Firefox scrollbar styling */
         #button-bar {
             scrollbar-width: thin;
-            scrollbar-color: #cbd5e1 #f1f5f9;
+            scrollbar-color: #64748b #e2e8f0;
+        }
+        
+        /* Add visual indicator that scrolling is possible */
+        #button-bar::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 20px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.9) 0%, transparent 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        #button-bar::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 20px;
+            background: linear-gradient(270deg, rgba(255,255,255,0.9) 0%, transparent 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        /* Ensure buttons are properly spaced and don't interfere with scrolling */
+        #button-bar button {
+            flex-shrink: 0 !important; /* Prevent buttons from shrinking */
+            scroll-snap-align: start !important; /* Enable scroll snapping on buttons */
         }
         
         /* Ensure horizontal scrollbar is always visible when needed */
@@ -1012,7 +1049,7 @@
             </div>
             
             <!-- Right side: Function buttons -->
-            <div id="button-bar" class="flex flex-nowrap items-center gap-1 px-2 py-1 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style="flex-wrap: nowrap !important;">
+            <div id="button-bar" class="flex flex-nowrap items-center gap-1 px-2 py-1 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style="flex-wrap: nowrap !important; scroll-behavior: smooth; scroll-snap-type: x mandatory;">
                 <button onclick='saveManually()' title="Sauvegarder (Cmd+Z/Ctrl+Z ou Cmd+S/Ctrl+S)" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
                     <i class="fa-solid fa-save w-3.5 h-3.5"></i>
                 </button>
@@ -10132,6 +10169,77 @@ ${capacityInfo.needsCleanup ?
         console.log('   Level 5: General focus protection (3s)');
         console.log('   Level 6: Active typing detection');
         console.log('🧪 Debug functions available: debugCursorRestoration(), testExcelSaveWithRealtime(), testRealtimeWithCursor(), testProtectionLevels()');
+        
+        // Function to scroll button bar to the beginning (leftmost position)
+        function scrollToStart() {
+            const buttonBar = document.getElementById('button-bar');
+            if (buttonBar) {
+                buttonBar.scrollLeft = 0;
+                console.log('📱 Scrolled button bar to start (scrollLeft:', buttonBar.scrollLeft, ')');
+                console.log('📱 Button bar scrollWidth:', buttonBar.scrollWidth, 'clientWidth:', buttonBar.clientWidth);
+            }
+        }
+        
+        // Function to scroll button bar to the end (rightmost position)
+        function scrollToEnd() {
+            const buttonBar = document.getElementById('button-bar');
+            if (buttonBar) {
+                buttonBar.scrollLeft = buttonBar.scrollWidth;
+                console.log('📱 Scrolled button bar to end');
+            }
+        }
+        
+        // Add keyboard shortcuts for scrolling
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+Left: Scroll to start
+            if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowLeft') {
+                e.preventDefault();
+                scrollToStart();
+            }
+            // Ctrl+Right: Scroll to end
+            if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowRight') {
+                e.preventDefault();
+                scrollToEnd();
+            }
+        });
+        
+        // Function to test and fix button bar scrolling
+        function testButtonBarScrolling() {
+            const buttonBar = document.getElementById('button-bar');
+            if (buttonBar) {
+                console.log('🔍 Button bar scroll test:');
+                console.log('   - scrollWidth:', buttonBar.scrollWidth);
+                console.log('   - clientWidth:', buttonBar.clientWidth);
+                console.log('   - scrollLeft:', buttonBar.scrollLeft);
+                console.log('   - maxScrollLeft:', buttonBar.scrollWidth - buttonBar.clientWidth);
+                
+                // Force a reflow to ensure proper dimensions
+                buttonBar.style.display = 'none';
+                buttonBar.offsetHeight; // Force reflow
+                buttonBar.style.display = 'flex';
+                
+                console.log('   - After reflow - scrollWidth:', buttonBar.scrollWidth, 'clientWidth:', buttonBar.clientWidth);
+                
+                // Test scrolling to start
+                buttonBar.scrollLeft = 0;
+                console.log('   - Scrolled to start, scrollLeft:', buttonBar.scrollLeft);
+                
+                // Test scrolling to end
+                buttonBar.scrollLeft = buttonBar.scrollWidth;
+                console.log('   - Scrolled to end, scrollLeft:', buttonBar.scrollLeft);
+                
+                // Return to start
+                buttonBar.scrollLeft = 0;
+                console.log('   - Returned to start, scrollLeft:', buttonBar.scrollLeft);
+            }
+        }
+        
+        console.log('🎯 Button bar scroll functions added:');
+        console.log('   - scrollToStart(): Scroll to leftmost buttons');
+        console.log('   - scrollToEnd(): Scroll to rightmost buttons');
+        console.log('   - Ctrl+Left: Scroll to start');
+        console.log('   - Ctrl+Right: Scroll to end');
+        console.log('   - testButtonBarScrolling(): Test and debug scrolling');
     </script>
 </body>
 </html>
