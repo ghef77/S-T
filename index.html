@@ -357,37 +357,37 @@
         
 
         
-        /* Enhanced scrollbar styling for better visibility */
+        /* Transparent scrollbar styling */
         #button-bar::-webkit-scrollbar {
-            height: 14px; /* Increased height for better visibility */
+            height: 14px; /* Maintain size for functionality */
         }
         
         #button-bar::-webkit-scrollbar-track {
-            background: #f1f5f9; /* Lighter track */
+            background: transparent; /* Transparent track */
             border-radius: 7px;
-            border: 2px solid #e2e8f0;
-            margin: 0 4px; /* Add margin to track */
+            border: none;
+            margin: 0 4px;
         }
         
         #button-bar::-webkit-scrollbar-thumb {
-            background: linear-gradient(90deg, #3b82f6, #2563eb); /* Blue gradient for better visibility */
+            background: transparent; /* Transparent thumb */
             border-radius: 7px;
-            border: 2px solid #ffffff;
+            border: none;
             min-width: 30px; /* Ensure thumb is always grabbable */
         }
         
         #button-bar::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(90deg, #2563eb, #1d4ed8); /* Darker on hover */
+            background: rgba(59, 130, 246, 0.1); /* Slight visibility on hover */
         }
         
         #button-bar::-webkit-scrollbar-thumb:active {
-            background: linear-gradient(90deg, #1d4ed8, #1e40af); /* Even darker when active */
+            background: rgba(59, 130, 246, 0.2); /* Slight visibility when active */
         }
         
         /* Firefox scrollbar styling */
         #button-bar {
-            scrollbar-width: auto; /* Make it more visible in Firefox */
-            scrollbar-color: #3b82f6 #f1f5f9; /* Blue thumb, light track */
+            scrollbar-width: thin; /* Thin scrollbar for Firefox */
+            scrollbar-color: transparent transparent; /* Transparent thumb and track */
         }
         
         /* Add visual indicator that scrolling is possible */
@@ -523,16 +523,24 @@
                 scrollbar-width: auto !important; /* Visible scrollbar on mobile */
             }
             
-            /* Enhanced mobile scrollbar */
+            /* Transparent mobile scrollbar */
             #button-bar::-webkit-scrollbar {
-                height: 8px !important; /* Thicker scrollbar on mobile */
+                height: 8px !important; /* Maintain size for touch functionality */
             }
             
             #button-bar::-webkit-scrollbar-thumb {
-                background: linear-gradient(90deg, #ef4444, #dc2626) !important; /* Red for high visibility on mobile */
+                background: transparent !important; /* Transparent on mobile too */
                 border-radius: 4px !important;
-                border: 1px solid #ffffff !important;
+                border: none !important;
                 min-width: 40px !important; /* Larger minimum width for touch */
+            }
+            
+            #button-bar::-webkit-scrollbar-thumb:hover {
+                background: rgba(239, 68, 68, 0.1) !important; /* Slight red tint on hover */
+            }
+            
+            #button-bar::-webkit-scrollbar-thumb:active {
+                background: rgba(239, 68, 68, 0.2) !important; /* Slight red tint when active */
             }
             
             /* Mobile-specific color picker styling */
