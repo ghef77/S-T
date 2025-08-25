@@ -321,15 +321,6 @@
                 opacity: 1 !important;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
             }
-            
-            #button-bar button {
-                transform: scale(1.2) !important; /* Slightly smaller to fit better */
-                min-width: 40px !important; /* Adjusted for mobile */
-                min-height: 40px !important;
-                display: flex !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-            }
         }
 
         /* Additional mobile button visibility fixes */
@@ -9565,9 +9556,6 @@ ${capacityInfo.needsCleanup ?
                         button.style.display = 'flex';
                         button.style.visibility = 'visible';
                         button.style.opacity = '1';
-                        button.style.minWidth = '40px';
-                        button.style.minHeight = '40px';
-                        button.style.transform = 'scale(1.2)';
                     });
                     
                     console.log('📱 Mobile button visibility enforced with browser bar positioning');
