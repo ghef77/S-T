@@ -29,6 +29,9 @@ class SimpleGallery {
         
         // Initialisation
         this.init();
+        
+        // Initialize scroll indicators for buttons
+        this.initScrollIndicators();
     }
 
     async init() {
@@ -1679,6 +1682,69 @@ class SimpleGallery {
         } catch (error) {
             console.error('❌ Error cleaning up gallery real-time sync:', error);
         }
+    }
+
+    // Initialize scroll indicators for button container
+    initScrollIndicators() {
+        const scrollContainer = document.getElementById('button-scroll-container');
+        const leftIndicator = document.getElementById('left-scroll-indicator');
+        const rightIndicator = document.getElementById('right-scroll-indicator');
+        const scrollIndicators = document.querySelector('.scroll-indicators');
+        
+        if (!scrollContainer || !leftIndicator || !rightIndicator || !scrollIndicators) {
+            console.log('⚠️ Scroll indicators elements not found');
+            return;
+        }
+        
+        // Function to update scroll indicators visibility
+        const updateScrollIndicators = () => {
+            const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
+            const maxScrollLeft = scrollWidth - clientWidth;
+            
+            // Show/hide left indicator
+            if (scrollLeft > 10) {
+                scrollIndicators.classList.add('show-left');
+            } else {
+                scrollIndicators.classList.remove('show-left');
+            }
+            
+            // Show/hide right indicator
+            if (scrollLeft < maxScrollLeft - 10) {
+                scrollIndicators.classList.add('show-right');
+            } else {
+                scrollIndicators.classList.remove('show-right');
+            }
+        };
+        
+        // Function to scroll smoothly
+        const smoothScroll = (direction) => {
+            const scrollAmount = 200;
+            const targetScroll = direction === 'left' 
+                ? Math.max(0, scrollContainer.scrollLeft - scrollAmount)
+                : Math.min(scrollContainer.scrollWidth - scrollContainer.clientWidth, scrollContainer.scrollLeft + scrollAmount);
+            
+            scrollContainer.scrollTo({
+                left: targetScroll,
+                behavior: 'smooth'
+            });
+        };
+        
+        // Add event listeners
+        leftIndicator.addEventListener('click', () => smoothScroll('left'));
+        rightIndicator.addEventListener('click', () => smoothScroll('right'));
+        
+        // Update indicators on scroll
+        scrollContainer.addEventListener('scroll', updateScrollIndicators);
+        
+        // Update indicators on resize
+        window.addEventListener('resize', () => {
+            setTimeout(updateScrollIndicators, 100);
+        });
+        
+        // Initial update
+        setTimeout(updateScrollIndicators, 100);
+        
+        console.log('✅ Scroll indicators initialized');
     }
 }
 

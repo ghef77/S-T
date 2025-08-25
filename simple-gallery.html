@@ -249,6 +249,193 @@
                 z-index: -1 !important;
             }
         }
+        
+        /* Horizontal scroll container for buttons */
+        .horizontal-scroll-container {
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: #3b82f6 #e5e7eb;
+            padding: 0 16px 8px 16px;
+            position: relative;
+        }
+        
+        /* Webkit scrollbar styling - make it more visible */
+        .horizontal-scroll-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        
+        .horizontal-scroll-container::-webkit-scrollbar-track {
+            background: #e5e7eb;
+            border-radius: 4px;
+            margin: 0 10px;
+        }
+        
+        .horizontal-scroll-container::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 4px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .horizontal-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: #2563eb;
+        }
+        
+        /* Enhanced mobile scrollbar visibility */
+        @media (max-width: 768px) {
+            .horizontal-scroll-container {
+                scrollbar-width: auto;
+                -ms-overflow-style: auto;
+                padding: 0 20px 12px 20px;
+            }
+            
+            .horizontal-scroll-container::-webkit-scrollbar {
+                height: 10px;
+                display: block;
+            }
+            
+            .horizontal-scroll-container::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 5px;
+                margin: 0 8px;
+            }
+            
+            .horizontal-scroll-container::-webkit-scrollbar-thumb {
+                background: #059669;
+                border-radius: 5px;
+                border: 2px solid #f1f5f9;
+                min-width: 30px;
+            }
+            
+            .horizontal-scroll-container::-webkit-scrollbar-thumb:active {
+                background: #047857;
+            }
+        }
+        
+        /* Extra small screens - even more visible scrollbar */
+        @media (max-width: 480px) {
+            .horizontal-scroll-container {
+                padding: 0 24px 15px 24px;
+            }
+            
+            .horizontal-scroll-container::-webkit-scrollbar {
+                height: 12px;
+            }
+            
+            .horizontal-scroll-container::-webkit-scrollbar-thumb {
+                background: linear-gradient(90deg, #dc2626, #ef4444);
+                border: 2px solid #fee2e2;
+                min-width: 40px;
+            }
+        }
+        
+        /* Ensure buttons don't shrink and maintain proper spacing */
+        .horizontal-scroll-container .flex {
+            padding-left: 40px;
+            padding-right: 20px;
+        }
+        
+        /* Prevent button overflow */
+        .horizontal-scroll-container button,
+        .horizontal-scroll-container div {
+            max-width: none;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        
+        /* Extra left padding on smaller screens for better save button access */
+        @media (max-width: 768px) {
+            .horizontal-scroll-container .flex {
+                padding-left: 60px;
+                padding-right: 30px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .horizontal-scroll-container .flex {
+                padding-left: 80px;
+                padding-right: 40px;
+            }
+        }
+        
+        /* Scroll indicators */
+        .scroll-indicators {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            pointer-events: none;
+        }
+        
+        .scroll-indicator {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 40px;
+            background: rgba(59, 130, 246, 0.9);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 10;
+            pointer-events: auto;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .left-indicator {
+            left: -12px;
+        }
+        
+        .right-indicator {
+            right: -12px;
+        }
+        
+        .scroll-indicator:hover {
+            background: rgba(37, 99, 235, 1);
+            transform: translateY(-50%) scale(1.1);
+        }
+        
+        .scroll-indicator:active {
+            background: rgba(29, 78, 216, 1);
+            transform: translateY(-50%) scale(0.95);
+        }
+        
+        /* Show scroll indicators when needed */
+        .scroll-indicators.show-left .left-indicator,
+        .scroll-indicators.show-right .right-indicator {
+            opacity: 1;
+        }
+        
+        /* Enhanced visibility on very small screens */
+        @media (max-width: 480px) {
+            .scroll-indicator {
+                width: 28px;
+                height: 44px;
+                font-size: 14px;
+                background: rgba(220, 38, 38, 0.9);
+                border: 2px solid white;
+            }
+            
+            .scroll-indicator:hover {
+                background: rgba(185, 28, 28, 1);
+            }
+            
+            .left-indicator {
+                left: -14px;
+            }
+            
+            .right-indicator {
+                right: -14px;
+            }
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
@@ -266,28 +453,42 @@
                     </div>
                 </div>
                 
-                <!-- Boutons d'action avec meilleure responsivité -->
-                <div class="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4">
-                    <div class="flex items-center space-x-2 text-xs sm:text-sm text-green-600 bg-green-50 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg">
-                        <i class="fas fa-check-circle"></i>
-                        <span class="font-medium hidden sm:inline">Supabase connecté</span>
-                        <span class="font-medium sm:hidden">Connecté</span>
+                <!-- Boutons d'action avec défilement horizontal sur petits écrans -->
+                <div class="relative overflow-hidden">
+                    <div class="horizontal-scroll-container" id="button-scroll-container">
+                        <div class="flex items-center gap-2 sm:gap-3 lg:gap-4 min-w-max">
+                            <div class="flex items-center space-x-2 text-xs sm:text-sm text-green-600 bg-green-50 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg flex-shrink-0">
+                                <i class="fas fa-check-circle"></i>
+                                <span class="font-medium hidden sm:inline">Supabase connecté</span>
+                                <span class="font-medium sm:hidden">Connecté</span>
+                            </div>
+                            <button id="info-btn" class="bg-white text-gray-800 border-2 border-gray-300 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm flex-shrink-0">
+                                <i class="fas fa-info-circle"></i>
+                                <span class="hidden sm:inline">Infos</span>
+                                <span class="sm:hidden">ℹ️</span>
+                            </button>
+                            <button id="config-btn" class="bg-white text-gray-800 border-2 border-gray-300 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm flex-shrink-0 hidden">
+                                <i class="fas fa-cog"></i>
+                                <span class="hidden sm:inline">Config</span>
+                                <span class="sm:hidden">⚙️</span>
+                            </button>
+                            <button id="refresh-btn" class="bg-white text-gray-800 border-2 border-gray-300 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm flex-shrink-0">
+                                <i class="fas fa-sync-alt"></i>
+                                <span class="hidden sm:inline">Actualiser</span>
+                                <span class="sm:hidden">🔄</span>
+                            </button>
+                        </div>
                     </div>
-                    <button id="info-btn" class="bg-white text-gray-800 border-2 border-gray-300 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm">
-                        <i class="fas fa-info-circle"></i>
-                        <span class="hidden sm:inline">Infos</span>
-                        <span class="sm:hidden">ℹ️</span>
-                    </button>
-                    <button id="config-btn" class="bg-white text-gray-800 border-2 border-gray-300 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm hidden">
-                        <i class="fas fa-cog"></i>
-                        <span class="hidden sm:inline">Config</span>
-                        <span class="sm:hidden">⚙️</span>
-                    </button>
-                    <button id="refresh-btn" class="bg-white text-gray-800 border-2 border-gray-300 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm">
-                        <i class="fas fa-sync-alt"></i>
-                        <span class="hidden sm:inline">Actualiser</span>
-                        <span class="sm:hidden">🔄</span>
-                    </button>
+                    
+                    <!-- Scroll indicators for mobile -->
+                    <div class="scroll-indicators lg:hidden">
+                        <div class="scroll-indicator left-indicator" id="left-scroll-indicator">
+                            <i class="fas fa-chevron-left"></i>
+                        </div>
+                        <div class="scroll-indicator right-indicator" id="right-scroll-indicator">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
