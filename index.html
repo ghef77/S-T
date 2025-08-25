@@ -287,6 +287,7 @@
             margin-left: auto; /* Push buttons to the right side of the header */
             max-width: 60%; /* Limit width to prevent overflow */
             min-width: 300px; /* Ensure minimum width for buttons */
+            flex-wrap: nowrap !important; /* Never wrap buttons to multiple lines */
         }
         
         /* Custom scrollbar styling for button bar */
@@ -365,7 +366,7 @@
             #button-bar {
                 margin-left: 0 !important; /* Reset margin on mobile */
                 justify-content: center !important;
-                flex-wrap: wrap !important;
+                flex-wrap: nowrap !important; /* Never wrap buttons on mobile */
                 gap: 0.5rem !important;
                 padding: 0.5rem !important;
                 background-color: transparent !important; /* Transparent since parent has background */
@@ -404,7 +405,7 @@
             #button-bar {
                 margin-left: 0 !important; /* Reset margin on mobile */
                 justify-content: center !important;
-                flex-wrap: wrap !important;
+                flex-wrap: nowrap !important; /* Never wrap buttons on mobile */
                 gap: 0.5rem !important;
                 padding: 0.5rem !important;
                 background-color: transparent !important; /* Transparent since parent has background */
@@ -1005,7 +1006,7 @@
             </div>
             
             <!-- Function buttons moved to the same container as the title -->
-            <div id="button-bar" class="flex flex-nowrap items-center gap-1 p-1 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            <div id="button-bar" class="flex flex-nowrap items-center gap-1 p-1 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style="flex-wrap: nowrap !important;">
                 <button onclick='saveManually()' title="Sauvegarder (Cmd+Z/Ctrl+Z ou Cmd+S/Ctrl+S)" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
                     <i class="fa-solid fa-save w-3.5 h-3.5"></i>
                 </button>
@@ -9619,7 +9620,7 @@ ${capacityInfo.needsCleanup ?
                     // Style the button bar within the unified header
                     buttonBar.style.marginLeft = '0';
                     buttonBar.style.justifyContent = 'center';
-                    buttonBar.style.flexWrap = 'wrap';
+                    buttonBar.style.flexWrap = 'nowrap'; // Never wrap buttons
                     buttonBar.style.gap = '0.5rem';
                     buttonBar.style.padding = '0.5rem';
                     buttonBar.style.backgroundColor = 'transparent';
