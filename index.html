@@ -2,7 +2,7 @@
 <html lang='fr'>
 <head>
     <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no'>
     <title>S-T synchronisé - Supabase</title>
     
     <!-- Preload critical resources -->
@@ -302,29 +302,30 @@
         /* Mobile-specific button bar positioning */
         @media (max-width: 640px) {
             #button-bar {
-                position: relative !important;
-                top: auto !important;
-                right: auto !important;
+                position: fixed !important;
+                top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
                 left: 0 !important;
-                z-index: 20 !important;
-                margin: 0.5rem 0 !important;
+                right: 0 !important;
+                z-index: 1000 !important;
+                margin: 0 !important;
                 padding: 0.5rem !important;
                 width: 100% !important;
                 justify-content: center !important;
                 flex-wrap: wrap !important;
                 gap: 0.5rem !important;
-                background-color: rgba(249, 250, 251, 0.95) !important;
+                background-color: rgba(249, 250, 251, 0.98) !important;
                 border: 1px solid #e5e7eb !important;
-                border-radius: 0.5rem !important;
+                border-radius: 0 0 0.5rem 0.5rem !important;
                 display: flex !important;
                 visibility: visible !important;
                 opacity: 1 !important;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
             }
             
             #button-bar button {
-                transform: scale(1.4) !important; /* Larger buttons on mobile */
-                min-width: 44px !important; /* Touch-friendly size */
-                min-height: 44px !important;
+                transform: scale(1.2) !important; /* Slightly smaller to fit better */
+                min-width: 40px !important; /* Adjusted for mobile */
+                min-height: 40px !important;
                 display: flex !important;
                 visibility: visible !important;
                 opacity: 1 !important;
@@ -337,16 +338,30 @@
                 display: flex !important;
                 visibility: visible !important;
                 opacity: 1 !important;
-                position: relative !important;
-                top: auto !important;
-                right: auto !important;
+                position: fixed !important;
+                top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
                 left: 0 !important;
+                right: 0 !important;
                 width: 100% !important;
-                margin: 0.5rem 0 !important;
+                margin: 0 !important;
                 padding: 0.5rem !important;
-                background-color: rgba(249, 250, 251, 0.95) !important;
+                background-color: rgba(249, 250, 251, 0.98) !important;
                 border: 1px solid #e5e7eb !important;
-                border-radius: 0.5rem !important;
+                border-radius: 0 0 0.5rem 0.5rem !important;
+                z-index: 1000 !important;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+            }
+            
+            /* Add top margin to table container to prevent overlap with fixed button bar */
+            #table-container {
+                margin-top: calc(env(safe-area-inset-top, 0px) + 80px) !important;
+            }
+            
+            /* Ensure table header is visible below the fixed button bar */
+            #data-table thead {
+                position: sticky !important;
+                top: calc(env(safe-area-inset-top, 0px) + 80px) !important;
+                z-index: 100 !important;
             }
         }
 
@@ -9524,24 +9539,25 @@ ${capacityInfo.needsCleanup ?
                 if (!buttonBar) return;
                 
                 if (window.innerWidth <= 768) {
-                    // Force mobile styling
+                    // Force mobile styling with proper positioning above browser bars
                     buttonBar.style.display = 'flex';
                     buttonBar.style.visibility = 'visible';
                     buttonBar.style.opacity = '1';
-                    buttonBar.style.position = 'relative';
-                    buttonBar.style.top = 'auto';
-                    buttonBar.style.right = 'auto';
+                    buttonBar.style.position = 'fixed';
+                    buttonBar.style.top = 'calc(env(safe-area-inset-top, 0px) + 8px)';
                     buttonBar.style.left = '0';
+                    buttonBar.style.right = '0';
                     buttonBar.style.width = '100%';
-                    buttonBar.style.margin = '0.5rem 0';
+                    buttonBar.style.margin = '0';
                     buttonBar.style.padding = '0.5rem';
-                    buttonBar.style.backgroundColor = 'rgba(249, 250, 251, 0.95)';
+                    buttonBar.style.backgroundColor = 'rgba(249, 250, 251, 0.98)';
                     buttonBar.style.border = '1px solid #e5e7eb';
-                    buttonBar.style.borderRadius = '0.5rem';
+                    buttonBar.style.borderRadius = '0 0 0.5rem 0.5rem';
                     buttonBar.style.justifyContent = 'center';
                     buttonBar.style.flexWrap = 'wrap';
                     buttonBar.style.gap = '0.5rem';
-                    buttonBar.style.zIndex = '20';
+                    buttonBar.style.zIndex = '1000';
+                    buttonBar.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
                     
                     // Ensure all buttons are visible
                     const buttons = buttonBar.querySelectorAll('button');
@@ -9549,12 +9565,12 @@ ${capacityInfo.needsCleanup ?
                         button.style.display = 'flex';
                         button.style.visibility = 'visible';
                         button.style.opacity = '1';
-                        button.style.minWidth = '44px';
-                        button.style.minHeight = '44px';
-                        button.style.transform = 'scale(1.4)';
+                        button.style.minWidth = '40px';
+                        button.style.minHeight = '40px';
+                        button.style.transform = 'scale(1.2)';
                     });
                     
-                    console.log('📱 Mobile button visibility enforced');
+                    console.log('📱 Mobile button visibility enforced with browser bar positioning');
                 }
             }
             
