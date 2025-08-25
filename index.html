@@ -803,6 +803,9 @@
         /* Minimal toggle button styling */
         #history-toggle-btn {
             transition: all 0.2s ease-in-out;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
         }
         
         #history-toggle-btn:hover {
@@ -811,6 +814,11 @@
         
         #history-toggle-btn:active {
             transform: scale(0.95);
+        }
+        
+        #history-toggle-btn:focus {
+            outline: none !important;
+            box-shadow: none !important;
         }
         
         /* Perfect centering for FontAwesome icons */
@@ -822,6 +830,15 @@
             line-height: 1 !important;
             width: 100% !important;
             height: 100% !important;
+            border: none !important;
+            outline: none !important;
+        }
+        
+        /* Remove any FontAwesome pseudo-elements that might cause lines */
+        #history-toggle-btn i::before,
+        #history-toggle-btn i::after {
+            border: none !important;
+            outline: none !important;
         }
         
         /* History bar container styling */
@@ -1224,14 +1241,12 @@
 
 
         <!-- History Controls Row - Toggle button and history buttons on same level -->
-        <div class="flex justify-between items-center mb-3 lg:mb-6 lg:mt-4">
+        <div class="flex justify-between items-center mb-3 md:mb-8 lg:mb-6 lg:mt-4">
             <!-- Toggle button and sync indicator container -->
             <div class="flex items-center gap-2">
-                <div class="w-4 h-4">
-                    <button id="history-toggle-btn" onclick="toggleHistoryBarSimple()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white p-0 rounded hover:bg-gray-500 transition-colors w-4 h-4 flex items-center justify-center">
-                        <i id="history-toggle-icon" class="fa-solid fa-plus w-2 h-2 flex items-center justify-center text-center leading-none"></i>
-                    </button>
-                </div>
+                <button id="history-toggle-btn" onclick="toggleHistoryBarSimple()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white p-0 rounded hover:bg-gray-500 transition-colors w-4 h-4 flex items-center justify-center" style="border: none !important; outline: none !important; box-shadow: none !important;">
+                    <i id="history-toggle-icon" class="fa-solid fa-plus w-2 h-2 flex items-center justify-center text-center leading-none" style="border: none !important; outline: none !important;"></i>
+                </button>
                 
                 <!-- Sync status indicator for small screens -->
                 <div id="mobile-sync-indicator" title="Statut de synchronisation" class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 md:hidden transition-colors">
@@ -1241,7 +1256,7 @@
             </div>
 
             <!-- History Bar Container - This is what gets toggled -->
-            <div id="history-bar-container" class="flex justify-end">
+            <div id="history-bar-container" class="flex justify-end md:ml-6 lg:ml-8">
                 <!-- Single line container for all snapshot controls -->
                 <div class="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 w-full relative z-20">
                     <!-- Navigation buttons - Responsive visibility -->
