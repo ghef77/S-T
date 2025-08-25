@@ -285,6 +285,49 @@
             right: auto; 
             z-index: 20; 
             margin-left: auto; /* Push buttons to the right side of the header */
+            max-width: 60%; /* Limit width to prevent overflow */
+            min-width: 300px; /* Ensure minimum width for buttons */
+        }
+        
+        /* Custom scrollbar styling for button bar */
+        #button-bar::-webkit-scrollbar {
+            height: 8px; /* Horizontal scrollbar height */
+        }
+        
+        #button-bar::-webkit-scrollbar-track {
+            background: #f1f5f9; /* Light gray track */
+            border-radius: 4px;
+        }
+        
+        #button-bar::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* Medium gray thumb */
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        #button-bar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* Darker on hover */
+        }
+        
+        /* Firefox scrollbar styling */
+        #button-bar {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f1f5f9;
+        }
+        
+        /* Ensure horizontal scrollbar is always visible when needed */
+        #button-bar:hover {
+            overflow-x: auto;
+        }
+        
+        /* Add smooth scrolling for better UX */
+        #button-bar {
+            scroll-behavior: smooth;
+        }
+        
+        /* Ensure buttons don't shrink and maintain their size */
+        #button-bar button {
+            flex-shrink: 0;
         }
         
         /* Forcer le positionnement sur tous les écrans non-mobiles */
@@ -328,6 +371,8 @@
                 background-color: transparent !important; /* Transparent since parent has background */
                 border: none !important;
                 border-radius: 0 !important;
+                max-width: 100% !important; /* Full width on mobile */
+                min-width: auto !important; /* No minimum width constraint on mobile */
             }
             
             /* Ensure buttons maintain original desktop size on mobile */
@@ -960,7 +1005,7 @@
             </div>
             
             <!-- Function buttons moved to the same container as the title -->
-            <div id="button-bar" class="flex flex-nowrap items-center gap-1 p-1 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto">
+            <div id="button-bar" class="flex flex-nowrap items-center gap-1 p-1 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                 <button onclick='saveManually()' title="Sauvegarder (Cmd+Z/Ctrl+Z ou Cmd+S/Ctrl+S)" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
                     <i class="fa-solid fa-save w-3.5 h-3.5"></i>
                 </button>
