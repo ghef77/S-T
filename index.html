@@ -556,7 +556,7 @@
             
             /* Add top margin to table container to prevent overlap with fixed header */
             #table-container {
-                margin-top: calc(env(safe-area-inset-top, 0px) + 90px) !important; /* Adjusted for reduced header height */
+                margin-top: env(safe-area-inset-top, 0px) !important; /* No additional margin */
             }
             
             /* Ensure table header is visible below the fixed header */
