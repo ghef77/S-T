@@ -288,6 +288,7 @@
             max-width: 60%; /* Limit width to prevent overflow */
             min-width: 300px; /* Ensure minimum width for buttons */
             flex-wrap: nowrap !important; /* Never wrap buttons to multiple lines */
+            margin-top: 0.5rem; /* Add spacing between button container and header border */
         }
         
         /* Custom scrollbar styling for button bar */
@@ -354,13 +355,13 @@
                 right: 0 !important;
                 z-index: 1000 !important;
                 margin: 0 !important;
-                padding: 1rem !important; /* Increased padding to accommodate single-line buttons */
+                padding: 0.75rem !important; /* Reduced padding for better spacing */
                 width: 100% !important;
                 background-color: rgba(249, 250, 251, 0.98) !important;
                 border: 1px solid #e5e7eb !important;
                 border-radius: 0 0 0.5rem 0.5rem !important;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-                min-height: 120px !important; /* Ensure minimum height for single-line buttons */
+                min-height: 100px !important; /* Reduced height for better proportions */
             }
             
             /* Button bar styling on mobile */
@@ -394,13 +395,13 @@
                 right: 0 !important;
                 width: 100% !important;
                 margin: 0 !important;
-                padding: 1rem !important; /* Increased padding to accommodate single-line buttons */
+                padding: 0.75rem !important; /* Reduced padding for better spacing */
                 background-color: rgba(249, 250, 251, 0.98) !important;
                 border: 1px solid #e5e7eb !important;
                 border-radius: 0 0 0.5rem 0.5rem !important;
                 z-index: 1000 !important;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-                min-height: 120px !important; /* Ensure minimum height for single-line buttons */
+                min-height: 100px !important; /* Reduced height for better proportions */
             }
             
             /* Button bar styling on mobile */
@@ -417,13 +418,13 @@
             
             /* Add top margin to table container to prevent overlap with fixed header */
             #table-container {
-                margin-top: calc(env(safe-area-inset-top, 0px) + 140px) !important; /* Increased to account for taller unified header */
+                margin-top: calc(env(safe-area-inset-top, 0px) + 120px) !important; /* Adjusted for reduced header height */
             }
             
             /* Ensure table header is visible below the fixed header */
             #data-table thead {
                 position: sticky !important;
-                top: calc(env(safe-area-inset-top, 0px) + 140px) !important; /* Increased to account for taller unified header */
+                top: calc(env(safe-area-inset-top, 0px) + 120px) !important; /* Adjusted for reduced header height */
                 z-index: 100 !important;
             }
         }
@@ -1008,7 +1009,7 @@
             </div>
             
             <!-- Function buttons moved to the same container as the title -->
-            <div id="button-bar" class="flex flex-nowrap items-center gap-1 p-1 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style="flex-wrap: nowrap !important;">
+            <div id="button-bar" class="flex flex-nowrap items-center gap-1 p-0 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style="flex-wrap: nowrap !important;">
                 <button onclick='saveManually()' title="Sauvegarder (Cmd+Z/Ctrl+Z ou Cmd+S/Ctrl+S)" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
                     <i class="fa-solid fa-save w-3.5 h-3.5"></i>
                 </button>
@@ -9612,13 +9613,13 @@ ${capacityInfo.needsCleanup ?
                     headerContainer.style.right = '0';
                     headerContainer.style.width = '100%';
                     headerContainer.style.margin = '0';
-                    headerContainer.style.padding = '1rem'; // Increased padding to accommodate single-line buttons
+                    headerContainer.style.padding = '0.75rem'; // Reduced padding for better spacing
                     headerContainer.style.backgroundColor = 'rgba(249, 250, 251, 0.98)';
                     headerContainer.style.border = '1px solid #e5e7eb';
                     headerContainer.style.borderRadius = '0 0 0.5rem 0.5rem';
                     headerContainer.style.zIndex = '1000';
                     headerContainer.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
-                    headerContainer.style.minHeight = '120px'; // Ensure minimum height for single-line buttons
+                    headerContainer.style.minHeight = '100px'; // Reduced height for better proportions
                     
                     // Style the button bar within the unified header
                     buttonBar.style.marginLeft = '0';
