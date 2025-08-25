@@ -299,6 +299,57 @@
             }
         }
 
+        /* Mobile-specific button bar positioning */
+        @media (max-width: 640px) {
+            #button-bar {
+                position: relative !important;
+                top: auto !important;
+                right: auto !important;
+                left: 0 !important;
+                z-index: 20 !important;
+                margin: 0.5rem 0 !important;
+                padding: 0.5rem !important;
+                width: 100% !important;
+                justify-content: center !important;
+                flex-wrap: wrap !important;
+                gap: 0.5rem !important;
+                background-color: rgba(249, 250, 251, 0.95) !important;
+                border: 1px solid #e5e7eb !important;
+                border-radius: 0.5rem !important;
+                display: flex !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+            
+            #button-bar button {
+                transform: scale(1.4) !important; /* Larger buttons on mobile */
+                min-width: 44px !important; /* Touch-friendly size */
+                min-height: 44px !important;
+                display: flex !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+        }
+
+        /* Additional mobile button visibility fixes */
+        @media (max-width: 768px) {
+            #button-bar {
+                display: flex !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                position: relative !important;
+                top: auto !important;
+                right: auto !important;
+                left: 0 !important;
+                width: 100% !important;
+                margin: 0.5rem 0 !important;
+                padding: 0.5rem !important;
+                background-color: rgba(249, 250, 251, 0.95) !important;
+                border: 1px solid #e5e7eb !important;
+                border-radius: 0.5rem !important;
+            }
+        }
+
         /* Button bar positioning for medium screens - no responsive modifications */
 
         /* Button bar positioning - no responsive modifications */
@@ -9466,6 +9517,60 @@ ${capacityInfo.needsCleanup ?
             setInterval(updateViewportHeight, 1000);
         }
         
+        function ensureMobileButtonVisibility() {
+            // Ensure button bar is visible on mobile devices
+            function checkAndFixButtonVisibility() {
+                const buttonBar = document.getElementById('button-bar');
+                if (!buttonBar) return;
+                
+                if (window.innerWidth <= 768) {
+                    // Force mobile styling
+                    buttonBar.style.display = 'flex';
+                    buttonBar.style.visibility = 'visible';
+                    buttonBar.style.opacity = '1';
+                    buttonBar.style.position = 'relative';
+                    buttonBar.style.top = 'auto';
+                    buttonBar.style.right = 'auto';
+                    buttonBar.style.left = '0';
+                    buttonBar.style.width = '100%';
+                    buttonBar.style.margin = '0.5rem 0';
+                    buttonBar.style.padding = '0.5rem';
+                    buttonBar.style.backgroundColor = 'rgba(249, 250, 251, 0.95)';
+                    buttonBar.style.border = '1px solid #e5e7eb';
+                    buttonBar.style.borderRadius = '0.5rem';
+                    buttonBar.style.justifyContent = 'center';
+                    buttonBar.style.flexWrap = 'wrap';
+                    buttonBar.style.gap = '0.5rem';
+                    buttonBar.style.zIndex = '20';
+                    
+                    // Ensure all buttons are visible
+                    const buttons = buttonBar.querySelectorAll('button');
+                    buttons.forEach(button => {
+                        button.style.display = 'flex';
+                        button.style.visibility = 'visible';
+                        button.style.opacity = '1';
+                        button.style.minWidth = '44px';
+                        button.style.minHeight = '44px';
+                        button.style.transform = 'scale(1.4)';
+                    });
+                    
+                    console.log('📱 Mobile button visibility enforced');
+                }
+            }
+            
+            // Check on load
+            checkAndFixButtonVisibility();
+            
+            // Check on resize
+            window.addEventListener('resize', checkAndFixButtonVisibility);
+            
+            // Check on orientation change
+            window.addEventListener('orientationchange', checkAndFixButtonVisibility);
+            
+            // Check periodically
+            setInterval(checkAndFixButtonVisibility, 2000);
+        }
+        
         function setupExtendedKeyboardShortcuts() {
             document.addEventListener('keydown', function(e) {
                 // Seulement appliquer les raccourcis quand pas dans les champs de formulaire
@@ -9554,8 +9659,37 @@ ${capacityInfo.needsCleanup ?
                 adaptStatusDisplay();
             }, 100);
             
-            // Setup mobile viewport management
-            setupMobileViewport();
+                    // Setup mobile viewport management
+        setupMobileViewport();
+        
+        // Ensure button bar is visible on mobile
+        ensureMobileButtonVisibility();
+        
+        // Debug button bar on mobile
+        setTimeout(() => {
+            if (window.innerWidth <= 768) {
+                const buttonBar = document.getElementById('button-bar');
+                if (buttonBar) {
+                    console.log('📱 Button bar found:', buttonBar);
+                    console.log('📱 Button bar display:', window.getComputedStyle(buttonBar).display);
+                    console.log('📱 Button bar visibility:', window.getComputedStyle(buttonBar).visibility);
+                    console.log('📱 Button bar position:', window.getComputedStyle(buttonBar).position);
+                    console.log('📱 Button bar top:', window.getComputedStyle(buttonBar).top);
+                    console.log('📱 Button bar right:', window.getComputedStyle(buttonBar).right);
+                    console.log('📱 Button bar width:', window.getComputedStyle(buttonBar).width);
+                    console.log('📱 Button bar height:', window.getComputedStyle(buttonBar).height);
+                    console.log('📱 Button bar z-index:', window.getComputedStyle(buttonBar).zIndex);
+                    
+                    const buttons = buttonBar.querySelectorAll('button');
+                    console.log('📱 Number of buttons found:', buttons.length);
+                    buttons.forEach((btn, index) => {
+                        console.log(`📱 Button ${index + 1}:`, btn.textContent || btn.innerHTML, 'Display:', window.getComputedStyle(btn).display);
+                    });
+                } else {
+                    console.log('❌ Button bar not found!');
+                }
+            }
+        }, 1000);
         });
 
         // Initialize when DOM is ready
