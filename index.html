@@ -354,12 +354,13 @@
                 right: 0 !important;
                 z-index: 1000 !important;
                 margin: 0 !important;
-                padding: 0.5rem !important;
+                padding: 1rem !important; /* Increased padding to accommodate single-line buttons */
                 width: 100% !important;
                 background-color: rgba(249, 250, 251, 0.98) !important;
                 border: 1px solid #e5e7eb !important;
                 border-radius: 0 0 0.5rem 0.5rem !important;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+                min-height: 120px !important; /* Ensure minimum height for single-line buttons */
             }
             
             /* Button bar styling on mobile */
@@ -393,12 +394,13 @@
                 right: 0 !important;
                 width: 100% !important;
                 margin: 0 !important;
-                padding: 0.5rem !important;
+                padding: 1rem !important; /* Increased padding to accommodate single-line buttons */
                 background-color: rgba(249, 250, 251, 0.98) !important;
                 border: 1px solid #e5e7eb !important;
                 border-radius: 0 0 0.5rem 0.5rem !important;
                 z-index: 1000 !important;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+                min-height: 120px !important; /* Ensure minimum height for single-line buttons */
             }
             
             /* Button bar styling on mobile */
@@ -415,13 +417,13 @@
             
             /* Add top margin to table container to prevent overlap with fixed header */
             #table-container {
-                margin-top: calc(env(safe-area-inset-top, 0px) + 120px) !important; /* Increased to account for unified header */
+                margin-top: calc(env(safe-area-inset-top, 0px) + 140px) !important; /* Increased to account for taller unified header */
             }
             
             /* Ensure table header is visible below the fixed header */
             #data-table thead {
                 position: sticky !important;
-                top: calc(env(safe-area-inset-top, 0px) + 120px) !important; /* Increased to account for unified header */
+                top: calc(env(safe-area-inset-top, 0px) + 140px) !important; /* Increased to account for taller unified header */
                 z-index: 100 !important;
             }
         }
@@ -9610,12 +9612,13 @@ ${capacityInfo.needsCleanup ?
                     headerContainer.style.right = '0';
                     headerContainer.style.width = '100%';
                     headerContainer.style.margin = '0';
-                    headerContainer.style.padding = '0.5rem';
+                    headerContainer.style.padding = '1rem'; // Increased padding to accommodate single-line buttons
                     headerContainer.style.backgroundColor = 'rgba(249, 250, 251, 0.98)';
                     headerContainer.style.border = '1px solid #e5e7eb';
                     headerContainer.style.borderRadius = '0 0 0.5rem 0.5rem';
                     headerContainer.style.zIndex = '1000';
                     headerContainer.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+                    headerContainer.style.minHeight = '120px'; // Ensure minimum height for single-line buttons
                     
                     // Style the button bar within the unified header
                     buttonBar.style.marginLeft = '0';
