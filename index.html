@@ -15,7 +15,7 @@
 
     
     <style>
-        /* CSS Variables for consistent theming */
+        /* Optimized CSS Variables */
         :root {
             --primary-color: #15803d;
             --primary-hover: #16a34a;
@@ -38,17 +38,26 @@
             --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
             --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
             --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            /* Performance optimizations */
+            --gpu-acceleration: translateZ(0);
+            --will-change-transform: transform;
+            --will-change-scroll: scroll-position;
         }
 
-        /* Base styles */
+        /* Optimized base styles */
         body { 
-            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; 
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; 
             background-color: var(--bg-secondary);
             color: var(--text-primary);
             line-height: 1.6;
+            /* Performance optimizations */
+            contain: layout style paint;
+            will-change: var(--will-change-scroll);
+            transform: var(--gpu-acceleration);
         }
         
-        /* Table styles */
+        /* Consistent table styles across all screen sizes */
         #data-table { 
             border-collapse: collapse; 
             border-spacing: 0; 
@@ -57,11 +66,21 @@
             background-color: var(--bg-primary);
             box-shadow: var(--shadow-md);
             border-radius: 0.5rem;
+            font-size: 0.875rem; /* Consistent font size */
+            /* Performance optimizations */
+            contain: layout;
+            will-change: var(--will-change-scroll);
+            transform: var(--gpu-acceleration);
         }
         
         #data-table th, #data-table td { 
             border: 1px solid var(--border-color); 
             transition: var(--transition);
+            padding: 0.75rem 0.5rem; /* Consistent padding */
+            text-align: left;
+            vertical-align: middle;
+            /* Optimize cell rendering */
+            contain: layout style;
         }
         
         #data-table thead { 
@@ -73,18 +92,20 @@
             font-weight: 600 !important;
             text-transform: uppercase !important;
             letter-spacing: 0.05em !important;
-            /* ✅ GARANTIR que les en-têtes restent toujours visibles */
-            will-change: transform !important;
-            transform: translateZ(0) !important;
-            /* ✅ Ombre pour séparer visuellement les en-têtes */
+            /* Optimized performance */
+            will-change: var(--will-change-transform) !important;
+            transform: var(--gpu-acceleration) !important;
+            contain: layout style paint !important;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-            /* ✅ Bordure inférieure pour délimiter clairement */
             border-bottom: 3px solid var(--primary-hover) !important;
         }
         
         #data-table thead th {
-            padding: 1rem;
-            font-size: 0.875rem;
+            padding: 0.75rem 0.5rem; /* Match cell padding */
+            font-size: 0.875rem; /* Consistent with table font */
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
         }
         
         #data-table tbody tr {
@@ -172,6 +193,19 @@
             display: none !important;
         }
         
+        /* Screen reader only text */
+        .sr-only {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            padding: 0 !important;
+            margin: -1px !important;
+            overflow: hidden !important;
+            clip: rect(0, 0, 0, 0) !important;
+            white-space: nowrap !important;
+            border: 0 !important;
+        }
+        
         /* Animation classes */
         .sync-pending-animation { 
             animation: pulse 1.5s infinite; 
@@ -212,73 +246,45 @@
         
 
         
-        /* Optimisation de l'espace */
-        #table-container {
+        
+        /* Button bar positioning - Reference file approach */
+        #button-bar { 
+            position: absolute; 
+            top: 8px; 
+            right: 8px; 
+            z-index: 20; 
             max-width: 100%;
-        }
-        
-        #button-bar {
-            max-width: 100%;
-            justify-content: flex-start; /* Default to flex-start for proper scrolling */
-            overflow-x: auto;
-            gap: 0.3rem; /* ensure spacing between buttons */
-            padding: 0 24px !important; /* Add padding for better scrolling */
-            -webkit-overflow-scrolling: touch; /* smooth scrolling on mobile */
-            position: relative;
-        }
-        
-        /* Large screens: maintain space-between layout */
-        @media (min-width: 1024px) {
-            #button-bar {
-                justify-content: space-between !important; /* Keep space between sync and buttons */
-            }
-            
-            /* Sync elements always stay on the left */
-            #sync-elements-container {
-                margin-right: auto !important; /* Ensure left positioning */
-                flex-shrink: 0 !important; /* Don't shrink sync elements */
-                padding-left: 1.5rem !important; /* Extra left padding for better visibility on large screens */
-            }
-            
-            /* Function buttons group on the right */
-            #button-bar button {
-                margin-left: 0.3rem !important; /* Maintain spacing between buttons */
-            }
-            
-            /* Ensure title doesn't get cut off */
-            #staff-title {
-                white-space: nowrap !important; /* Prevent title wrapping */
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-                max-width: none !important;
-            }
-        }
-        
-        /* Medium screens: maintain space-between layout */
-        @media (min-width: 768px) and (max-width: 1023px) {
-            #button-bar {
-                justify-content: space-between !important; /* Keep space between sync and buttons */
-            }
-            
-            /* Sync elements always stay on the left */
-            #sync-elements-container {
-                margin-right: auto !important; /* Ensure left positioning */
-                flex-shrink: 0 !important; /* Don't shrink sync elements */
-                padding-left: 1rem !important; /* Left padding for better visibility on medium screens */
-            }
-            
-            /* Function buttons group on the right */
-            #button-bar button {
-                margin-left: 0.25rem !important; /* Tighter spacing on medium screens */
-            }
+            justify-content: flex-start;
         }
         
         #button-bar button {
             margin: 0;
             flex-shrink: 0;
-            transform: scale(1.2); /* enlarge by ~20% */
-            transform-origin: center;
         }
+        
+        /* Mobile-safe positioning for the top-right button bar */
+        @media (max-width: 640px) {
+            #button-bar {
+                position: fixed;
+                top: calc(env(safe-area-inset-top, 0px) + 8px);
+                right: 8px;
+                z-index: 50;
+            }
+        }
+        
+        /* Réduction des marges sur petits écrans */
+        @media (max-width: 768px) {
+            #table-container {
+                margin: 0.5rem 0 0.5rem 0.5rem !important;
+                padding: 0.5rem !important;
+            }
+            
+            #button-bar {
+                padding: 0.5rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+        }
+        
         
         /* Ensure color picker doesn't collapse on small screens */
         #row-color-picker {
@@ -337,239 +343,19 @@
             color: #991b1b; 
         }
         
-        /* Button bar positioning - now integrated with title header */
-        #button-bar { 
-            position: relative; 
-            top: auto; 
-            right: auto; 
-            z-index: 20; 
-            margin-left: auto; /* Push buttons to the right side of the header */
-            max-width: 80%; /* Increased width to show more buttons */
-            min-width: 400px; /* Increased minimum width for better button visibility */
-            flex-wrap: nowrap !important; /* Never wrap buttons to multiple lines */
-            padding: 0.5rem 1rem !important; /* Ensure consistent padding for button visibility */
-            scroll-behavior: smooth !important; /* Smooth scrolling */
-            scrollbar-width: thin !important; /* Thin scrollbar for Firefox */
-            scroll-snap-type: x mandatory !important; /* Enable scroll snapping */
-            scroll-padding-left: 0 !important; /* Ensure left edge is reachable */
-            scroll-padding-right: 0 !important; /* Ensure right edge is reachable */
-        }
         
 
-        
-        /* Transparent scrollbar styling */
-        #button-bar::-webkit-scrollbar {
-            height: 14px; /* Maintain size for functionality */
-        }
-        
-        #button-bar::-webkit-scrollbar-track {
-            background: transparent; /* Transparent track */
-            border-radius: 7px;
-            border: none;
-            margin: 0 4px;
-        }
-        
-        #button-bar::-webkit-scrollbar-thumb {
-            background: transparent; /* Transparent thumb */
-            border-radius: 7px;
-            border: none;
-            min-width: 30px; /* Ensure thumb is always grabbable */
-        }
-        
-        #button-bar::-webkit-scrollbar-thumb:hover {
-            background: rgba(59, 130, 246, 0.1); /* Slight visibility on hover */
-        }
-        
-        #button-bar::-webkit-scrollbar-thumb:active {
-            background: rgba(59, 130, 246, 0.2); /* Slight visibility when active */
-        }
-        
-        /* Firefox scrollbar styling */
-        #button-bar {
-            scrollbar-width: thin; /* Thin scrollbar for Firefox */
-            scrollbar-color: transparent transparent; /* Transparent thumb and track */
-        }
-        
-        /* Add visual indicator that scrolling is possible */
-        #button-bar::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 20px;
-            background: linear-gradient(90deg, rgba(255,255,255,0.9) 0%, transparent 100%);
-            pointer-events: none;
-            z-index: 1;
-        }
-        
-        #button-bar::after {
-            content: '';
-            position: absolute;
-            right: 0;
-            top: 0;
-            bottom: 0;
-            width: 20px;
-            background: linear-gradient(270deg, rgba(255,255,255,0.9) 0%, transparent 100%);
-            pointer-events: none;
-            z-index: 1;
-        }
-        
-        /* Ensure buttons are properly spaced and don't interfere with scrolling */
-        #button-bar button {
-            flex-shrink: 0 !important; /* Prevent buttons from shrinking */
-            scroll-snap-align: start !important; /* Enable scroll snapping on buttons */
-        }
-        
-        /* Ensure horizontal scrollbar is always visible when needed */
-        #button-bar:hover {
-            overflow-x: auto;
-        }
-        
-        /* Add smooth scrolling for better UX */
-        #button-bar {
-            scroll-behavior: smooth;
-        }
-        
-        /* Ensure buttons don't shrink and maintain their size */
-        #button-bar button {
-            flex-shrink: 0;
-        }
-        
-        /* Forcer le positionnement sur tous les écrans non-mobiles */
-        @media (min-width: 641px) {
-            #button-bar {
-                position: absolute !important;
-                top: 8px !important;
-                right: 8px !important;
-                z-index: 20 !important;
-                margin: 0 !important;
-                margin-bottom: 0 !important;
-                padding: 0 !important; /* Remove padding between buttons and container */
-            }
-        }
 
-        /* Mobile-specific button bar positioning */
-        @media (max-width: 640px) {
-            /* On mobile, the entire header container becomes fixed */
-            .flex.flex-col.md\\:flex-row.items-center.justify-between.mb-2.p-1.bg-gradient-to-r.from-gray-50.to-gray-100.rounded-lg.border.border-gray-200 {
-                position: fixed !important;
-                top: env(safe-area-inset-top, 0px) !important; /* No additional padding */
-                left: 0 !important;
-                right: 0 !important;
-                z-index: 1000 !important;
-                margin: 0 !important;
-                padding: 0.5rem !important; /* Reduced padding for better spacing */
-                width: 100% !important;
-                background-color: rgba(249, 250, 251, 0.98) !important;
-                border: 1px solid #e5e7eb !important;
-                border-radius: 0 0 0.5rem 0.5rem !important;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-                min-height: 50px !important; /* Reduced height for better proportions */
-            }
-            
-            /* Button bar styling on mobile */
-            #button-bar {
-                margin-left: 0 !important; /* Reset margin on mobile */
-                justify-content: flex-start !important; /* Allow natural scrolling */
-                flex-wrap: nowrap !important; /* Never wrap buttons on mobile */
-                gap: 0.5rem !important;
-                padding: 0.5rem !important;
-                background-color: transparent !important; /* Transparent since parent has background */
-                border: none !important;
-                border-radius: 0 !important;
-                max-width: 100% !important; /* Full width on mobile */
-                min-width: auto !important; /* No minimum width constraint on mobile */
-            }
-            
-            /* Ensure buttons maintain original desktop size on mobile */
-            #button-bar button {
-                transform: scale(1.2) !important; /* Original desktop size */
-                transform-origin: center !important;
-            }
-        }
-
-        /* Additional mobile button visibility fixes */
+        /* Essential mobile optimizations - minimal impact */
         @media (max-width: 768px) {
-            /* On mobile, the entire header container becomes fixed */
-            .flex.flex-col.md\\:flex-row.items-center.justify-between.mb-2.p-1.bg-gradient-to-r.from-gray-50.to-gray-100.rounded-lg.border.border-gray-200 {
-                position: fixed !important;
-                top: env(safe-area-inset-top, 0px) !important; /* No additional padding */
-                left: 0 !important;
-                right: 0 !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0.5rem !important; /* Reduced padding for better spacing */
-                background-color: rgba(249, 250, 251, 0.98) !important;
-                border: 1px solid #e5e7eb !important;
-                border-radius: 0 0 0.5rem 0.5rem !important;
-                z-index: 1000 !important;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-                min-height: 50px !important; /* Reduced height for better proportions */
+            body {
+                zoom: 0.7; /* Essential for mobile fit */
             }
             
-            /* Button bar styling on mobile - second block */
-            #button-bar {
-                margin-left: 0 !important; /* Reset margin on mobile */
-                justify-content: flex-start !important; /* Start from left for better scrolling */
-                flex-wrap: nowrap !important; /* Never wrap buttons on mobile */
-                gap: 0.5rem !important;
-                padding: 0.5rem 1rem !important; /* Add horizontal padding for scroll space */
-                background-color: transparent !important; /* Transparent since parent has background */
-                border: none !important;
-                border-radius: 0 !important;
-                overflow-x: auto !important; /* Ensure horizontal scroll on mobile */
-                -webkit-overflow-scrolling: touch !important; /* Smooth touch scrolling */
-                scrollbar-width: thin !important; /* Thin scrollbar on mobile */
-            }
-            
-            /* Transparent mobile scrollbar */
-            #button-bar::-webkit-scrollbar {
-                height: 8px !important; /* Maintain size for touch functionality */
-            }
-            
-            #button-bar::-webkit-scrollbar-thumb {
-                background: transparent !important; /* Transparent on mobile too */
-                border-radius: 4px !important;
-                border: none !important;
-                min-width: 40px !important; /* Larger minimum width for touch */
-            }
-            
-            #button-bar::-webkit-scrollbar-thumb:hover {
-                background: rgba(239, 68, 68, 0.1) !important; /* Slight red tint on hover */
-            }
-            
-            #button-bar::-webkit-scrollbar-thumb:active {
-                background: rgba(239, 68, 68, 0.2) !important; /* Slight red tint when active */
-            }
-            
-            /* Mobile-specific color picker styling */
-            #row-color-picker {
-                min-width: 28px !important;
-                min-height: 28px !important;
-                width: 28px !important;
-                height: 28px !important;
-                flex-shrink: 0 !important;
-                border: 2px solid #ffffff !important;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-            }
-            
-            /* Add top margin to table container to prevent overlap with fixed header */
-            #table-container {
-                margin-top: env(safe-area-inset-top, 0px) !important; /* No additional margin */
-            }
-            
-            /* Ensure table header is visible below the fixed header */
-            #data-table thead {
-                position: sticky !important;
-                top: calc(env(safe-area-inset-top, 0px) + 90px) !important; /* Adjusted for reduced header height */
-                z-index: 100 !important;
+            body.user-zoom-override {
+                zoom: initial !important;
             }
         }
-
-        /* Button bar positioning for medium screens - no responsive modifications */
-
-        /* Button bar positioning - no responsive modifications */
         
         /* Sticky first column */
         #data-table td:first-child {
@@ -800,25 +586,64 @@
             min-width: fit-content;
         }
         
-        /* Minimal toggle button styling */
+        /* Mobile-optimized toggle button styling */
         #history-toggle-btn {
             transition: all 0.2s ease-in-out;
-            border: none !important;
+            border: 2px solid transparent !important;
             outline: none !important;
-            box-shadow: none !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+            min-width: 32px !important;
+            min-height: 32px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
         
         #history-toggle-btn:hover {
             transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
         }
         
         #history-toggle-btn:active {
             transform: scale(0.95);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
         }
         
         #history-toggle-btn:focus {
-            outline: none !important;
-            box-shadow: none !important;
+            outline: 2px solid #3b82f6 !important;
+            outline-offset: 2px !important;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
+        }
+        
+        /* Mobile-specific toggle button optimizations */
+        @media (max-width: 768px) {
+            #history-toggle-btn {
+                min-width: 44px !important; /* iOS touch guideline */
+                min-height: 44px !important;
+                width: 44px !important;
+                height: 44px !important;
+                border-radius: 8px !important;
+                background-color: #6b7280 !important; /* Better contrast */
+                font-size: 16px !important;
+                touch-action: manipulation !important;
+                -webkit-tap-highlight-color: transparent !important;
+            }
+            
+            #history-toggle-btn:hover {
+                background-color: #4b5563 !important;
+            }
+            
+            #history-toggle-btn:active {
+                background-color: #374151 !important;
+                transform: scale(0.97) !important;
+            }
+            
+            /* Larger icon on mobile */
+            #history-toggle-btn i {
+                font-size: 18px !important;
+                width: 20px !important;
+                height: 20px !important;
+            }
         }
         
         /* Perfect centering for FontAwesome icons */
@@ -1117,21 +942,23 @@
     <div id="message-box" class="message-box hidden"><p id="message-text" class="font-bold"></p></div>
 
     <!-- Login container -->
-    <div id='login-container' class="bg-white p-8 md:p-10 lg:p-12 rounded-xl shadow-lg w-full max-w-md mx-auto my-auto flex flex-col items-center space-y-4 md:space-y-6 transition-all duration-300 ease-in-out hidden">
-        <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800">Accéder au tableau</h2>
-        <input type='password' id='password' placeholder='Mot de passe (Appuyez sur Entrée)' class="w-full p-3 md:p-4 lg:p-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
-        <div class="flex items-center space-x-2 w-full">
-            <input type='checkbox' id='toggle-password' class="w-4 h-4 md:w-5 md:h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
-            <label for="toggle-password" class="text-sm md:text-base font-medium text-gray-700">Afficher le mot de passe</label>
-        </div>
-        <button onclick='checkPassword()' class="w-full bg-green-500 text-white font-bold p-3 md:p-4 lg:p-5 rounded-lg shadow-md hover:bg-green-600 transition-colors">Valider</button>
+    <div id='login-container' class="fixed inset-0 bg-gray-100 flex items-center justify-center z-50 transition-all duration-300 ease-in-out hidden">
+        <div class="bg-white p-8 md:p-10 lg:p-12 rounded-xl shadow-lg w-full max-w-md mx-4 flex flex-col items-center space-y-4 md:space-y-6">
+            <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800">Accéder au tableau</h2>
+            <input type='password' id='password' placeholder='Mot de passe (Appuyez sur Entrée)' class="w-full p-3 md:p-4 lg:p-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+            <div class="flex items-center space-x-2 w-full">
+                <input type='checkbox' id='toggle-password' class="w-4 h-4 md:w-5 md:h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
+                <label for="toggle-password" class="text-sm md:text-base font-medium text-gray-700">Afficher le mot de passe</label>
+            </div>
+            <button onclick='checkPassword()' class="w-full bg-green-500 text-white font-bold p-3 md:p-4 lg:p-5 rounded-lg shadow-md hover:bg-green-600 transition-colors">Valider</button>
         
-        <!-- Indicateur des raccourcis clavier -->
-        <div class="text-center text-xs text-gray-500 mt-2">
-            <p>💡 <strong>Raccourcis :</strong> Entrée (Valider) • G (Galerie) • N (Nouvelle ligne)</p>
+            <!-- Indicateur des raccourcis clavier -->
+            <div class="text-center text-xs text-gray-500 mt-2">
+                <p>💡 <strong>Raccourcis :</strong> Entrée (Valider) • G (Galerie) • N (Nouvelle ligne)</p>
+            </div>
+            
+            <p id='error-message' class="text-red-500 font-medium text-sm md:text-base"></p>
         </div>
-        
-        <p id='error-message' class="text-red-500 font-medium text-sm md:text-base"></p>
     </div>
 
     <!-- Bouton d'ajout - visible sur tous les écrans (en dehors du conteneur de tableau) -->
@@ -1144,115 +971,95 @@
         </button>
         
     <!-- Table container -->
-    <div id='table-container' class="bg-white relative p-2 md:p-4 lg:p-6 pt-0 md:pt-4 lg:pt-6 rounded-xl w-full flex-grow overflow-y-auto hidden transition-all duration-300 ease-in-out flex flex-col m-2 shadow-xl">
-        <div class="mb-2 p-0 md:p-1 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
-            <!-- Single container with sync elements on left, function buttons on right -->
-            <div id="button-bar" class="flex flex-nowrap items-center gap-1 px-6 py-1 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-gray-100" style="flex-wrap: nowrap !important; scroll-behavior: smooth; min-width: 100%; scrollbar-width: thin;">
-                
-                <!-- Left side: Title and sync elements (always justify left) -->
-                <div class="flex items-center gap-3 flex-shrink-0 pl-4" id="sync-elements-container">
-                    <h2 id="staff-title" class="text-lg md:text-xl font-bold text-gray-800 tracking-tight">S-T synchronisation temps réel</h2>
-                    
-                    <!-- Box affichant le nombre de lignes - à côté du titre -->
-                    <div id="row-count-display" class="flex items-center justify-center px-2 py-1 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 text-sm md:text-lg lg:text-xl font-medium min-w-12">
-                        <span>N=</span>
-                        <span id="row-count-number" class="ml-1 font-bold">0</span>
-                    </div>
-                    
-                    <span id="sync-status" class="inline-flex sync-pending-animation px-2 py-1 rounded-full text-xs font-semibold border-2 bg-white shadow-sm">
-                        <span class="sync-text">Initialisation...</span>
-                        <i class="sync-icon fa-solid fa-check hidden"></i>
-                    </span>
-                </div>
-                
-                <!-- Spacer for mobile to prevent auto-scroll -->
-                <div class="flex-shrink-0 w-4 md:hidden"></div>
-                
-                <!-- Right side: Function buttons -->
-                <button onclick='saveManually()' title="Sauvegarder (Cmd+Z/Ctrl+Z ou Cmd+S/Ctrl+S)" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
-                    <i class="fa-solid fa-save w-3.5 h-3.5"></i>
-                </button>
-                <button id="undo-button" onclick="undo()" disabled title="Annuler (Cmd+Y / Ctrl+Y)" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
-                    <i class="fa-solid fa-rotate-left w-3.5 h-3.5"></i>
-                </button>
-                <button id="redo-button" onclick="redo()" disabled title="Rétablir (Cmd+Shift+Z / Ctrl+Y)" aria-label="Rétablir" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
-                    <i class="fa-solid fa-rotate-right w-3.5 h-3.5"></i>
-                </button>
-                
-                <button onclick="downloadExcel()" title="Exporter en Excel" aria-label="Exporter en Excel" class="bg-green-600 text-white p-1.5 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center w-7 h-7">
-                    <i class="fa-solid fa-file-excel w-3.5 h-3.5"></i>
-                </button>
-                <button onclick="downloadPDF()" title="Exporter en PDF" aria-label="Exporter en PDF" class="bg-red-600 text-white p-1.5 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center w-7 h-7">
-                    <i class="fa-solid fa-file-pdf w-3.5 h-3.5"></i>
-                </button>
-                <button onclick="downloadImage()" title="Exporter en image (PNG)" aria-label="Exporter en image (PNG)" class="bg-purple-600 text-white p-1.5 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center w-7 h-7">
-                    <i class="fa-solid fa-image w-3.5 h-3.5"></i>
-                </button>
-                <button onclick="document.getElementById('excel-input').click()" title="Importer depuis Excel" aria-label="Importer depuis Excel" class="bg-blue-600 text-white p-1.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center w-7 h-7">
-                    <i class="fa-solid fa-upload w-3.5 h-3.5"></i>
-                </button>
-                
-                <!-- Bouton Galerie d'images -->
-                <button onclick="openSimpleGallery()" title="Galerie d'images (G)" aria-label="Galerie d'images" class="bg-indigo-600 text-white p-1.5 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center w-7 h-7">
-                    <i class="fa-solid fa-images w-3.5 h-3.5"></i>
-                </button>
-                <button onclick="zoomOut()" title="Réduire (−)" aria-label="Réduire" class="bg-gray-700 text-white p-1.5 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center w-7 h-7">
-                    <i class="fa-solid fa-minus w-3.5 h-3.5"></i>
-                </button>
-                <button id="zoom-display" onclick="zoomReset()" title="Réinitialiser à 100%" aria-label="Réinitialiser à 100%" class="bg-gray-500 text-white px-2 py-2 rounded-lg hover:bg-gray-600 transition-colors text-xs w-8 h-8">100%</button>
-                <button onclick="zoomIn()" title="Agrandir (+)" aria-label="Agrandir" class="bg-gray-700 text-white p-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center w-8 h-8">
-                    <i class="fa-solid fa-plus w-4 h-4"></i>
-                </button>
-                <input id="row-color-picker"
-                       type="color"
-                       title="Choisir la couleur de surlignage des lignes"
-                       class="p-1 border border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors" />
-                <button onclick="clearAllRowColors()" title="Effacer toutes les couleurs" aria-label="Effacer toutes les couleurs" class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-8 h-8">
-                    <i class="fa-solid fa-trash-can w-4 h-4"></i>
-                </button>
-                <button id="filter-colored-toggle"
-                        onclick="toggleColoredFilter()"
-                        title="Afficher seulement les lignes colorées"
-                        aria-label="Filtrer lignes colorées"
-                        class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-8 h-8">
-                    <i class="fa-solid fa-filter w-4 h-4"></i>
-                </button>
-                <button id="paint-mode-toggle"
-                        onclick="cyclePaintMode()"
-                        title="Mode de peinture: Auto/Colorer/Effacer (appuyez sur P pour changer)"
-                        aria-label="Basculer le mode de peinture"
-                        class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-8 h-8">
-                    <i class="fa-solid fa-palette w-4 h-4"></i>
-                </button>
-                
-                <!-- Bouton Mode Visualisation -->
-                <button id="view-mode-toggle"
-                        onclick="toggleViewMode()"
-                        title="Basculer le mode visualisation (lecture seule)"
-                        aria-label="Basculer le mode visualisation"
-                        class="bg-blue-200 text-blue-800 p-2 rounded-lg hover:bg-blue-300 transition-colors flex items-center justify-center w-8 h-8">
-                    <i class="fa-solid fa-eye w-4 h-4"></i>
-                </button>
+    <div id='table-container' class="bg-white relative p-2 md:p-4 lg:p-6 pt-2 md:pt-4 lg:pt-6 rounded-xl w-full flex-grow overflow-y-auto transition-all duration-300 ease-in-out flex flex-col m-2 shadow-xl">
+        <!-- Title -->
+        <h2 id="staff-title" class="text-lg md:text-xl font-bold text-gray-800 tracking-tight mb-2">S-T synchronisation temps réel</h2>
+        
+        <!-- Status indicators -->
+        <div class="flex items-center gap-2 mb-2">
+            <div id="row-count-display" class="flex items-center justify-center px-2 py-1 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium min-w-12">
+                <span>N=</span>
+                <span id="row-count-number" class="ml-1 font-bold">0</span>
+            </div>
+            
+            <span id="sync-status" class="inline-flex sync-pending-animation px-2 py-1 rounded-full text-xs font-semibold border-2 bg-white shadow-sm">
+                <span class="sync-text">Initialisation...</span>
+                <i class="sync-icon fa-solid fa-check hidden"></i>
+            </span>
+            
+            <!-- Mobile sync indicator -->
+            <div id="mobile-sync-indicator" title="Statut de synchronisation" class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 md:hidden transition-colors">
+                <i id="mobile-sync-icon" class="fas fa-check text-xs"></i>
+                <span id="mobile-sync-text">Synchronisé</span>
             </div>
         </div>
 
         <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
-
-
+        
+        <!-- Function Button Bar - Positioned absolutely at top-right -->
+        <div id="button-bar" class="flex flex-wrap items-center gap-1 mb-1 p-1 bg-gray-50 rounded-lg border border-gray-200">
+            <button onclick='saveManually()' title="Sauvegarder" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
+                <i class="fa-solid fa-save w-3.5 h-3.5"></i>
+            </button>
+            <button id="undo-button" onclick="undo()" disabled title="Annuler" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
+                <i class="fa-solid fa-rotate-left w-3.5 h-3.5"></i>
+            </button>
+            <button id="redo-button" onclick="redo()" disabled title="Rétablir" aria-label="Rétablir" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
+                <i class="fa-solid fa-rotate-right w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="downloadExcel()" title="Exporter en Excel" aria-label="Exporter en Excel" class="bg-green-600 text-white p-1.5 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center w-7 h-7">
+                <i class="fa-solid fa-file-excel w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="downloadPDF()" title="Exporter en PDF" aria-label="Exporter en PDF" class="bg-red-600 text-white p-1.5 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center w-7 h-7">
+                <i class="fa-solid fa-file-pdf w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="downloadImage()" title="Exporter en image (PNG)" aria-label="Exporter en image (PNG)" class="bg-purple-600 text-white p-1.5 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center w-7 h-7">
+                <i class="fa-solid fa-image w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="document.getElementById('excel-input').click()" title="Importer depuis Excel" aria-label="Importer depuis Excel" class="bg-blue-600 text-white p-1.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center w-7 h-7">
+                <i class="fa-solid fa-upload w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="openSimpleGallery()" title="Galerie d'images (G)" aria-label="Galerie d'images" class="bg-indigo-600 text-white p-1.5 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center w-7 h-7">
+                <i class="fa-solid fa-images w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="zoomOut()" title="Réduire (−)" aria-label="Réduire" class="bg-gray-700 text-white p-1.5 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center w-7 h-7">
+                <i class="fa-solid fa-minus w-3.5 h-3.5"></i>
+            </button>
+            <button id="zoom-display" onclick="zoomReset()" title="Réinitialiser à 100%" aria-label="Réinitialiser à 100%" class="bg-gray-500 text-white px-2 py-2 rounded-lg hover:bg-gray-600 transition-colors text-xs w-8 h-8">100%</button>
+            <button onclick="zoomIn()" title="Agrandir (+)" aria-label="Agrandir" class="bg-gray-700 text-white p-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center w-8 h-8">
+                <i class="fa-solid fa-plus w-4 h-4"></i>
+            </button>
+            <input id="row-color-picker" type="color" title="Choisir la couleur de surlignage des lignes" class="p-1 border border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors" />
+            <button onclick="clearAllRowColors()" title="Effacer toutes les couleurs" aria-label="Effacer toutes les couleurs" class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-8 h-8">
+                <i class="fa-solid fa-trash-can w-4 h-4"></i>
+            </button>
+            <button id="filter-colored-toggle" onclick="toggleColoredFilter()" title="Afficher seulement les lignes colorées" aria-label="Filtrer lignes colorées" class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-8 h-8">
+                <i class="fa-solid fa-filter w-4 h-4"></i>
+            </button>
+            <button id="paint-mode-toggle" onclick="cyclePaintMode()" title="Mode de peinture: Auto/Colorer/Effacer (appuyez sur P pour changer)" aria-label="Basculer le mode de peinture" class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-8 h-8">
+                <i class="fa-solid fa-palette w-4 h-4"></i>
+            </button>
+            <button id="view-mode-toggle" onclick="toggleViewMode()" title="Basculer le mode visualisation (lecture seule)" aria-label="Basculer le mode visualisation" class="bg-blue-200 text-blue-800 p-2 rounded-lg hover:bg-blue-300 transition-colors flex items-center justify-center w-8 h-8">
+                <i class="fa-solid fa-eye w-4 h-4"></i>
+            </button>
+        </div>
+        <input id="excel-input" type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="importExcelFromFile(this.files[0])" />
 
         <!-- History Controls Row - Toggle button and history buttons on same level -->
         <div class="flex justify-between items-center mb-3 md:mb-8 lg:mb-6 lg:mt-4">
-            <!-- Toggle button and sync indicator container -->
+            <!-- Toggle button container -->
             <div class="flex items-center gap-2">
-                <button id="history-toggle-btn" onclick="toggleHistoryBarSimple()" title="Fermer/Ouvrir la barre d'historique" aria-label="Toggle historique" class="bg-gray-400 text-white p-0 rounded hover:bg-gray-500 transition-colors w-4 h-4 flex items-center justify-center" style="border: none !important; outline: none !important; box-shadow: none !important;">
-                    <i id="history-toggle-icon" class="fa-solid fa-plus w-2 h-2 flex items-center justify-center text-center leading-none" style="border: none !important; outline: none !important;"></i>
+                <button id="history-toggle-btn" onclick="toggleHistoryBarSimple()" 
+                    title="Afficher/Masquer l'historique des snapshots" 
+                    aria-label="Bouton pour afficher ou masquer la barre d'historique"
+                    aria-expanded="false"
+                    aria-controls="history-bar-container"
+                    role="button"
+                    tabindex="0"
+                    class="bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <i id="history-toggle-icon" class="fa-solid fa-plus" aria-hidden="true"></i>
+                    <span class="sr-only">Afficher l'historique</span>
                 </button>
-                
-                <!-- Sync status indicator for small screens -->
-                <div id="mobile-sync-indicator" title="Statut de synchronisation" class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 md:hidden transition-colors">
-                    <i id="mobile-sync-icon" class="fas fa-check text-xs"></i>
-                    <span id="mobile-sync-text">Synchronisé</span>
-                </div>
             </div>
 
             <!-- History Bar Container - This is what gets toggled -->
@@ -1560,6 +1367,9 @@
         // Excel-like save behavior - save only when moving between cells
         async function saveModifiedCell(cell, oldValue, newValue) {
             if (!cell || oldValue === newValue) return false;
+            
+            // Performance monitoring
+            PerformanceMonitor.start('save-cell');
             
             console.log('💾 [EXCEL-SAVE] ========== EXCEL-LIKE SAVE START ==========');
             console.log('💾 [EXCEL-SAVE] Cell modified, saving immediately:', {
@@ -1921,8 +1731,267 @@
         let rowPaintAction = 'color';
         let paintMode = localStorage.getItem('rowPaintMode') || 'auto';
         let showOnlyColored = false;
-        let isViewMode = localStorage.getItem('viewMode') === 'true'; // Mode visualisation (lecture seule) - restauré depuis localStorage
-        let isViewModeProtected = false; // Flag pour protection renforcée sur mobile
+        let isViewMode = localStorage.getItem('viewMode') === 'true';
+        let isViewModeProtected = false;
+        
+        // Performance optimizations
+        const MOBILE_DEBOUNCE_DELAY = 300;
+        const DESKTOP_DEBOUNCE_DELAY = 150;
+        
+        // DOM element cache for performance
+        const DOM_CACHE = {
+            table: null,
+            tableContainer: null,
+            buttonBar: null,
+            syncStatus: null,
+            historyToggleBtn: null,
+            historyBarContainer: null,
+            init() {
+                this.table = document.getElementById('data-table');
+                this.tableContainer = document.getElementById('table-container');
+                this.buttonBar = document.getElementById('button-bar');
+                this.syncStatus = document.getElementById('sync-status');
+                this.historyToggleBtn = document.getElementById('history-toggle-btn');
+                this.historyBarContainer = document.getElementById('history-bar-container');
+            },
+            get(elementId) {
+                if (!this[elementId]) {
+                    this[elementId] = document.getElementById(elementId);
+                }
+                return this[elementId];
+            }
+        };
+        
+        // Optimized throttle function
+        function throttle(func, delay) {
+            let timeoutId;
+            let lastExecTime = 0;
+            return function (...args) {
+                const currentTime = performance.now();
+                
+                if (currentTime - lastExecTime > delay) {
+                    func.apply(this, args);
+                    lastExecTime = currentTime;
+                } else {
+                    clearTimeout(timeoutId);
+                    timeoutId = setTimeout(() => {
+                        func.apply(this, args);
+                        lastExecTime = performance.now();
+                    }, delay - (currentTime - lastExecTime));
+                }
+            };
+        }
+        
+        // Batch DOM updates for performance
+        const batchManager = {
+            pending: new Set(),
+            rafId: null,
+            
+            schedule(fn) {
+                this.pending.add(fn);
+                if (!this.rafId) {
+                    this.rafId = requestAnimationFrame(() => this.flush());
+                }
+            },
+            
+            flush() {
+                const batch = Array.from(this.pending);
+                this.pending.clear();
+                this.rafId = null;
+                
+                // Execute all pending updates in a single frame
+                for (const fn of batch) {
+                    try {
+                        fn();
+                    } catch (error) {
+                        console.error('Batch update error:', error);
+                    }
+                }
+            }
+        };
+        
+        // Optimized event delegation
+        const eventDelegator = {
+            handlers: new Map(),
+            
+            register(element, eventType, selector, handler) {
+                const key = `${eventType}-${selector}`;
+                if (!this.handlers.has(key)) {
+                    this.handlers.set(key, handler);
+                    element.addEventListener(eventType, (e) => {
+                        if (e.target.matches(selector)) {
+                            handler(e);
+                        }
+                    }, { passive: true });
+                }
+            }
+        };
+        
+        // Efficient DOM manipulation utilities
+        const DOMUtils = {
+            // Fragment-based batch updates
+            createFragment() {
+                return document.createDocumentFragment();
+            },
+            
+            // Efficient class manipulation
+            toggleClass(element, className, condition) {
+                if (condition !== undefined) {
+                    element.classList.toggle(className, condition);
+                } else {
+                    element.classList.toggle(className);
+                }
+            },
+            
+            // Batched style updates
+            setStyles(element, styles) {
+                const cssText = Object.entries(styles)
+                    .map(([prop, value]) => `${prop}: ${value}`)
+                    .join('; ');
+                element.style.cssText += '; ' + cssText;
+            },
+            
+            // Efficient innerHTML replacement with DocumentFragment
+            replaceContent(element, html) {
+                const template = document.createElement('template');
+                template.innerHTML = html;
+                const fragment = template.content.cloneNode(true);
+                element.replaceChildren(fragment);
+            },
+            
+            // Optimized element creation with attributes
+            createElement(tag, attributes = {}, textContent = '') {
+                const element = document.createElement(tag);
+                if (textContent) element.textContent = textContent;
+                
+                for (const [key, value] of Object.entries(attributes)) {
+                    if (key === 'className') {
+                        element.className = value;
+                    } else if (key.startsWith('data-')) {
+                        element.setAttribute(key, value);
+                    } else {
+                        element[key] = value;
+                    }
+                }
+                return element;
+            }
+        };
+        
+        // Performance monitoring and cleanup
+        const PerformanceMonitor = {
+            metrics: new Map(),
+            observers: new Set(),
+            
+            // Start timing a operation
+            start(label) {
+                this.metrics.set(label, performance.now());
+            },
+            
+            // End timing and log result
+            end(label) {
+                const startTime = this.metrics.get(label);
+                if (startTime) {
+                    const duration = performance.now() - startTime;
+                    console.log(`⏱️ ${label}: ${duration.toFixed(2)}ms`);
+                    this.metrics.delete(label);
+                    return duration;
+                }
+            },
+            
+            // Monitor memory usage
+            checkMemory() {
+                if (performance.memory) {
+                    const { usedJSHeapSize, totalJSHeapSize, jsHeapSizeLimit } = performance.memory;
+                    const usage = (usedJSHeapSize / jsHeapSizeLimit * 100).toFixed(2);
+                    console.log(`💾 Memory usage: ${usage}% (${(usedJSHeapSize / 1024 / 1024).toFixed(2)}MB)`);
+                }
+            },
+            
+            // Setup intersection observer for lazy loading
+            setupIntersectionObserver(callback, options = {}) {
+                const observer = new IntersectionObserver(callback, {
+                    rootMargin: '50px',
+                    threshold: 0.1,
+                    ...options
+                });
+                this.observers.add(observer);
+                return observer;
+            },
+            
+            // Cleanup all observers
+            cleanup() {
+                for (const observer of this.observers) {
+                    observer.disconnect();
+                }
+                this.observers.clear();
+                this.metrics.clear();
+            }
+        };
+        
+        // Memory management utilities
+        const MemoryManager = {
+            cache: new Map(),
+            maxCacheSize: 100,
+            
+            // Efficient caching with LRU eviction
+            set(key, value) {
+                if (this.cache.size >= this.maxCacheSize) {
+                    const firstKey = this.cache.keys().next().value;
+                    this.cache.delete(firstKey);
+                }
+                this.cache.set(key, value);
+            },
+            
+            get(key) {
+                if (this.cache.has(key)) {
+                    const value = this.cache.get(key);
+                    // Move to end (most recent)
+                    this.cache.delete(key);
+                    this.cache.set(key, value);
+                    return value;
+                }
+                return null;
+            },
+            
+            clear() {
+                this.cache.clear();
+            },
+            
+            // Clean up event listeners
+            cleanupEventListeners() {
+                // Remove unused event listeners to prevent memory leaks
+                const unusedElements = document.querySelectorAll('[data-cleanup]');
+                unusedElements.forEach(element => {
+                    element.remove();
+                });
+            }
+        };
+        
+        // Initialize performance monitoring
+        window.addEventListener('load', () => {
+            PerformanceMonitor.start('page-load');
+            DOM_CACHE.init();
+            
+            // Complete page load timing
+            setTimeout(() => {
+                PerformanceMonitor.end('page-load');
+            }, 0);
+            
+            // Check performance periodically with low impact
+            setInterval(() => {
+                if (Math.random() < 0.1) { // 10% chance
+                    requestIdleCallback(() => {
+                        PerformanceMonitor.checkMemory();
+                    });
+                }
+            }, 30000); // Every 30 seconds
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            PerformanceMonitor.cleanup();
+            MemoryManager.clear();
+        });
         
         // Protection globale: wrapper pour toutes les fonctions de sauvegarde
         function protectedSaveStateToHistory() {
@@ -3392,29 +3461,76 @@
             } catch(_) {}
         }
 
+        // Mobile zoom control functionality
+        let currentZoom = 0.7; // Default 70% zoom
+        
+        function setMobileZoom(zoom) {
+            if (isMobile()) {
+                currentZoom = zoom;
+                document.body.style.zoom = zoom;
+                localStorage.setItem('mobileZoom', zoom.toString());
+            }
+        }
+        
+        function resetMobileZoom() {
+            if (isMobile()) {
+                document.body.classList.add('user-zoom-override');
+                localStorage.removeItem('mobileZoom');
+            }
+        }
+        
+        // Load saved zoom level on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            if (isMobile()) {
+                const savedZoom = localStorage.getItem('mobileZoom');
+                if (savedZoom) {
+                    currentZoom = parseFloat(savedZoom);
+                    document.body.style.zoom = currentZoom;
+                } else {
+                    // Apply default 70% zoom
+                    document.body.style.zoom = '0.7';
+                }
+            }
+        });
+
+        // Optimized mobile orientation change handler
+        window.addEventListener('orientationchange', throttle(() => {
+            if (isMobile()) {
+                PerformanceMonitor.start('orientation-change');
+                _isMobileCache = null; // Reset cache on orientation change
+                
+                // Use batch manager for efficient DOM updates
+                batchManager.schedule(() => {
+                    const tableContainer = DOM_CACHE.get('table-container');
+                    if (tableContainer) {
+                        DOMUtils.setStyles(tableContainer, {
+                            'height': '100vh',
+                            'max-height': '100vh'
+                        });
+                    }
+                    PerformanceMonitor.end('orientation-change');
+                });
+            }
+        }, 100));
+
         // Mobile detection and support - Enhanced version
+        // Cache mobile detection result for performance
+        let _isMobileCache = null;
+        
         function isMobile() {
+            if (_isMobileCache !== null) return _isMobileCache;
+            
             try { 
-                // Détection plus robuste
                 const userAgent = navigator.userAgent;
                 const mobileRegex = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
-                
-                // Vérifier la taille de l'écran
                 const isSmallScreen = window.innerWidth <= 768;
-                
-                // Vérifier les capacités tactiles
                 const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-                
-                // Vérifier l'orientation (mobile a souvent une orientation changeante)
                 const hasOrientation = 'onorientationchange' in window;
-                
-                // Détection basée sur userAgent
                 const userAgentMobile = mobileRegex.test(userAgent);
-                
-                // Détection basée sur les capacités et la taille
                 const capabilitiesMobile = isSmallScreen && (hasTouch || hasOrientation);
                 
-                return userAgentMobile || capabilitiesMobile;
+                _isMobileCache = userAgentMobile || capabilitiesMobile;
+                return _isMobileCache;
             } catch(_) { 
                 return false; 
             }
@@ -3859,8 +3975,8 @@
                         if (wasViewMode) {
                             isViewMode = true;
                             
-                            // Délai adaptatif selon l'appareil (plus long sur mobile)
-                            const delay = isMobile() ? 300 : 150;
+                            // Adaptive delays for mobile performance
+                            const delay = isMobile() ? MOBILE_DEBOUNCE_DELAY : DESKTOP_DEBOUNCE_DELAY;
                             const restoreDelay = isMobile() ? 10000 : 6000;
                             
                             // Clean: Removed debug log
@@ -4059,20 +4175,25 @@
             selection.addRange(range);
           });
           
-          // Gestion du double-tap sur mobile
+          // Optimized double-tap handling for mobile
           let lastTap = 0;
           cell.addEventListener('touchstart', (e) => {
-            const currentTime = new Date().getTime();
+            if (!isMobile()) return;
+            
+            const currentTime = performance.now(); // More precise timing
             const tapLength = currentTime - lastTap;
             if (tapLength < 500 && tapLength > 0) {
-              // Double-tap détecté
               e.preventDefault();
-              // Sélectionner tout le contenu de la cellule
-              const range = document.createRange();
-              range.selectNodeContents(cell);
-              const selection = window.getSelection();
-              selection.removeAllRanges();
-              selection.addRange(range);
+              e.stopPropagation(); // Prevent event bubbling
+              
+              // Request animation frame for smooth selection
+              requestAnimationFrame(() => {
+                const range = document.createRange();
+                range.selectNodeContents(cell);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+              });
             }
             lastTap = currentTime;
           });
@@ -5947,34 +6068,46 @@
             try {
                 const toggleBtn = document.getElementById('history-toggle-btn');
                 if (toggleBtn) {
-                    // Touch events for better mobile compatibility
+                    // Enhanced touch events with haptic feedback
+                    let touchStartTime = 0;
+                    let touchMoved = false;
+                    
                     toggleBtn.addEventListener('touchstart', function(e) {
-                        e.preventDefault();
-                        console.log('📱 Touch start on toggle button');
-                    }, { passive: false });
+                        touchStartTime = performance.now();
+                        touchMoved = false;
+                        
+                        // Visual feedback
+                        this.style.transform = 'scale(0.95)';
+                        this.style.transition = 'transform 0.1s ease-out';
+                    }, { passive: true });
+                    
+                    toggleBtn.addEventListener('touchmove', function(e) {
+                        touchMoved = true;
+                    }, { passive: true });
                     
                     toggleBtn.addEventListener('touchend', function(e) {
                         e.preventDefault();
-                        console.log('📱 Touch end on toggle button');
-                        toggleHistoryBarSimple();
+                        
+                        // Reset visual feedback
+                        this.style.transform = '';
+                        this.style.transition = 'all 0.2s ease-in-out';
+                        
+                        // Only trigger on tap (not drag/scroll)
+                        const touchDuration = performance.now() - touchStartTime;
+                        if (!touchMoved && touchDuration < 500) {
+                            requestAnimationFrame(() => {
+                                toggleHistoryBarSimple();
+                            });
+                        }
                     }, { passive: false });
                     
-                    // Additional mobile event handling
-                    if (isMobile()) {
-                        toggleBtn.addEventListener('click', function(e) {
-                            console.log('📱 Click on toggle button (mobile)');
-                            // Ensure proper mobile handling
-                            setTimeout(() => {
-                                if (window.innerWidth <= 768) {
-                                    const historyBarContainer = document.getElementById('history-bar-container');
-                                    if (historyBarContainer) {
-                                        historyBarContainer.style.width = '100%';
-                                        historyBarContainer.style.maxWidth = 'none';
-                                    }
-                                }
-                            }, 50);
-                        });
-                    }
+                    // Keyboard accessibility
+                    toggleBtn.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleHistoryBarSimple();
+                        }
+                    });
                 }
             } catch(_) {}
         }
@@ -8285,9 +8418,7 @@
         
         // Enhanced mobile-responsive history bar toggle function
         function toggleHistoryBarSimple() {
-            // Debug: Vérifier que le DOM est chargé
             if (document.readyState !== 'complete') {
-                console.warn('⚠️ DOM not fully loaded, waiting...');
                 setTimeout(toggleHistoryBarSimple, 100);
                 return;
             }
@@ -8295,41 +8426,64 @@
             const historyBarContainer = document.getElementById('history-bar-container');
             const toggleBtn = document.getElementById('history-toggle-btn');
             const toggleIcon = document.getElementById('history-toggle-icon');
+            const screenReader = toggleBtn?.querySelector('.sr-only');
             
             if (!historyBarContainer || !toggleBtn || !toggleIcon) {
-                console.error('❌ Required elements not found');
-                console.error('❌ historyBarContainer:', historyBarContainer);
-                console.error('❌ toggleBtn:', toggleBtn);
-                console.error('❌ toggleIcon:', toggleIcon);
+                console.error('❌ Toggle elements not found');
                 return;
             }
             
-            // Check current state - more robust detection
+            // Check current state
             const isCurrentlyVisible = !historyBarContainer.classList.contains('hidden') && 
                                     historyBarContainer.style.display !== 'none' && 
                                     historyBarContainer.offsetHeight > 0;
             
             if (isCurrentlyVisible) {
-                // Hide history bar container
+                // Hide history bar
                 historyBarContainer.classList.add('hidden');
                 historyBarContainer.style.display = 'none';
                 
-                // Update button icon to show it can open
-                toggleIcon.className = 'fa-solid fa-plus w-2 h-2 flex items-center justify-center text-center leading-none';
+                // Update accessibility attributes
+                toggleBtn.setAttribute('aria-expanded', 'false');
+                toggleBtn.setAttribute('title', 'Afficher l\'historique des snapshots');
+                if (screenReader) screenReader.textContent = 'Afficher l\'historique';
+                
+                // Update icon with better mobile sizing
+                toggleIcon.className = 'fa-solid fa-plus';
+                if (isMobile()) {
+                    toggleIcon.style.fontSize = '18px';
+                }
                 
                 console.log('🔽 History bar hidden');
             } else {
-                // Show history bar container
+                // Show history bar
                 historyBarContainer.classList.remove('hidden');
-                historyBarContainer.style.display = 'flex'; // Use flex instead of block for better mobile layout
+                historyBarContainer.style.display = 'flex';
                 
-                // Update button icon to show it can close
-                toggleIcon.className = 'fa-solid fa-minus w-2 h-2 flex items-center justify-center text-center leading-none';
+                // Update accessibility attributes
+                toggleBtn.setAttribute('aria-expanded', 'true');
+                toggleBtn.setAttribute('title', 'Masquer l\'historique des snapshots');
+                if (screenReader) screenReader.textContent = 'Masquer l\'historique';
+                
+                // Update icon with better mobile sizing
+                toggleIcon.className = 'fa-solid fa-minus';
+                if (isMobile()) {
+                    toggleIcon.style.fontSize = '18px';
+                }
                 
                 console.log('🔼 History bar shown');
+                
+                // Ensure proper mobile layout
+                if (isMobile() && window.innerWidth <= 768) {
+                    historyBarContainer.style.width = '100%';
+                    historyBarContainer.style.maxWidth = 'none';
+                }
             }
             
-            // No mobile-specific modifications - consistent display across all screen sizes
+            // Add haptic feedback on mobile
+            if (isMobile() && navigator.vibrate) {
+                navigator.vibrate(50); // Short vibration feedback
+            }
         }
         
         // Mobile event listeners removed - consistent behavior across all screen sizes
