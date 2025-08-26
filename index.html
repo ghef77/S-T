@@ -7013,38 +7013,19 @@
             try {
                 const toggleBtn = document.getElementById('history-toggle-btn');
                 if (toggleBtn) {
-                    // Enhanced touch events with haptic feedback
-                    let touchStartTime = 0;
-                    let touchMoved = false;
-                    
+                    // Simplified touch events - just visual feedback, let onclick handle the toggle
                     toggleBtn.addEventListener('touchstart', function(e) {
-                        touchStartTime = performance.now();
-                        touchMoved = false;
-                        
-                        // Visual feedback
+                        // Visual feedback only
                         this.style.transform = 'scale(0.95)';
                         this.style.transition = 'transform 0.1s ease-out';
                     }, { passive: true });
                     
-                    toggleBtn.addEventListener('touchmove', function(e) {
-                        touchMoved = true;
-                    }, { passive: true });
-                    
                     toggleBtn.addEventListener('touchend', function(e) {
-                        e.preventDefault();
-                        
-                        // Reset visual feedback
+                        // Reset visual feedback only
                         this.style.transform = '';
                         this.style.transition = 'all 0.2s ease-in-out';
-                        
-                        // Only trigger on tap (not drag/scroll)
-                        const touchDuration = performance.now() - touchStartTime;
-                        if (!touchMoved && touchDuration < 500) {
-                            requestAnimationFrame(() => {
-                                toggleHistoryBarSimple();
-                            });
-                        }
-                    }, { passive: false });
+                        // Let the onclick="toggleHistoryBarSimple()" handle the actual toggle
+                    }, { passive: true });
                     
                     // Keyboard accessibility
                     toggleBtn.addEventListener('keydown', function(e) {
@@ -11163,8 +11144,8 @@ ${capacityInfo.needsCleanup ?
         
         // Gestion des événements tactiles pour mobile - SOLUTION RECOMMANDÉE
         function addTouchSupport() {
-            // More specific selector to avoid zoom buttons
-            const addButton = document.querySelector('.add-snapshot-btn, .btn-add-snapshot, button[onclick*="createManualSnapshot"], button[id="manual-snapshot-btn"]');
+            // ONLY target the manual snapshot button specifically
+            const addButton = document.getElementById('manual-snapshot-btn');
             
             if (addButton) {
                 console.log('🔍 Bouton snapshot trouvé:', addButton);
@@ -11181,67 +11162,37 @@ ${capacityInfo.needsCleanup ?
                 addButton.addEventListener('touchstart', handleTouchStart);
                 addButton.addEventListener('touchend', handleTouchEnd);
                 
-                console.log('✅ Événements tactiles ajoutés au bouton snapshot');
+                console.log('✅ Événements tactiles ajoutés au bouton snapshot uniquement');
             } else {
-                console.log('❌ Bouton snapshot non trouvé, recherche alternative...');
-                // Recherche alternative - exclude zoom buttons
-                const alternativeButtons = document.querySelectorAll('button, .btn, [onclick]');
-                console.log('🔍 Boutons alternatifs trouvés:', alternativeButtons);
-                
-                alternativeButtons.forEach(btn => {
-                    // Only target buttons that are clearly snapshot-related, exclude zoom buttons
-                    const isSnapshotButton = btn.onclick && btn.onclick.toString().includes('createManualSnapshot') ||
-                                          btn.id === 'manual-snapshot-btn' ||
-                                          btn.className.includes('add-snapshot') ||
-                                          btn.className.includes('btn-add-snapshot');
-                    
-                    // Explicitly exclude zoom buttons
-                    const isZoomButton = btn.onclick && btn.onclick.toString().includes('zoomIn') ||
-                                       btn.onclick && btn.onclick.toString().includes('zoomOut') ||
-                                       btn.onclick && btn.onclick.toString().includes('zoomReset') ||
-                                       btn.id === 'zoom-display';
-                    
-                    if (isSnapshotButton && !isZoomButton) {
-                        console.log('🎯 Bouton snapshot alternatif identifié:', btn);
-                        addTouchEventsToButton(btn);
-                    }
-                });
+                console.log('❌ Bouton snapshot non trouvé');
             }
         }
 
-        // Gestionnaire de clic
+        // Gestionnaire de clic pour le bouton snapshot
         function handleButtonClick(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('✅ Clic détecté sur le bouton');
+            console.log('✅ Clic détecté sur le bouton snapshot');
             openSnapshotBar();
         }
 
-        // Gestionnaire de touch start
+        // Gestionnaire de touch start pour le bouton snapshot
         function handleTouchStart(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log(' Touch start détecté');
+            console.log('📱 Touch start détecté sur le bouton snapshot');
         }
 
-        // Gestionnaire de touch end
+        // Gestionnaire de touch end pour le bouton snapshot
         function handleTouchEnd(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('📱 Touch end détecté');
+            console.log('📱 Touch end détecté sur le bouton snapshot');
             
             // Petit délai pour éviter les doubles déclenchements
             setTimeout(() => {
                 openSnapshotBar();
             }, 100);
-        }
-
-        // Fonction pour ajouter les événements à un bouton
-        function addTouchEventsToButton(button) {
-            button.addEventListener('click', handleButtonClick);
-            button.addEventListener('touchstart', handleTouchStart);
-            button.addEventListener('touchend', handleTouchEnd);
-            console.log('✅ Événements tactiles ajoutés au bouton alternatif');
         }
 
         // Fonction pour ouvrir la barre de snapshot (à adapter selon votre code)
