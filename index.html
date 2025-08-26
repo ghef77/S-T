@@ -247,19 +247,115 @@
 
         
         
-        /* Button bar positioning - Reference file approach */
+        /* Button bar positioning - Always right-justified with proper wrapping */
         #button-bar { 
             position: absolute; 
             top: 8px; 
             right: 8px; 
             z-index: 20; 
             max-width: 100%;
-            justify-content: flex-start;
+            justify-content: flex-end !important; /* Force right justification */
+            flex-wrap: wrap !important; /* Ensure proper wrapping */
+            align-items: center;
+            gap: 0.25rem;
+            /* Ensure proper wrapping behavior */
+            flex-direction: row;
+            /* Force right alignment even when wrapping */
+            align-content: flex-end;
+        }
+        
+        /* Ensure buttons wrap properly and maintain right alignment */
+        #button-bar::after {
+            content: '';
+            flex: 1;
+            min-width: 0;
+        }
+        
+        /* Staff title container width optimization */
+        #staff-title {
+            width: fit-content;
+            max-width: fit-content;
+            display: inline-block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            /* Ensure proper spacing and alignment */
+            margin: 0;
+            padding: 0;
+            line-height: 1.2;
+        }
+        
+        /* Hide title on small/medium screens with proper width control */
+        @media (max-width: 1024px) {
+            #staff-title {
+                display: none;
+            }
+        }
+        
+        /* Show title on large screens with optimized width */
+        @media (min-width: 1025px) {
+            #staff-title {
+                display: inline-block;
+                width: fit-content;
+                max-width: fit-content;
+                /* Ensure perfect text sizing */
+                box-sizing: border-box;
+                /* Prevent any unwanted spacing */
+                margin-right: auto;
+                margin-left: 0;
+                /* Ensure text doesn't wrap */
+                word-break: keep-all;
+                hyphens: none;
+            }
+        }
+        
+        /* Horizontal scroll for function buttons on small screens */
+        @media (max-width: 1024px) {
+            #button-bar {
+                overflow-x: auto;
+                overflow-y: hidden;
+                white-space: nowrap;
+                flex-wrap: nowrap !important; /* Prevent wrapping on small screens */
+                justify-content: flex-start !important; /* Start from left for better scroll experience */
+                padding-right: 8px; /* Add padding for scroll bar */
+                /* Custom scrollbar styling */
+                scrollbar-width: thin;
+                scrollbar-color: #9ca3af #f3f4f6;
+            }
+            
+            /* Webkit scrollbar styling for Chrome/Safari */
+            #button-bar::-webkit-scrollbar {
+                height: 6px;
+            }
+            
+            #button-bar::-webkit-scrollbar-track {
+                background: #f3f4f6;
+                border-radius: 3px;
+            }
+            
+            #button-bar::-webkit-scrollbar-thumb {
+                background: #9ca3af;
+                border-radius: 3px;
+            }
+            
+            #button-bar::-webkit-scrollbar-thumb:hover {
+                background: #6b7280;
+            }
+            
+            /* Ensure buttons don't shrink on small screens */
+            #button-bar button {
+                flex-shrink: 0;
+                min-width: 36px;
+                min-height: 36px;
+            }
         }
         
         #button-bar button {
             margin: 0;
             flex-shrink: 0;
+            /* Ensure buttons don't shrink and maintain consistent sizing */
+            min-width: 36px;
+            min-height: 36px;
         }
         
         /* Mobile-safe positioning for the top-right button bar */
@@ -269,31 +365,60 @@
                 top: calc(env(safe-area-inset-top, 0px) + 8px);
                 right: 8px;
                 z-index: 50;
-            }
-        }
-        
-        /* Réduction des marges sur petits écrans */
-        @media (max-width: 768px) {
-            #table-container {
-                margin: 0.5rem 0 0.5rem 0.5rem !important;
-                padding: 0.5rem !important;
+                max-width: calc(100vw - 16px); /* Prevent overflow */
+                /* Force horizontal scroll on very small screens */
+                overflow-x: auto;
+                overflow-y: hidden;
+                white-space: nowrap;
+                flex-wrap: nowrap !important;
+                justify-content: flex-start !important;
+                padding-right: 8px;
+                /* Enhanced scrollbar for mobile */
+                scrollbar-width: thin;
+                scrollbar-color: #6b7280 #f3f4f6;
             }
             
+            /* Mobile-optimized scrollbar */
+            #button-bar::-webkit-scrollbar {
+                height: 8px; /* Slightly larger for touch */
+            }
+            
+            #button-bar::-webkit-scrollbar-track {
+                background: #f3f4f6;
+                border-radius: 4px;
+            }
+            
+            #button-bar::-webkit-scrollbar-thumb {
+                background: #6b7280;
+                border-radius: 4px;
+                border: 1px solid #d1d5db;
+            }
+            
+            #button-bar::-webkit-scrollbar-thumb:hover {
+                background: #4b5563;
+            }
+        }
+        
+        /* Tablet and medium screen optimizations */
+        @media (min-width: 641px) and (max-width: 1024px) {
             #button-bar {
-                padding: 0.5rem !important;
-                margin-bottom: 0.5rem !important;
+                /* Ensure buttons don't get too cramped on medium screens */
+                gap: 0.375rem;
+                /* Maintain right justification */
+                justify-content: flex-end !important;
             }
         }
         
         
-        /* Ensure color picker doesn't collapse on small screens */
+        
+        /* Color picker and button sizing */
         #row-color-picker {
             flex-shrink: 0 !important;
             min-width: 32px !important;
             min-height: 32px !important;
             width: 32px !important;
             height: 32px !important;
-            transform: scale(1.2) !important; /* Match button scaling */
+            transform: scale(1.2) !important;
             transform-origin: center !important;
         }
 
@@ -348,12 +473,64 @@
 
         /* Essential mobile optimizations - minimal impact */
         @media (max-width: 768px) {
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100vw !important;
+                overflow-x: hidden !important;
+            }
+            
             body {
-                zoom: 0.7; /* Essential for mobile fit */
+                transform: scale(0.7) !important;
+                transform-origin: top left !important;
+                width: calc(100vw / 0.7) !important;
+                height: calc(100vh / 0.7) !important;
             }
             
             body.user-zoom-override {
-                zoom: initial !important;
+                transform: none !important;
+                width: 100vw !important;
+                height: 100vh !important;
+            }
+            
+            /* Ensure table wrapper takes full width */
+            .overflow-auto {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            
+            /* Title is hidden on small screens - handled by main CSS */
+            #staff-title {
+                display: none !important;
+            }
+            
+            /* Increase function button size by 30% */
+            #button-bar button {
+                transform: scale(1.3) !important;
+                transform-origin: center !important;
+            }
+            
+            #button-bar button:active {
+                transform: scale(1.27) !important;
+            }
+        }
+        
+        /* Medium screens (768px to 1024px) - title hidden, buttons scaled */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            #staff-title {
+                display: none !important;
+            }
+            
+            /* Increase function button size by 30% */
+            #button-bar button {
+                transform: scale(1.3) !important;
+                transform-origin: center !important;
+            }
+            
+            #button-bar button:active {
+                transform: scale(1.27) !important;
             }
         }
         
@@ -401,21 +578,11 @@
             box-shadow: 2px 0 5px rgba(0,0,0,0.1) !important;
         }
         
-        /* ✅ GARANTIR que les en-têtes restent TOUJOURS visibles */
-        #data-table thead,
+        /* Consolidated sticky header styles */
         #data-table thead th,
         .frozen-column-header {
-            /* ✅ Forcer le comportement sticky même pendant les opérations */
-            position: sticky !important;
-            top: 0 !important;
-            z-index: 100 !important;
-            /* ✅ Optimisations pour la performance */
-            will-change: transform !important;
-            transform: translateZ(0) !important;
-            /* ✅ Garantir la visibilité */
             visibility: visible !important;
             opacity: 1 !important;
-            /* ✅ Empêcher le débordement */
             overflow: visible !important;
         }
         
@@ -592,8 +759,6 @@
             border: 2px solid transparent !important;
             outline: none !important;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-            min-width: 32px !important;
-            min-height: 32px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -971,82 +1136,83 @@
         </button>
         
     <!-- Table container -->
-    <div id='table-container' class="bg-white relative p-2 md:p-4 lg:p-6 pt-2 md:pt-4 lg:pt-6 rounded-xl w-full flex-grow overflow-y-auto transition-all duration-300 ease-in-out flex flex-col m-2 shadow-xl">
-        <!-- Title -->
-        <h2 id="staff-title" class="text-lg md:text-xl font-bold text-gray-800 tracking-tight mb-2">S-T synchronisation temps réel</h2>
+    <div id='table-container' class="bg-white relative p-2 md:p-4 lg:p-6 pt-2 md:pt-4 lg:pt-6 rounded-xl w-full flex-grow overflow-y-auto transition-all duration-300 ease-in-out flex flex-col shadow-xl">
+        <!-- Title - Optimized width for text content -->
+        <h2 id="staff-title" class="text-lg md:text-xl font-bold text-gray-800 tracking-tight mb-1">S-T</h2>
         
         <!-- Status indicators -->
-        <div class="flex items-center gap-2 mb-2">
-            <div id="row-count-display" class="flex items-center justify-center px-2 py-1 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium min-w-12">
+        <div class="flex items-center gap-2 mb-1">
+            <!-- Row count - Hidden on small/medium screens -->
+            <div id="row-count-display" class="flex items-center justify-center px-2 py-1 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium min-w-12 hidden lg:flex">
                 <span>N=</span>
                 <span id="row-count-number" class="ml-1 font-bold">0</span>
             </div>
             
-            <span id="sync-status" class="inline-flex sync-pending-animation px-2 py-1 rounded-full text-xs font-semibold border-2 bg-white shadow-sm">
+            <!-- Icon-only indicator for small/medium screens -->
+            <div class="lg:hidden flex items-center justify-center w-8 h-8 bg-green-500 rounded-full">
+                <i class="fa-solid fa-check text-white text-sm"></i>
+            </div>
+            
+            <!-- Full sync status - Show only on large screens -->
+            <span id="sync-status" class="hidden lg:inline-flex sync-pending-animation px-2 py-1 rounded-full text-xs font-semibold border-2 bg-white shadow-sm">
                 <span class="sync-text">Initialisation...</span>
                 <i class="sync-icon fa-solid fa-check hidden"></i>
             </span>
-            
-            <!-- Mobile sync indicator -->
-            <div id="mobile-sync-indicator" title="Statut de synchronisation" class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 md:hidden transition-colors">
-                <i id="mobile-sync-icon" class="fas fa-check text-xs"></i>
-                <span id="mobile-sync-text">Synchronisé</span>
-            </div>
         </div>
 
-        <div id="error-display" class="my-2 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
+        <div id="error-display" class="mb-1 text-red-600 font-bold hidden p-2 bg-red-50 rounded-lg border-l-4 border-red-400 text-sm md:text-base"></div>
         
         <!-- Function Button Bar - Positioned absolutely at top-right -->
-        <div id="button-bar" class="flex flex-wrap items-center gap-1 mb-1 p-1 bg-gray-50 rounded-lg border border-gray-200">
-            <button onclick='saveManually()' title="Sauvegarder" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-1.5 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-7 h-7'>
-                <i class="fa-solid fa-save w-3.5 h-3.5"></i>
+        <div id="button-bar" class="flex flex-wrap items-center justify-end gap-1 mb-2 p-1 bg-gray-50 rounded-lg border border-gray-200">
+            <button onclick='saveManually()' title="Sauvegarder" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-2 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-9 h-9'>
+                <i class="fa-solid fa-save w-4.5 h-4.5"></i>
             </button>
-            <button id="undo-button" onclick="undo()" disabled title="Annuler" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
-                <i class="fa-solid fa-rotate-left w-3.5 h-3.5"></i>
+            <button id="undo-button" onclick="undo()" disabled title="Annuler" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-2 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-9 h-9">
+                <i class="fa-solid fa-rotate-left w-4.5 h-4.5"></i>
             </button>
-            <button id="redo-button" onclick="redo()" disabled title="Rétablir" aria-label="Rétablir" class="bg-gray-300 text-gray-700 p-1.5 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-7 h-7">
-                <i class="fa-solid fa-rotate-right w-3.5 h-3.5"></i>
+            <button id="redo-button" onclick="redo()" disabled title="Rétablir" aria-label="Rétablir" class="bg-gray-300 text-gray-700 p-2 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-9 h-9">
+                <i class="fa-solid fa-rotate-right w-4.5 h-4.5"></i>
             </button>
-            <button onclick="downloadExcel()" title="Exporter en Excel" aria-label="Exporter en Excel" class="bg-green-600 text-white p-1.5 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center w-7 h-7">
-                <i class="fa-solid fa-file-excel w-3.5 h-3.5"></i>
+            <button onclick="downloadExcel()" title="Exporter en Excel" aria-label="Exporter en Excel" class="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center w-9 h-9">
+                <i class="fa-solid fa-file-excel w-4.5 h-4.5"></i>
             </button>
-            <button onclick="downloadPDF()" title="Exporter en PDF" aria-label="Exporter en PDF" class="bg-red-600 text-white p-1.5 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center w-7 h-7">
-                <i class="fa-solid fa-file-pdf w-3.5 h-3.5"></i>
+            <button onclick="downloadPDF()" title="Exporter en PDF" aria-label="Exporter en PDF" class="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center w-9 h-9">
+                <i class="fa-solid fa-file-pdf w-4.5 h-4.5"></i>
             </button>
-            <button onclick="downloadImage()" title="Exporter en image (PNG)" aria-label="Exporter en image (PNG)" class="bg-purple-600 text-white p-1.5 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center w-7 h-7">
-                <i class="fa-solid fa-image w-3.5 h-3.5"></i>
+            <button onclick="downloadImage()" title="Exporter en image (PNG)" aria-label="Exporter en image (PNG)" class="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center w-9 h-9">
+                <i class="fa-solid fa-image w-4.5 h-4.5"></i>
             </button>
-            <button onclick="document.getElementById('excel-input').click()" title="Importer depuis Excel" aria-label="Importer depuis Excel" class="bg-blue-600 text-white p-1.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center w-7 h-7">
-                <i class="fa-solid fa-upload w-3.5 h-3.5"></i>
+            <button onclick="document.getElementById('excel-input').click()" title="Importer depuis Excel" aria-label="Importer depuis Excel" class="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center w-9 h-9">
+                <i class="fa-solid fa-upload w-4.5 h-4.5"></i>
             </button>
-            <button onclick="openSimpleGallery()" title="Galerie d'images (G)" aria-label="Galerie d'images" class="bg-indigo-600 text-white p-1.5 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center w-7 h-7">
-                <i class="fa-solid fa-images w-3.5 h-3.5"></i>
+            <button onclick="openSimpleGallery()" title="Galerie d'images (G)" aria-label="Galerie d'images" class="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center w-9 h-9">
+                <i class="fa-solid fa-images w-4.5 h-4.5"></i>
             </button>
-            <button onclick="zoomOut()" title="Réduire (−)" aria-label="Réduire" class="bg-gray-700 text-white p-1.5 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center w-7 h-7">
-                <i class="fa-solid fa-minus w-3.5 h-3.5"></i>
+            <button onclick="zoomOut()" title="Réduire (−)" aria-label="Réduire" class="bg-gray-700 text-white p-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center w-9 h-9">
+                <i class="fa-solid fa-minus w-4.5 h-4.5"></i>
             </button>
-            <button id="zoom-display" onclick="zoomReset()" title="Réinitialiser à 100%" aria-label="Réinitialiser à 100%" class="bg-gray-500 text-white px-2 py-2 rounded-lg hover:bg-gray-600 transition-colors text-xs w-8 h-8">100%</button>
-            <button onclick="zoomIn()" title="Agrandir (+)" aria-label="Agrandir" class="bg-gray-700 text-white p-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center w-8 h-8">
-                <i class="fa-solid fa-plus w-4 h-4"></i>
+            <button id="zoom-display" onclick="zoomReset()" title="Réinitialiser à 100%" aria-label="Réinitialiser à 100%" class="bg-gray-500 text-white px-2.5 py-2.5 rounded-lg hover:bg-gray-600 transition-colors text-sm w-10 h-10">100%</button>
+            <button onclick="zoomIn()" title="Agrandir (+)" aria-label="Agrandir" class="bg-gray-700 text-white p-2.5 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-plus w-5 h-5"></i>
             </button>
-            <input id="row-color-picker" type="color" title="Choisir la couleur de surlignage des lignes" class="p-1 border border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors" />
-            <button onclick="clearAllRowColors()" title="Effacer toutes les couleurs" aria-label="Effacer toutes les couleurs" class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-8 h-8">
-                <i class="fa-solid fa-trash-can w-4 h-4"></i>
+            <input id="row-color-picker" type="color" title="Choisir la couleur de surlignage des lignes" class="p-1.5 border border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors w-10 h-10" />
+            <button onclick="clearAllRowColors()" title="Effacer toutes les couleurs" aria-label="Effacer toutes les couleurs" class="bg-gray-200 text-gray-800 p-2.5 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-trash-can w-5 h-5"></i>
             </button>
-            <button id="filter-colored-toggle" onclick="toggleColoredFilter()" title="Afficher seulement les lignes colorées" aria-label="Filtrer lignes colorées" class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-8 h-8">
-                <i class="fa-solid fa-filter w-4 h-4"></i>
+            <button id="filter-colored-toggle" onclick="toggleColoredFilter()" title="Afficher seulement les lignes colorées" aria-label="Filtrer lignes colorées" class="bg-gray-200 text-gray-800 p-2.5 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-filter w-5 h-5"></i>
             </button>
-            <button id="paint-mode-toggle" onclick="cyclePaintMode()" title="Mode de peinture: Auto/Colorer/Effacer (appuyez sur P pour changer)" aria-label="Basculer le mode de peinture" class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-8 h-8">
-                <i class="fa-solid fa-palette w-4 h-4"></i>
+            <button id="paint-mode-toggle" onclick="cyclePaintMode()" title="Mode de peinture: Auto/Colorer/Effacer (appuyez sur P pour changer)" aria-label="Basculer le mode de peinture" class="bg-gray-200 text-gray-800 p-2.5 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-palette w-5 h-5"></i>
             </button>
-            <button id="view-mode-toggle" onclick="toggleViewMode()" title="Basculer le mode visualisation (lecture seule)" aria-label="Basculer le mode visualisation" class="bg-blue-200 text-blue-800 p-2 rounded-lg hover:bg-blue-300 transition-colors flex items-center justify-center w-8 h-8">
-                <i class="fa-solid fa-eye w-4 h-4"></i>
+            <button id="view-mode-toggle" onclick="toggleViewMode()" title="Basculer le mode visualisation (lecture seule)" aria-label="Basculer le mode visualisation" class="bg-blue-200 text-blue-800 p-2.5 rounded-lg hover:bg-blue-300 transition-colors flex items-center justify-center w-10 h-10">
+                <i class="fa-solid fa-eye w-5 h-5"></i>
             </button>
         </div>
         <input id="excel-input" type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="importExcelFromFile(this.files[0])" />
 
         <!-- History Controls Row - Toggle button and history buttons on same level -->
-        <div class="flex justify-between items-center mb-3 md:mb-8 lg:mb-6 lg:mt-4">
+        <div class="flex justify-between items-center mb-2">
             <!-- Toggle button container -->
             <div class="flex items-center gap-2">
                 <button id="history-toggle-btn" onclick="toggleHistoryBarSimple()" 
@@ -1112,12 +1278,10 @@
             </div>
         </div>
 
-
-
         <!-- Excel input file (moved from button bar) -->
         <input id="excel-input" type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="importExcelFromFile(this.files[0])" />
 
-        <div class="overflow-auto w-full relative z-10" style="max-width: 100vw; max-height: 85vh;">
+        <div class="overflow-auto w-full" style="max-width: 100vw; max-height: 85vh;">
             <table id='data-table' class="w-full text-left text-gray-500 text-xs md:text-sm lg:text-base">
                 <thead class="text-xs text-white uppercase bg-green-700 relative z-10">
                     <tr>
@@ -1623,6 +1787,11 @@
             };
         }
         
+        // Utility function to get appropriate message length based on screen size
+        function getAdaptiveMessage(shortMessage, longMessage, breakpoint = 1024) {
+            return window.innerWidth <= breakpoint ? shortMessage : longMessage;
+        }
+        
                         // Autosave configuration
                 const AUTOSAVE_DELAY_MS = 1000; // 1 second after last edit when idle
         let autosaveTicker = null;
@@ -1985,7 +2154,116 @@
                     });
                 }
             }, 30000); // Every 30 seconds
+            
+            // Initialize button bar scroll behavior
+            setTimeout(() => {
+                if (typeof updateButtonBarScroll === 'function') {
+                    updateButtonBarScroll();
+                }
+            }, 100);
         });
+        
+        // Add resize listener to adapt messages when screen size changes
+        window.addEventListener('resize', () => {
+            // Debounce resize events to avoid excessive updates
+            clearTimeout(window.resizeTimeout);
+            window.resizeTimeout = setTimeout(() => {
+                // Update status display when screen size changes
+                if (typeof adaptStatusDisplay === 'function') {
+                    adaptStatusDisplay();
+                }
+                // Update button bar scroll behavior
+                updateButtonBarScroll();
+            }, 250);
+        });
+        
+        // Function to update button bar scroll behavior based on screen size
+        function updateButtonBarScroll() {
+            const buttonBar = document.getElementById('button-bar');
+            if (!buttonBar) return;
+            
+            if (window.innerWidth <= 1024) {
+                // Enable horizontal scroll on small screens
+                buttonBar.style.overflowX = 'auto';
+                buttonBar.style.flexWrap = 'nowrap';
+                buttonBar.style.justifyContent = 'flex-start';
+                
+                // Add smooth scroll behavior
+                buttonBar.style.scrollBehavior = 'smooth';
+                
+                // Auto-scroll to show active buttons if needed
+                setTimeout(() => {
+                    const activeButton = buttonBar.querySelector('.bg-blue-500, .bg-green-500, .bg-yellow-500');
+                    if (activeButton) {
+                        activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }
+                }, 100);
+                
+                // Add touch scroll support for mobile
+                addTouchScrollSupport(buttonBar);
+            } else {
+                // Disable horizontal scroll on large screens
+                buttonBar.style.overflowX = 'hidden';
+                buttonBar.style.flexWrap = 'wrap';
+                buttonBar.style.justifyContent = 'flex-end';
+                buttonBar.style.scrollBehavior = 'auto';
+                
+                // Remove touch scroll support
+                removeTouchScrollSupport(buttonBar);
+            }
+        }
+        
+        // Add touch-friendly horizontal scrolling support
+        function addTouchScrollSupport(element) {
+            if (element._touchScrollAdded) return;
+            
+            let isScrolling = false;
+            let startX = 0;
+            let startScrollLeft = 0;
+            
+            const handleTouchStart = (e) => {
+                isScrolling = true;
+                startX = e.touches[0].pageX;
+                startScrollLeft = element.scrollLeft;
+                element.style.scrollBehavior = 'auto';
+            };
+            
+            const handleTouchMove = (e) => {
+                if (!isScrolling) return;
+                
+                const x = e.touches[0].pageX;
+                const walk = (startX - x) * 1.5; // Scroll speed multiplier
+                element.scrollLeft = startScrollLeft + walk;
+                
+                // Prevent default to avoid page scroll
+                e.preventDefault();
+            };
+            
+            const handleTouchEnd = () => {
+                isScrolling = false;
+                element.style.scrollBehavior = 'smooth';
+            };
+            
+            element.addEventListener('touchstart', handleTouchStart, { passive: false });
+            element.addEventListener('touchmove', handleTouchMove, { passive: false });
+            element.addEventListener('touchend', handleTouchEnd);
+            
+            element._touchScrollAdded = true;
+            element._touchScrollHandlers = { handleTouchStart, handleTouchMove, handleTouchEnd };
+        }
+        
+        // Remove touch scroll support
+        function removeTouchScrollSupport(element) {
+            if (!element._touchScrollAdded) return;
+            
+            const handlers = element._touchScrollHandlers;
+            element.removeEventListener('touchstart', handlers.handleTouchStart);
+            element.removeEventListener('touchmove', handlers.handleTouchMove);
+            element.removeEventListener('touchend', handlers.handleTouchEnd);
+            
+            element._touchScrollAdded = false;
+            delete element._touchScrollHandlers;
+        }
         
         // Cleanup on page unload
         window.addEventListener('beforeunload', () => {
@@ -2858,11 +3136,36 @@
                 applyDotColor(dotEl, type);
             }
             
+            // Update icon-only indicator for small/medium screens
+            const iconOnlyContainer = document.querySelector('.lg\\:hidden .bg-green-500, .lg\\:hidden .bg-yellow-500, .lg\\:hidden .bg-red-500, .lg\\:hidden .bg-blue-500');
+            if (iconOnlyContainer) {
+                const iconOnlyIndicator = iconOnlyContainer.querySelector('.fa-solid');
+                
+                iconOnlyContainer.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500', 'bg-blue-500');
+                iconOnlyIndicator.classList.remove('fa-check', 'fa-sync-alt', 'fa-exclamation-triangle', 'fa-spin', 'fa-clock');
+                
+                switch (type) {
+                    case 'success':
+                        iconOnlyContainer.classList.add('bg-green-500');
+                        iconOnlyIndicator.classList.add('fa-check');
+                        break;
+                    case 'error':
+                        iconOnlyContainer.classList.add('bg-red-500');
+                        iconOnlyIndicator.classList.add('fa-exclamation-triangle');
+                        break;
+                    case 'saving':
+                        iconOnlyContainer.classList.add('bg-blue-500');
+                        iconOnlyIndicator.classList.add('fa-sync-alt', 'fa-spin');
+                        break;
+                    default:
+                        iconOnlyContainer.classList.add('bg-yellow-500');
+                        iconOnlyIndicator.classList.add('fa-clock');
+                }
+            }
+            
             // Adapter l'affichage selon la taille d'écran
             adaptStatusDisplay();
             
-            // Update mobile sync indicator
-            updateMobileSyncIndicator(type, message);
             };
         })();
         
@@ -2893,12 +3196,13 @@
             
             // Sur petits écrans, afficher seulement un point coloré et cacher le titre
             if (window.innerWidth <= 768) {
-                textEl.classList.add('hidden');
-                iconEl.classList.add('hidden');
+                // Keep all elements visible - don't hide on small screens
+                textEl.classList.remove('hidden');
+                iconEl.classList.remove('hidden');
                 
-                // Cacher le titre sur petits écrans
+                // Keep the title visible on small screens
                 if (titleEl) {
-                    titleEl.classList.add('hidden');
+                    titleEl.classList.remove('hidden');
                 }
                 
                 // Créer ou mettre à jour le point coloré
@@ -2911,8 +3215,8 @@
                     el.appendChild(dotEl);
                 }
                 
-                // S'assurer que le point est visible
-                dotEl.classList.remove('hidden');
+                // Hide dot since we're showing text and icon
+                dotEl.classList.add('hidden');
                 
                 // Appliquer la couleur selon le type actuel
                 const currentType = getCurrentStatusType(el);
@@ -2923,7 +3227,7 @@
             } else {
                 // Sur grands écrans, afficher le texte et le titre, cacher le point
                 textEl.classList.remove('hidden');
-                iconEl.classList.add('hidden');
+                iconEl.classList.remove('hidden');
                 
                 // Afficher le titre sur grands écrans
                 if (titleEl) {
@@ -3467,7 +3771,10 @@
         function setMobileZoom(zoom) {
             if (isMobile()) {
                 currentZoom = zoom;
-                document.body.style.zoom = zoom;
+                document.body.style.transform = `scale(${zoom})`;
+                document.body.style.transformOrigin = 'top left';
+                document.body.style.width = `calc(100vw / ${zoom})`;
+                document.body.style.height = `calc(100vh / ${zoom})`;
                 localStorage.setItem('mobileZoom', zoom.toString());
             }
         }
@@ -3485,10 +3792,10 @@
                 const savedZoom = localStorage.getItem('mobileZoom');
                 if (savedZoom) {
                     currentZoom = parseFloat(savedZoom);
-                    document.body.style.zoom = currentZoom;
+                    setMobileZoom(currentZoom);
                 } else {
-                    // Apply default 70% zoom
-                    document.body.style.zoom = '0.7';
+                    // Apply default 70% zoom using transform
+                    setMobileZoom(0.7);
                 }
             }
         });
@@ -5501,7 +5808,8 @@
                         
                     }).catch(error => {
                         console.error('❌ [REALTIME] Data refresh failed:', error);
-                        updateStatus('Erreur de synchronisation temps réel', 'error');
+                        const message = getAdaptiveMessage('Erreur sync', 'Erreur de synchronisation temps réel');
+                        updateStatus(message, 'error');
                         
                         // Performance monitoring
                         if (typeof eventManager !== 'undefined' && eventManager.monitor) {
@@ -5544,17 +5852,20 @@
                         console.log('📡 Realtime subscription status:', status);
                         if (status === 'SUBSCRIBED') {
                             console.log('✅ Realtime synchronization activated');
-                            updateStatus('Synchronisation temps réel activée', 'success');
+                            const message = getAdaptiveMessage('Sync activée', 'Synchronisation temps réel activée');
+                            updateStatus(message, 'success');
                         } else if (status === 'CHANNEL_ERROR') {
                             console.log('❌ Realtime synchronization error');
-                            updateStatus('Erreur de synchronisation', 'error');
+                            const message = getAdaptiveMessage('Erreur sync', 'Erreur de synchronisation');
+                            updateStatus(message, 'error');
                         }
                     });
                     
                 console.log('✅ Realtime subscription configured');
             } catch (error) {
                 console.error('❌ Error setting up realtime subscription:', error);
-                updateStatus('Erreur de configuration temps réel', 'error');
+                const message = getAdaptiveMessage('Erreur config', 'Erreur de configuration temps réel');
+                updateStatus(message, 'error');
             }
         }
 
@@ -5650,57 +5961,6 @@
             syncToMaster(true); 
         }
 
-        // Update mobile sync status indicator
-        function updateMobileSyncIndicator(status, message) {
-            try {
-                const mobileIndicator = document.getElementById('mobile-sync-indicator');
-                const mobileIcon = document.getElementById('mobile-sync-icon');
-                const mobileText = document.getElementById('mobile-sync-text');
-                
-                if (!mobileIndicator || !mobileIcon || !mobileText) return;
-                
-                // Remove all status classes
-                mobileIndicator.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500', 'bg-blue-500');
-                mobileIcon.classList.remove('fa-check', 'fa-sync-alt', 'fa-exclamation-triangle', 'fa-spin');
-                
-                switch (status) {
-                    case 'success':
-                    case 'synced':
-                        mobileIndicator.classList.add('bg-green-500');
-                        mobileIcon.classList.add('fa-check');
-                        mobileText.textContent = 'Synchronisé';
-                        break;
-                    case 'syncing':
-                    case 'pending':
-                        mobileIndicator.classList.add('bg-blue-500');
-                        mobileIcon.classList.add('fa-sync-alt', 'fa-spin');
-                        mobileText.textContent = 'Sync...';
-                        break;
-                    case 'error':
-                        mobileIndicator.classList.add('bg-red-500');
-                        mobileIcon.classList.add('fa-exclamation-triangle');
-                        mobileText.textContent = 'Erreur';
-                        break;
-                    case 'warning':
-                        mobileIndicator.classList.add('bg-yellow-500');
-                        mobileIcon.classList.add('fa-exclamation-triangle');
-                        mobileText.textContent = 'Attention';
-                        break;
-                    default:
-                        mobileIndicator.classList.add('bg-green-500');
-                        mobileIcon.classList.add('fa-check');
-                        mobileText.textContent = 'Synchronisé';
-                }
-                
-                // Update title with message if provided
-                if (message) {
-                    mobileIndicator.title = message;
-                }
-                
-            } catch (error) {
-                console.error('❌ Error in updateMobileSyncIndicator:', error);
-            }
-        }
 
         // Row color binding
         function rebindRowNumberCells() {
