@@ -1663,19 +1663,23 @@ class SimpleGallery {
         this.applyZoom();
     }
     
-    // Appliquer le zoom et pan
+    // Appliquer le zoom et pan avec optimisations de performance
     applyZoom() {
         const viewerImage = document.getElementById('viewer-image');
         const zoomLevel = document.getElementById('zoom-level');
         
         if (viewerImage) {
-            const transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.currentZoom})`;
+            // Utiliser transform3d pour l'accélération matérielle
+            const transform = `translate3d(${this.panX}px, ${this.panY}px, 0) scale(${this.currentZoom})`;
             viewerImage.style.transform = transform;
             viewerImage.style.transformOrigin = 'center center';
             
-            // Debug output only when panning
-            if (this.isPanning || this.panX !== 0 || this.panY !== 0) {
-                console.log('✨ Applied transform:', transform);
+            // Optimisations CSS pour la performance
+            viewerImage.style.willChange = this.isPanning ? 'transform' : 'auto';
+            
+            // Debug output réduit
+            if (this.isPanning && Math.random() < 0.1) { // Log seulement 10% du temps pendant le pan
+                console.log('✨ Transform:', `${this.panX.toFixed(0)}, ${this.panY.toFixed(0)}`);
             }
         }
         
@@ -1786,22 +1790,15 @@ class SimpleGallery {
             e.preventDefault();
         });
         
-        // Test simple: left click anywhere to test mouse events
-        viewerImage.addEventListener('click', (e) => {
-            console.log('🖱️ Simple click test:', { x: e.clientX, y: e.clientY });
-        });
-        
         // Variables pour le pan
         let startX = 0;
         let startY = 0;
         let startPanX = 0;
         let startPanY = 0;
         
-        // Démarrer le pan avec clic droit, Ctrl+clic gauche, OU simple clic gauche (test)
+        // Démarrer le pan avec clic droit ou Ctrl+clic gauche
         viewerImage.addEventListener('mousedown', (e) => {
-            console.log('🖱️ Mouse down event:', { button: e.button, ctrlKey: e.ctrlKey });
-            
-            if (e.button === 2 || (e.button === 0 && e.ctrlKey) || e.button === 0) { // Clic droit, Ctrl+clic gauche, OU simple clic gauche
+            if (e.button === 2 || (e.button === 0 && e.ctrlKey)) { // Clic droit ou Ctrl+clic gauche
                 e.preventDefault();
                 e.stopPropagation();
                 this.isPanning = true;
@@ -1811,25 +1808,29 @@ class SimpleGallery {
                 startPanX = this.panX;
                 startPanY = this.panY;
                 
-                console.log('✅ Starting pan at:', { 
-                    button: e.button, 
-                    ctrlKey: e.ctrlKey, 
-                    startX, 
-                    startY, 
-                    startPanX, 
-                    startPanY 
-                });
+                console.log('🖱️ Pan started');
                 
-                // Changer le curseur pour indiquer le mode pan
+                // Feedback visuel amélioré
                 viewerImage.style.cursor = 'grabbing';
+                viewerImage.style.transition = 'none'; // Désactiver les transitions pendant le pan
                 document.body.style.userSelect = 'none';
+                document.body.style.cursor = 'grabbing'; // Curseur sur tout le body
+                
+                // Ajouter une classe CSS pour indiquer le mode pan
+                viewerImage.classList.add('panning');
             }
         }, { passive: false });
         
-        // Continuer le pan pendant le mouvement
+        // Continuer le pan pendant le mouvement avec optimisation de performance
+        let lastMoveTime = 0;
         document.addEventListener('mousemove', (e) => {
             if (this.isPanning) {
                 e.preventDefault();
+                
+                // Throttle pour améliorer les performances (60 FPS max)
+                const now = Date.now();
+                if (now - lastMoveTime < 16) return; // ~60fps
+                lastMoveTime = now;
                 
                 const deltaX = e.clientX - startX;
                 const deltaY = e.clientY - startY;
@@ -1837,26 +1838,37 @@ class SimpleGallery {
                 this.panX = startPanX + deltaX;
                 this.panY = startPanY + deltaY;
                 
-                console.log('🚀 Panning:', { deltaX, deltaY, panX: this.panX, panY: this.panY });
-                
-                this.applyZoom();
+                // Utiliser requestAnimationFrame pour un rendu fluide
+                requestAnimationFrame(() => {
+                    this.applyZoom();
+                });
             }
         }, { passive: false });
         
         // Arrêter le pan
         document.addEventListener('mouseup', (e) => {
             if (this.isPanning && (e.button === 2 || e.button === 0)) {
-                console.log('🛑 Stopping pan');
+                console.log('🖱️ Pan stopped');
                 this.isPanning = false;
+                
+                // Restaurer le feedback visuel
                 viewerImage.style.cursor = 'grab';
+                viewerImage.style.transition = 'transform 0.2s ease-out'; // Réactiver les transitions
                 document.body.style.userSelect = '';
+                document.body.style.cursor = '';
+                
+                // Retirer la classe pan
+                viewerImage.classList.remove('panning');
+                
+                // Réinitialiser willChange pour économiser les ressources
+                viewerImage.style.willChange = 'auto';
             }
         });
         
-        // Pan avec touches fléchées (bonus)
+        // Pan avec touches fléchées (optimisé)
         document.addEventListener('keydown', (e) => {
             if (document.getElementById('image-viewer') && !document.getElementById('image-viewer').classList.contains('hidden')) {
-                const panSpeed = 50;
+                const panSpeed = e.shiftKey ? 100 : 50; // Shift = mouvement plus rapide
                 let moved = false;
                 
                 switch(e.key) {
@@ -1880,7 +1892,10 @@ class SimpleGallery {
                 
                 if (moved) {
                     e.preventDefault();
-                    this.applyZoom();
+                    // Animation fluide avec requestAnimationFrame
+                    requestAnimationFrame(() => {
+                        this.applyZoom();
+                    });
                 }
             }
         });
