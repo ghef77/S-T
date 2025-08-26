@@ -1639,18 +1639,18 @@ class SimpleGallery {
         this.setupPanEventListeners();
     }
     
-    // Zoom in
+    // Zoom in (5% increment)
     zoomIn() {
         if (this.currentZoom < this.maxZoom) {
-            this.currentZoom = Math.min(this.maxZoom, this.currentZoom * 1.2);
+            this.currentZoom = Math.min(this.maxZoom, this.currentZoom + 0.05);
             this.applyZoom();
         }
     }
     
-    // Zoom out
+    // Zoom out (5% decrement)
     zoomOut() {
         if (this.currentZoom > this.minZoom) {
-            this.currentZoom = Math.max(this.minZoom, this.currentZoom / 1.2);
+            this.currentZoom = Math.max(this.minZoom, this.currentZoom - 0.05);
             this.applyZoom();
         }
     }
@@ -1663,25 +1663,18 @@ class SimpleGallery {
         this.applyZoom();
     }
     
-    // Appliquer le zoom et pan (version ultra-directe)
+    // Appliquer le zoom et pan (version simple et fluide)
     applyZoom() {
         const viewerImage = document.getElementById('viewer-image');
+        const zoomLevel = document.getElementById('zoom-level');
         
         if (viewerImage) {
-            // Transform avec will-change pour forcer l'accélération matérielle
-            viewerImage.style.willChange = 'transform';
-            viewerImage.style.transform = `translate3d(${this.panX}px, ${this.panY}px, 0) scale(${this.currentZoom})`;
+            viewerImage.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.currentZoom})`;
+            viewerImage.style.transformOrigin = 'center center';
         }
         
-        // Mettre à jour le zoom seulement si pas en train de panner
-        if (!this.isPanning) {
-            const zoomLevel = document.getElementById('zoom-level');
-            if (zoomLevel) {
-                zoomLevel.textContent = `Zoom: ${Math.round(this.currentZoom * 100)}%`;
-            }
-            if (viewerImage) {
-                viewerImage.style.willChange = 'auto'; // Économiser les ressources
-            }
+        if (zoomLevel) {
+            zoomLevel.textContent = `Zoom: ${Math.round(this.currentZoom * 100)}%`;
         }
     }
     
@@ -1799,15 +1792,12 @@ class SimpleGallery {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // Démarrage immédiat du pan avec optimisations matérielles
+                // Démarrage immédiat du pan
                 this.isPanning = true;
                 startX = e.clientX;
                 startY = e.clientY;
                 startPanX = this.panX;
                 startPanY = this.panY;
-                
-                // Préparation pour l'accélération matérielle immédiate
-                viewerImage.style.willChange = 'transform';
                 
                 // Feedback visuel immédiat
                 viewerImage.style.cursor = 'grabbing';
@@ -1816,50 +1806,29 @@ class SimpleGallery {
             }
         }, { passive: false });
         
-        // Cache de l'élément image pour éviter les requêtes DOM répétées
-        let cachedViewerImage = null;
-        
-        // Continuer le pan pendant le mouvement (réponse ultra-directe)
+        // Continuer le pan pendant le mouvement (version simple et fluide)
         document.addEventListener('mousemove', (e) => {
             if (this.isPanning) {
                 e.preventDefault();
                 
-                // Cache l'élément image au premier mouvement
-                if (!cachedViewerImage) {
-                    cachedViewerImage = document.getElementById('viewer-image');
-                }
-                
-                // Calcul et application directe sans fonction intermédiaire
                 const deltaX = e.clientX - startX;
                 const deltaY = e.clientY - startY;
                 
                 this.panX = startPanX + deltaX;
                 this.panY = startPanY + deltaY;
                 
-                // Application directe du transform pour éliminer tout délai
-                if (cachedViewerImage) {
-                    cachedViewerImage.style.transform = `translate3d(${this.panX}px, ${this.panY}px, 0) scale(${this.currentZoom})`;
-                }
+                this.applyZoom();
             }
-        }, { passive: false });
+        });
         
         // Arrêter le pan
         document.addEventListener('mouseup', (e) => {
             if (this.isPanning && (e.button === 2 || e.button === 0)) {
                 console.log('🛑 Stopping pan');
                 this.isPanning = false;
-                
-                // Reset du cache
-                cachedViewerImage = null;
-                
                 viewerImage.style.cursor = 'grab';
                 document.body.style.userSelect = '';
                 document.body.style.cursor = '';
-                
-                // Nettoyer will-change pour économiser les ressources
-                if (viewerImage) {
-                    viewerImage.style.willChange = 'auto';
-                }
             }
         });
         
