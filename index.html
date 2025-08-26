@@ -2054,9 +2054,12 @@
                 console.log('📝 [EXCEL-SAVE] Enhanced focus captured on active cell:', activeElement.getAttribute('data-label'));
             } else {
                 // If no active element, try to capture the cell that was just modified
+                // Always position cursor at end of text content
+                const textContent = cell.textContent || '';
+                
                 updateGlobalFocusState({
                     element: cell,
-                    position: cell.textContent ? cell.textContent.length : 0, // Place cursor at end
+                    position: textContent.length, // Place cursor at end
                     timestamp: protectionTimestamp,
                     rowIndex: Array.from(cell.closest('tr').parentNode.querySelectorAll('tr')).indexOf(cell.closest('tr')),
                     colLabel: cell.getAttribute('data-label') || '',
@@ -4539,6 +4542,12 @@
         }
 
         function focusCellWithMobileSupport(cell) {
+            // Skip cell focusing on mobile during undo/redo to prevent keyboard popup
+            if (isMobile() && isPerformingUndoRedo) {
+                log('🚫 [MOBILE] focusCellWithMobileSupport blocked during undo/redo to prevent keyboard popup');
+                return false;
+            }
+            
             try {
                 try { 
                     cell.scrollIntoView({ block: 'center', inline: 'nearest' }); 
@@ -4608,6 +4617,12 @@
         }
 
         function setCaretAt(el, offset) {
+            // Skip caret positioning on mobile during undo/redo to prevent keyboard popup
+            if (isMobile() && isPerformingUndoRedo) {
+                log('🚫 [MOBILE] setCaretAt blocked during undo/redo to prevent keyboard popup');
+                return;
+            }
+            
             try {
                 el.focus();
                 const selection = window.getSelection();
@@ -4619,6 +4634,7 @@
                 let node = walker.nextNode();
                 
                 if (remaining === null) {
+                    // Always place cursor at end of text content
                     let lastNode = null;
                     while (node) { 
                         lastNode = node; 
@@ -4628,6 +4644,11 @@
                     if (lastNode) {
                         range.setStart(lastNode, lastNode.textContent.length);
                         range.collapse(true);
+                        selection.addRange(range);
+                    } else {
+                        // If no text node exists, place cursor at end of element
+                        range.selectNodeContents(el);
+                        range.collapse(false);
                         selection.addRange(range);
                     }
                     return;
@@ -4682,6 +4703,12 @@
 
         function focusCellFromInfo(info) {
             if (!info) return false;
+            
+            // Skip cell focusing on mobile during undo/redo to prevent keyboard popup
+            if (isMobile() && isPerformingUndoRedo) {
+                log('🚫 [MOBILE] focusCellFromInfo blocked during undo/redo to prevent keyboard popup');
+                return false;
+            }
             
             log(`🔍 focusCellFromInfo: Looking for rowKey="${info.rowKey}", rowIndex=${info.rowIndex}, colLabel="${info.colLabel}"`);
             
@@ -4763,6 +4790,12 @@
         function focusCellByPos(pos) {
             try {
                 if (!pos) return false;
+                
+                // Skip cell focusing on mobile during undo/redo to prevent keyboard popup
+                if (isMobile() && isPerformingUndoRedo) {
+                    log('🚫 [MOBILE] focusCellByPos blocked during undo/redo to prevent keyboard popup');
+                    return false;
+                }
                 
                 const tbody = document.getElementById('table-body');
                 const totalRows = tbody.querySelectorAll('tr').length;
@@ -9628,6 +9661,12 @@
                 
                 // Consolidated cursor restoration function
                 const performCursorRestoration = () => {
+                    // Skip cursor restoration on mobile during undo/redo to prevent keyboard popup
+                    if (isMobile() && isPerformingUndoRedo) {
+                        log('🚫 [MOBILE] Cursor restoration blocked during undo/redo to prevent keyboard popup');
+                        return false;
+                    }
+                    
                     log(`🔄 CURSOR RESTORATION: lastFocusInfo=${JSON.stringify(lastFocusInfo)}, lastCellPos=${JSON.stringify(lastCellPos)}`);
                     
                     // Try focusCellFromInfo first (more reliable)
@@ -9654,15 +9693,29 @@
                 const restoreAfterReload = () => {
                     document.removeEventListener('table:reloaded', restoreAfterReload);
                     
+                    // Skip cursor restoration on mobile during undo/redo to prevent keyboard popup
+                    if (isMobile() && isPerformingUndoRedo) {
+                        log('🚫 Skipping cursor restoration on mobile during undo/redo to prevent keyboard popup');
+                        return;
+                    }
+                    
                     // Wait for table to be fully rendered and image icons updated
                     // Use a longer delay to ensure all table updates are complete
                     setTimeout(() => {
+                        // Double-check undo/redo state before performing cursor restoration
+                        if (isMobile() && isPerformingUndoRedo) {
+                            log('🚫 Skipping delayed cursor restoration on mobile during undo/redo');
+                            return;
+                        }
+                        
                         performCursorRestoration();
                         
                         // Additional mobile retry if needed
-                        if (isMobile()) {
+                        if (isMobile() && !isPerformingUndoRedo) {
                             setTimeout(() => { 
-                                performCursorRestoration();
+                                if (!isPerformingUndoRedo) {
+                                    performCursorRestoration();
+                                }
                             }, 350);
                         }
                     }, 200); // Increased delay to ensure table and image icons are fully ready
