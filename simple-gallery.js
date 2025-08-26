@@ -1786,15 +1786,22 @@ class SimpleGallery {
             e.preventDefault();
         });
         
+        // Test simple: left click anywhere to test mouse events
+        viewerImage.addEventListener('click', (e) => {
+            console.log('🖱️ Simple click test:', { x: e.clientX, y: e.clientY });
+        });
+        
         // Variables pour le pan
         let startX = 0;
         let startY = 0;
         let startPanX = 0;
         let startPanY = 0;
         
-        // Démarrer le pan avec clic droit OU avec Ctrl+clic gauche
+        // Démarrer le pan avec clic droit, Ctrl+clic gauche, OU simple clic gauche (test)
         viewerImage.addEventListener('mousedown', (e) => {
-            if (e.button === 2 || (e.button === 0 && e.ctrlKey)) { // Clic droit OU Ctrl+clic gauche
+            console.log('🖱️ Mouse down event:', { button: e.button, ctrlKey: e.ctrlKey });
+            
+            if (e.button === 2 || (e.button === 0 && e.ctrlKey) || e.button === 0) { // Clic droit, Ctrl+clic gauche, OU simple clic gauche
                 e.preventDefault();
                 e.stopPropagation();
                 this.isPanning = true;
@@ -1804,7 +1811,7 @@ class SimpleGallery {
                 startPanX = this.panX;
                 startPanY = this.panY;
                 
-                console.log('🖱️ Starting pan at:', { 
+                console.log('✅ Starting pan at:', { 
                     button: e.button, 
                     ctrlKey: e.ctrlKey, 
                     startX, 
@@ -1817,7 +1824,7 @@ class SimpleGallery {
                 viewerImage.style.cursor = 'grabbing';
                 document.body.style.userSelect = 'none';
             }
-        });
+        }, { passive: false });
         
         // Continuer le pan pendant le mouvement
         document.addEventListener('mousemove', (e) => {
@@ -1834,7 +1841,7 @@ class SimpleGallery {
                 
                 this.applyZoom();
             }
-        });
+        }, { passive: false });
         
         // Arrêter le pan
         document.addEventListener('mouseup', (e) => {
