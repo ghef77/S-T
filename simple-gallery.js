@@ -1789,9 +1789,9 @@ class SimpleGallery {
         let startPanX = 0;
         let startPanY = 0;
         
-        // Démarrer le pan avec clic droit (principal) ou Ctrl+clic gauche (alternatif)
+        // Démarrer le pan avec clic droit, Ctrl+clic gauche, OU simple clic gauche  
         viewerImage.addEventListener('mousedown', (e) => {
-            if (e.button === 2 || (e.button === 0 && e.ctrlKey)) { // Clic droit (principal) ou Ctrl+clic gauche (alternatif)
+            if (e.button === 2 || (e.button === 0 && e.ctrlKey) || e.button === 0) { // Clic droit, Ctrl+clic gauche, OU simple clic gauche
                 e.preventDefault();
                 e.stopPropagation();
                 this.isPanning = true;
