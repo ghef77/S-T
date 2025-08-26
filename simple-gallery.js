@@ -1663,16 +1663,14 @@ class SimpleGallery {
         this.applyZoom();
     }
     
-    // Appliquer le zoom et pan (avec valeurs arrondies pour plus de fluidité)
+    // Appliquer le zoom et pan (optimisé pour la responsivité)
     applyZoom() {
         const viewerImage = document.getElementById('viewer-image');
         const zoomLevel = document.getElementById('zoom-level');
         
         if (viewerImage) {
-            // Arrondir les valeurs pour de meilleures performances de rendu
-            const roundedX = Math.round(this.panX);
-            const roundedY = Math.round(this.panY);
-            viewerImage.style.transform = `translate(${roundedX}px, ${roundedY}px) scale(${this.currentZoom})`;
+            // Utiliser des valeurs précises pour un mouvement plus fluide
+            viewerImage.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.currentZoom})`;
             viewerImage.style.transformOrigin = 'center center';
         }
         
@@ -1810,21 +1808,22 @@ class SimpleGallery {
             }
         });
         
-        // Continuer le pan pendant le mouvement (avec optimisation légère)
+        // Continuer le pan pendant le mouvement (optimisé pour la responsivité)
+        let lastUpdate = 0;
         document.addEventListener('mousemove', (e) => {
             if (this.isPanning) {
                 e.preventDefault();
+                
+                // Limiter les mises à jour pour plus de fluidité (mais pas trop strict)
+                const now = performance.now();
+                if (now - lastUpdate < 8) return; // ~120 FPS max
+                lastUpdate = now;
                 
                 const deltaX = e.clientX - startX;
                 const deltaY = e.clientY - startY;
                 
                 this.panX = startPanX + deltaX;
                 this.panY = startPanY + deltaY;
-                
-                // Réduire les logs pour de meilleures performances
-                if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-                    console.log('🚀 Panning:', Math.round(this.panX), Math.round(this.panY));
-                }
                 
                 this.applyZoom();
             }
