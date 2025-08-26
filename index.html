@@ -1654,10 +1654,10 @@
             <button onclick='saveManually()' title="Sauvegarder" aria-label="Sauvegarder" class='bg-yellow-400 text-gray-800 p-2 rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center w-9 h-9'>
                 <i class="fa-solid fa-save w-4.5 h-4.5"></i>
             </button>
-            <button id="undo-button" onclick="undo()" disabled title="Annuler" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-2 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-9 h-9">
+            <button id="undo-button" disabled title="Annuler" aria-label="Annuler" class="bg-gray-300 text-gray-700 p-2 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-9 h-9">
                 <i class="fa-solid fa-rotate-left w-4.5 h-4.5"></i>
             </button>
-            <button id="redo-button" onclick="redo()" disabled title="Rétablir" aria-label="Rétablir" class="bg-gray-300 text-gray-700 p-2 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-9 h-9">
+            <button id="redo-button" disabled title="Rétablir" aria-label="Rétablir" class="bg-gray-300 text-gray-700 p-2 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-9 h-9">
                 <i class="fa-solid fa-rotate-right w-4.5 h-4.5"></i>
             </button>
             <button onclick="downloadExcel()" title="Exporter en Excel" aria-label="Exporter en Excel" class="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center w-9 h-9">
@@ -3094,177 +3094,84 @@
             try {
                 const ops = JSON.parse(sessionStorage.getItem('operationHistory') || '[]');
                 const red = JSON.parse(sessionStorage.getItem('redoHistory') || '[]');
-                if (Array.isArray(ops)) operationHistory = ops; else operationHistory = [];
-                if (Array.isArray(red)) redoHistory = red; else redoHistory = [];
-            } catch(_) {
+                
+                // Enhanced validation for operation history
+                if (Array.isArray(ops)) {
+                    operationHistory = ops.filter(op => 
+                        op && op.type && OPERATION_TYPES[Object.keys(OPERATION_TYPES).find(k => OPERATION_TYPES[k] === op.type)]
+                    );
+                } else {
+                    operationHistory = [];
+                }
+                
+                // Enhanced validation for redo history
+                if (Array.isArray(red)) {
+                    redoHistory = red.filter(op => 
+                        op && op.type && OPERATION_TYPES[Object.keys(OPERATION_TYPES).find(k => OPERATION_TYPES[k] === op.type)]
+                    );
+                } else {
+                    redoHistory = [];
+                }
+                
+                log(`📚 Restored ${operationHistory.length} undo operations, ${redoHistory.length} redo operations`, 'info');
+            } catch(error) {
+                console.warn('⚠️ Error restoring history stacks:', error);
                 operationHistory = [];
                 redoHistory = [];
             }
             updateUndoButtonState();
         }
         
-        // Enhanced undo function with circular history of 10 states
+        // Enhanced undo function - performs 2 operations with 1 click
         function undo() {
+            // Check if we have operations to undo
             if (operationHistory.length === 0) {
                 log('Aucune opération à annuler.', 'info');
                 return;
             }
             
-            const lastOperation = operationHistory.pop();
-            // Clean: Removed debug log
+            // Perform 2 undo operations in sequence
+            const operationsToUndo = [];
             
-            // ENHANCED: Show detailed message about what is being undone
-            const undoMessage = getDetailedOperationDescription(lastOperation, true);
-            showMessage(undoMessage, 'info');
+            // Get first operation
+            if (operationHistory.length > 0) {
+                operationsToUndo.push(operationHistory.pop());
+            }
+            
+            // Get second operation if available
+            if (operationHistory.length > 0) {
+                operationsToUndo.push(operationHistory.pop());
+            }
+            
+            console.log(`🔄 Undoing ${operationsToUndo.length} operation(s)`);
             
             try {
+                // Set flag to prevent interference
                 isPerformingUndoRedo = true;
-                // Clear any pending operations before undoing
+                
+                // Clear any pending operations
                 if (currentOperation) {
-                    // Clean: Removed debug log
                     currentOperation = null;
                 }
                 clearOperationTimeout();
                 
-                // Restore table state - only if we have valid data
-                if (lastOperation.tableState && lastOperation.tableState.rows && Array.isArray(lastOperation.tableState.rows) && lastOperation.tableState.rows.length > 0) {
-                    // Clean: Removed debug log
-                    loadTableData(lastOperation.tableState.rows);
-                } else if (lastOperation.tableState && lastOperation.tableState.rows) {
-                    console.warn(`⚠️ Table state has rows but they are invalid:`, lastOperation.tableState.rows);
-                    // Don't restore if data is invalid - this prevents table clearing
+                // Use the oldest operation's table state for restoration (to go back 2 steps)
+                let operationToRestore = operationsToUndo[operationsToUndo.length - 1]; // Get the oldest (second) operation
+                if (!operationToRestore && operationsToUndo.length > 0) {
+                    operationToRestore = operationsToUndo[0]; // Fallback to first if only one operation
                 }
                 
-                // Special handling for cell edits - restore specific cell values using stable addressing
-                if (lastOperation.type === OPERATION_TYPES.CELL_EDIT && lastOperation.data) {
-                    const { rowKey, columnLabel, initialValue } = lastOperation.data;
-                    if (rowKey && columnLabel) {
-                        const tbody = document.getElementById('table-body');
-                        const targetRow = Array.from(tbody.children).find(tr => keyForRow(tr) === rowKey);
-                        
-                        if (targetRow) {
-                            const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
-                            const columnIndex = headers.indexOf(columnLabel);
-                            const cells = Array.from(targetRow.querySelectorAll('td')).slice(2); // Skip No and Delete columns
-                            
-                            if (columnIndex >= 0 && cells[columnIndex]) {
-                                cells[columnIndex].textContent = initialValue;
-                                // Clean: Removed debug log
-                            }
-                        } else {
-                            // Clean: Removed debug log
-                        }
-                    }
+                // Direct table restoration - simplified logic
+                if (operationToRestore && operationToRestore.tableState && operationToRestore.tableState.rows && Array.isArray(operationToRestore.tableState.rows)) {
+                    console.log(`📊 Restoring table state from operation: ${operationToRestore.type}`);
+                    loadTableData(operationToRestore.tableState.rows);
+                } else {
+                    console.warn('⚠️ No valid table state found for restoration');
                 }
                 
-                // ✅ CORRECTION: Special handling for row deletions - restore rows in place WITHOUT DUPLICATION
-                if (lastOperation.type === OPERATION_TYPES.ROW_DELETE && lastOperation.data) {
-                    const { deletedRows, rowData, rowNumbers, rowKeys } = lastOperation.data;
-                    log(`🔄 Tentative de restauration de ${deletedRows} ligne(s) supprimée(s)`, 'info');
-                    
-                    if (rowData && rowData.length > 0) {
-                        const tbody = document.getElementById('table-body');
-                        const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
-                        
-                        rowData.forEach((rowDataItem, index) => {
-                            // ✅ VÉRIFICATION ANTI-DUPLICATION: Vérifier si la ligne existe déjà
-                            const existingRowKey = rowKeys ? rowKeys[index] : null;
-                            if (existingRowKey) {
-                                const existingRow = document.querySelector(`tr[data-key="${existingRowKey}"]`);
-                                if (existingRow) {
-                                    log(`⚠️ LIGNE DÉJÀ PRÉSENTE - ÉVITER LA DUPLICATION: Clé ${existingRowKey}`, 'warning');
-                                    return; // Skip this row to prevent duplication
-                                }
-                            }
-                            
-                            log(`✅ Restauration de la ligne ${rowNumbers ? rowNumbers[index] : 'N/A'} (clé: ${existingRowKey})`, 'info');
-                            
-                            const newRow = document.createElement('tr');
-                            newRow.className = 'bg-white hover:bg-gray-100 transition-colors cursor-pointer';
-                            
-                            // Set the data-key attribute to prevent future duplications
-                            if (existingRowKey) {
-                                newRow.dataset.key = existingRowKey;
-                            }
-                            
-                            // Create row number cell
-                            const numCell = document.createElement('td');
-                            numCell.textContent = rowNumbers ? rowNumbers[index] : (tbody.children.length + 1);
-                            numCell.className = 'py-2 px-2 md:px-4 font-bold text-gray-800 whitespace-nowrap cursor-pointer frozen-column frozen-1';
-                            numCell.setAttribute('data-label', 'No');
-                            newRow.appendChild(numCell);
-                            
-                            // Create delete/selection cell
-                            newRow.appendChild(createDeleteCell(newRow));
-                            
-                            // Create data cells
-                            headers.forEach(header => {
-                                const value = rowDataItem[header] || '';
-                                newRow.appendChild(createEditableCell(header, value));
-                            });
-                            
-                            // Insert at original position if possible
-                            if (rowNumbers && rowNumbers[index]) {
-                                const targetPosition = Math.min(rowNumbers[index] - 1, tbody.children.length);
-                                if (targetPosition >= 0) {
-                                    tbody.insertBefore(newRow, tbody.children[targetPosition]);
-                                } else {
-                                    tbody.appendChild(newRow);
-                                }
-                            } else {
-                                tbody.appendChild(newRow);
-                            }
-                        });
-                        
-                        // Renumber rows after restoration
-                        Array.from(tbody.children).forEach((tr, idx) => {
-                            const noCell = tr.querySelector('td:first-child');
-                            if (noCell) noCell.textContent = idx + 1;
-                        });
-                        
-                        updateRowCount();
-                        log(`✅ ${deletedRows} ligne(s) restaurée(s) sans duplication`, 'success');
-                    }
-                }
-                
-                // Special handling for bulk edits
-                if (lastOperation.type === OPERATION_TYPES.BULK_EDIT) {
-                    if (lastOperation.data && lastOperation.data.edits) {
-                        // Type 1: Bulk edits avec liste de modifications individuelles
-                        // Clean: Removed debug log
-                        const tbody = document.getElementById('table-body');
-                        const rows = Array.from(tbody.children);
-                        const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
-                        
-                        lastOperation.data.edits.forEach(edit => {
-                            if (edit.rowKey && edit.columnLabel) {
-                                const targetRow = Array.from(tbody.children).find(tr => keyForRow(tr) === edit.rowKey);
-                                if (targetRow) {
-                                    const cells = Array.from(targetRow.querySelectorAll('td')).slice(2);
-                                    const columnIndex = headers.indexOf(edit.columnLabel);
-                                    if (columnIndex >= 0 && cells[columnIndex]) {
-                                        cells[columnIndex].textContent = edit.initialValue;
-                                        // Clean: Removed debug log
-                                    }
-                                }
-                            }
-                        });
-                    } else if (lastOperation.tableState) {
-                        // Type 2: Bulk edit avec état complet du tableau
-                        // Clean: Removed debug log
-                        
-                        // Sauvegarder l'état actuel pour le redo si ce n'est pas déjà fait
-                        if (!lastOperation.finalState) {
-                            lastOperation.finalState = collectTableData();
-                        }
-                        
-                        loadTableData(lastOperation.tableState);
-                    }
-                }
-                
-                // Restore row colors
-                if (lastOperation.rowColors) {
-                    rowColorMap = { ...lastOperation.rowColors };
+                // Restore row colors from the oldest operation if available
+                if (operationToRestore && operationToRestore.rowColors) {
+                    rowColorMap = { ...operationToRestore.rowColors };
                     persistRowColors();
                     
                     // Apply colors to visible rows
@@ -3277,162 +3184,76 @@
                     });
                 }
                 
-                // Don't remove operations from history - just push to redo stack
-                // This allows proper undo/redo cycling
-                // Clean: Removed debug log
-
-                // Push undone operation to redo stack
-                redoHistory.push(lastOperation);
+                // Move ALL undone operations to redo stack
+                operationsToUndo.forEach(operation => {
+                    redoHistory.push(operation);
+                });
                 
-                // Keep redo stack limited to 10 operations for circular navigation
-                if (redoHistory.length > 10) {
-                    const toRemove = redoHistory.length - 10;
-                    for (let i = 0; i < toRemove; i++) {
-                        redoHistory.shift();
-                    }
-                    // Clean: Removed debug log
+                // Keep redo stack limited to 10 operations
+                while (redoHistory.length > 10) {
+                    redoHistory.shift();
                 }
                 
+                console.log(`📚 Added ${operationsToUndo.length} operation(s) to redo stack`);
+                
+                // Update states and persistence
                 persistHistoryStacks();
-                
-                log(`Opération '${lastOperation.type}' annulée avec succès.`, 'success');
                 updateUndoButtonState();
-                
-                // ENHANCED: Schedule automatic sync after undo operation with extended suppression
-                // Extended suppression windows to prevent conflicts with autosave/realtime
-                const SUPPRESSION_MS = 3000; // Increased from 2000ms to 3000ms
-                const AUTOSAVE_SUPPRESSION_MS = 4000; // Separate, longer suppression for autosave
-                
-                suppressRealtimeUntil = Date.now() + SUPPRESSION_MS;
-                suppressAutosaveUntil = Date.now() + AUTOSAVE_SUPPRESSION_MS;
-                
-                // Clean: Removed debug log
-                
-                if (typeof scheduleUndoRedoSync === 'function') {
-                    clearUndoRedoSyncTimeout();
-                    undoRedoSyncTimeout = setTimeout(() => {
-                        if (!isPerformingUndoRedo) {
-                            // Clean: Removed debug log
-                            // Force manual save to bypass conflict checks
-                            syncToMaster(true, true);
-                            undoRedoSyncTimeout = null;
-                        }
-                    }, 800); // Increased delay from 500ms to 800ms for better conflict prevention
-                }
                 
             } catch (error) {
                 console.error('❌ Error during undo:', error);
-                log('Erreur lors de l\'annulation.', 'error');
+                // Re-add operation if failed
+                operationHistory.push(lastOperation);
             } finally {
                 isPerformingUndoRedo = false;
             }
         }
 
-        // Redo function with circular history of 10 states
+        // Redo function - restores 2 operations to match undo behavior
         function redo() {
+            if (isPerformingUndoRedo) {
+                log('⚠️ Opération undo/redo déjà en cours, veuillez patienter.', 'warning');
+                return;
+            }
+            
             if (redoHistory.length === 0) {
                 log('Aucune opération à rétablir.', 'info');
                 return;
             }
             
-            const op = redoHistory.pop();
-            // Clean: Removed debug log
+            // Get up to 2 operations from redo stack
+            const operationsToRedo = [];
             
-            // ENHANCED: Show detailed message about what is being redone
-            const redoMessage = getDetailedOperationDescription(op, false);
-            showMessage(redoMessage, 'info');
+            // Get first operation
+            if (redoHistory.length > 0) {
+                operationsToRedo.push(redoHistory.pop());
+            }
+            
+            // Get second operation if available
+            if (redoHistory.length > 0) {
+                operationsToRedo.push(redoHistory.pop());
+            }
+            
+            console.log(`🔄 Redoing ${operationsToRedo.length} operation(s)`);
+            
             try {
                 isPerformingUndoRedo = true;
                 clearOperationTimeout();
                 
+                // Use the most recent operation's final state for restoration (to go forward 2 steps)
+                let operationToRestore = operationsToRedo[0]; // Get the most recent operation
+                
                 // Re-apply the final state of the operation - only if we have valid data
-                if (op.finalState && op.finalState.rows && Array.isArray(op.finalState.rows) && op.finalState.rows.length > 0) {
-                    // Clean: Removed debug log
-                    loadTableData(op.finalState.rows);
-                } else if (op.finalState && op.finalState.rows) {
-                    console.warn(`⚠️ Final state has rows but they are invalid:`, op.finalState.rows);
-                    // Don't restore if data is invalid - this prevents table clearing
+                if (operationToRestore && operationToRestore.finalState && operationToRestore.finalState.rows && Array.isArray(operationToRestore.finalState.rows)) {
+                    console.log(`📊 Restoring final state from operation: ${operationToRestore.type}`);
+                    loadTableData(operationToRestore.finalState.rows);
+                } else {
+                    console.warn('⚠️ No valid final state found for redo restoration');
                 }
                 
-                // Special handling for cell edits - restore final cell values using stable addressing
-                if (op.type === OPERATION_TYPES.CELL_EDIT && op.data) {
-                    const { rowKey, columnLabel, currentValue } = op.data;
-                    if (rowKey && columnLabel && currentValue) {
-                        const tbody = document.getElementById('table-body');
-                        const targetRow = Array.from(tbody.children).find(tr => keyForRow(tr) === rowKey);
-                        
-                        if (targetRow) {
-                            const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
-                            const columnIndex = headers.indexOf(columnLabel);
-                            const cells = Array.from(targetRow.querySelectorAll('td')).slice(2); // Skip No and Delete columns
-                            
-                            if (columnIndex >= 0 && cells[columnIndex]) {
-                                cells[columnIndex].textContent = currentValue;
-                                // Clean: Removed debug log
-                            }
-                        } else {
-                            // Clean: Removed debug log
-                        }
-                    }
-                }
-                
-                // Special handling for row deletions - re-delete rows
-                if (op.type === OPERATION_TYPES.ROW_DELETE && op.data) {
-                    const { deletedRows, rowKeys } = op.data;
-                    // Clean: Removed debug log
-                    
-                    if (rowKeys && rowKeys.length > 0) {
-                        const tbody = document.getElementById('table-body');
-                        const rowsToDelete = Array.from(tbody.children).filter(tr => 
-                            rowKeys.includes(keyForRow(tr))
-                        );
-                        
-                        if (rowsToDelete.length > 0) {
-                            rowsToDelete.forEach(row => row.remove());
-                            
-                            // Renumber remaining rows
-                            Array.from(tbody.children).forEach((tr, idx) => {
-                                const noCell = tr.querySelector('td:first-child');
-                                if (noCell) noCell.textContent = idx + 1;
-                            });
-                            
-                            updateRowCount();
-                            // Clean: Removed debug log
-                        }
-                    }
-                }
-                
-                // Special handling for bulk edits
-                if (op.type === OPERATION_TYPES.BULK_EDIT) {
-                    if (op.data && op.data.edits) {
-                        // Type 1: Bulk edits avec liste de modifications individuelles
-                        // Clean: Removed debug log
-                        const tbody = document.getElementById('table-body');
-                        const rows = Array.from(tbody.children);
-                        const headers = Array.from(document.querySelectorAll('#data-table thead th')).slice(2).map(th => th.textContent);
-                        
-                        op.data.edits.forEach(edit => {
-                            if (edit.rowKey && edit.columnLabel) {
-                                const targetRow = Array.from(tbody.children).find(tr => keyForRow(tr) === edit.rowKey);
-                                if (targetRow) {
-                                    const cells = Array.from(targetRow.querySelectorAll('td')).slice(2);
-                                    const columnIndex = headers.indexOf(edit.columnLabel);
-                                    if (columnIndex >= 0 && cells[columnIndex]) {
-                                        cells[columnIndex].textContent = edit.currentValue;
-                                        // Clean: Removed debug log
-                                    }
-                                }
-                            }
-                        });
-                    } else if (op.finalState) {
-                        // Type 2: Bulk edit avec état complet du tableau
-                        // Clean: Removed debug log
-                        loadTableData(op.finalState);
-                    }
-                }
-                
-                if (op.finalRowColors) {
-                    rowColorMap = { ...op.finalRowColors };
+                // Restore row colors from the most recent operation if available
+                if (operationToRestore && operationToRestore.finalRowColors) {
+                    rowColorMap = { ...operationToRestore.finalRowColors };
                     persistRowColors();
                     Array.from(document.querySelectorAll('#table-body tr')).forEach(tr => {
                         const k = keyForRow(tr);
@@ -3441,12 +3262,20 @@
                     });
                 }
                 
-                // After redoing, push back to operation history
-                operationHistory.push(op);
+                // After redoing, push ALL operations back to operation history
+                operationsToRedo.reverse().forEach(operation => {
+                    operationHistory.push(operation);
+                });
+                
+                // Keep operation history limited
+                while (operationHistory.length > 10) {
+                    operationHistory.shift();
+                }
+                
                 persistHistoryStacks();
                 updateUndoButtonState();
                 
-                log('Opération rétablie.', 'success');
+                console.log(`📚 Added ${operationsToRedo.length} operation(s) back to history`);
                 
                 // ENHANCED: Schedule automatic sync after redo operation with extended suppression
                 // Extended suppression windows to prevent conflicts with autosave/realtime
@@ -3627,6 +3456,52 @@
                 undoRedoSyncTimeout = null;
             }
         }
+        
+        // Enhanced timeout cleanup for better memory management
+        function clearAllUndoRedoTimeouts() {
+            clearUndoRedoSyncTimeout();
+            if (cellEditTimeout) {
+                clearTimeout(cellEditTimeout);
+                cellEditTimeout = null;
+            }
+            clearOperationTimeout();
+        }
+        
+        // Debugging function for undo/redo system
+        function debugUndoRedoSystem() {
+            const debugInfo = {
+                operationHistoryLength: operationHistory.length,
+                redoHistoryLength: redoHistory.length,
+                isPerformingUndoRedo,
+                currentOperation: currentOperation ? {
+                    type: currentOperation.type,
+                    timestamp: currentOperation.timestamp
+                } : null,
+                suppressRealtimeUntil: new Date(suppressRealtimeUntil).toISOString(),
+                suppressAutosaveUntil: new Date(suppressAutosaveUntil).toISOString(),
+                pendingTimeouts: {
+                    cellEditTimeout: !!cellEditTimeout,
+                    undoRedoSyncTimeout: !!undoRedoSyncTimeout
+                },
+                lastOperations: operationHistory.slice(-3).map(op => ({
+                    type: op.type,
+                    timestamp: op.timestamp,
+                    hasData: !!op.data,
+                    hasTableState: !!(op.tableState && op.tableState.rows)
+                }))
+            };
+            
+            console.group('🔍 Undo/Redo System Debug Info');
+            console.table(debugInfo);
+            console.log('📝 Operation History:', operationHistory);
+            console.log('🔄 Redo History:', redoHistory);
+            console.groupEnd();
+            
+            return debugInfo;
+        }
+        
+        // Make debug function globally available
+        window.debugUndoRedoSystem = debugUndoRedoSystem;
         
         // Handle page unload to complete pending operations
         window.addEventListener('beforeunload', () => {
@@ -5787,12 +5662,17 @@
                 });
             } catch(_) {}
             
-            log('Données du tableau chargées.', 'success');
+            // Silent data loading for faster undo/redo
+            if (!isPerformingUndoRedo) {
+                log('Données du tableau chargées.', 'success');
+            }
             appState.localData = collectTableData();
             appState.dataHash = generateDataHash(appState.localData);
             document.dispatchEvent(new CustomEvent('table:reloaded'));
             updateTfootColspan();
-            log('table:reloaded dispatched');
+            if (!isPerformingUndoRedo) {
+                log('table:reloaded dispatched');
+            }
             
             // Mettre à jour l'affichage du nombre de lignes
             updateRowCount();
@@ -9715,7 +9595,16 @@
                         return;
                     }
                     
-                    // Wait for table to be fully rendered and image icons updated
+                    // For undo/redo operations, restore immediately without delays
+                    if (isPerformingUndoRedo) {
+                        // Immediate restoration for undo/redo - no delays
+                        if (!isMobile()) {
+                            performCursorRestoration();
+                        }
+                        return;
+                    }
+                    
+                    // Wait for table to be fully rendered and image icons updated (only for regular loads)
                     // Use a longer delay to ensure all table updates are complete
                     setTimeout(() => {
                         // Double-check undo/redo state before performing cursor restoration
@@ -11153,6 +11042,30 @@ ${capacityInfo.needsCleanup ?
             // Initialize performance optimizations first
             domCache.init();
             eventManager.initTableEvents();
+            
+            // Initialize undo/redo button event listeners
+            const undoButton = document.getElementById('undo-button');
+            const redoButton = document.getElementById('redo-button');
+            
+            if (undoButton) {
+                undoButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!undoButton.disabled) {
+                        undo();
+                    }
+                });
+            }
+            
+            if (redoButton) {
+                redoButton.addEventListener('click', function(e) {
+                    e.preventDefault(); 
+                    e.stopPropagation();
+                    if (!redoButton.disabled) {
+                        redo();
+                    }
+                });
+            }
             
             // Performance monitoring
             eventManager.monitor.mark('dom-ready');
