@@ -1785,6 +1785,7 @@ class SimpleGallery {
         let startY = 0;
         let startPanX = 0;
         let startPanY = 0;
+        let cachedViewerImage = null;
         
         // Démarrer le pan avec clic droit, Ctrl+clic gauche, OU simple clic gauche  
         viewerImage.addEventListener('mousedown', (e) => {
@@ -1792,8 +1793,9 @@ class SimpleGallery {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // Démarrage immédiat du pan
+                // Démarrage immédiat du pan et cache de l'image
                 this.isPanning = true;
+                cachedViewerImage = viewerImage; // Cache l'élément image
                 startX = e.clientX;
                 startY = e.clientY;
                 startPanX = this.panX;
@@ -1806,9 +1808,9 @@ class SimpleGallery {
             }
         }, { passive: false });
         
-        // Continuer le pan pendant le mouvement (version simple et fluide)
+        // Continuer le pan pendant le mouvement (avec cache optimisé)
         document.addEventListener('mousemove', (e) => {
-            if (this.isPanning) {
+            if (this.isPanning && cachedViewerImage) {
                 e.preventDefault();
                 
                 const deltaX = e.clientX - startX;
@@ -1817,7 +1819,8 @@ class SimpleGallery {
                 this.panX = startPanX + deltaX;
                 this.panY = startPanY + deltaY;
                 
-                this.applyZoom();
+                // Application directe sur l'élément en cache pour une réponse immédiate
+                cachedViewerImage.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.currentZoom})`;
             }
         });
         
@@ -1826,6 +1829,7 @@ class SimpleGallery {
             if (this.isPanning && (e.button === 2 || e.button === 0)) {
                 console.log('🛑 Stopping pan');
                 this.isPanning = false;
+                cachedViewerImage = null; // Reset du cache
                 viewerImage.style.cursor = 'grab';
                 document.body.style.userSelect = '';
                 document.body.style.cursor = '';
