@@ -309,6 +309,111 @@
             }
         }
         
+        /* Snapshot Controls Size Enhancement - 20% larger on all screen sizes */
+        #history-bar-container .flex.items-center.gap-2.justify-center button,
+        #snapshot-calendar-btn,
+        #current-snapshot-date-display {
+            transform: scale(1.2) !important; /* 20% larger */
+            transform-origin: center !important;
+        }
+        
+        /* Ensure proper spacing and sizing for snapshot controls */
+        #history-bar-container .flex.items-center.gap-2.justify-center button {
+            min-width: 44px !important; /* Minimum touch target size */
+            min-height: 32px !important;
+            font-size: 0.875rem !important; /* Slightly larger text */
+            padding: 0.5rem 0.75rem !important; /* Increased padding */
+        }
+        
+        /* Calendar button specific styling */
+        #snapshot-calendar-btn {
+            min-width: 80px !important; /* Ensure text fits */
+            min-height: 32px !important;
+            font-size: 0.875rem !important;
+            padding: 0.5rem 0.75rem !important;
+        }
+        
+        /* Current snapshot date display styling */
+        #current-snapshot-date-display {
+            min-width: 120px !important; /* Ensure text fits */
+            min-height: 32px !important;
+            font-size: 0.875rem !important;
+            padding: 0.5rem 0.75rem !important;
+        }
+        
+        /* Add padding between function button container and snapshot controls on small screens */
+        @media (max-width: 1024px) {
+            #history-bar-container {
+                margin-top: 1rem !important; /* Add top margin for separation */
+                padding-top: 0.5rem !important; /* Add top padding */
+            }
+            
+            /* Increase spacing between function buttons and snapshot controls */
+            #button-bar + div {
+                margin-top: 1.5rem !important;
+            }
+        }
+        
+        /* Enhanced spacing for very small screens */
+        @media (max-width: 640px) {
+            #history-bar-container {
+                margin-top: 1.5rem !important;
+                padding-top: 0.75rem !important;
+            }
+            
+            /* Increase spacing between function buttons and snapshot controls */
+            #button-bar + div {
+                margin-top: 2rem !important;
+            }
+        }
+        
+        /* Icon sizing within snapshot controls - match the 20% size increase */
+        #history-bar-container .flex.items-center.gap-2.justify-center button i,
+        #snapshot-calendar-btn i,
+        #current-snapshot-date-display i {
+            font-size: 1.2em !important; /* Scale icons proportionally */
+            width: 1.2em !important;
+            height: 1.2em !important;
+        }
+        
+        /* Ensure proper icon alignment in buttons */
+        #history-bar-container .flex.items-center.gap-2.justify-center button,
+        #snapshot-calendar-btn {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0.25rem !important; /* Consistent spacing between icon and text */
+        }
+        
+        /* Snapshot controls container enhancement */
+        #history-bar-container .flex.items-center.gap-2.p-3.bg-blue-50.rounded-lg.border.border-blue-200 {
+            padding: 1rem !important; /* Increase container padding */
+            gap: 0.75rem !important; /* Increase gap between elements */
+            min-height: 48px !important; /* Ensure minimum height for larger buttons */
+        }
+        
+        /* Responsive container sizing */
+        @media (max-width: 1024px) {
+            #history-bar-container .flex.items-center.gap-2.p-3.bg-blue-50.rounded-lg.border.border-blue-200 {
+                padding: 1.25rem !important; /* Even more padding on small screens */
+                gap: 1rem !important; /* Larger gaps on small screens */
+            }
+        }
+        
+        /* Calendar dropdown sizing to match larger buttons */
+        #snapshot-calendar-dropdown {
+            min-width: 280px !important; /* Increase width to accommodate larger text */
+            font-size: 1.1em !important; /* Slightly larger text */
+        }
+        
+        #snapshot-calendar-dropdown h3 {
+            font-size: 1.1em !important; /* Larger header text */
+        }
+        
+        #snapshot-calendar-dropdown .text-xs {
+            font-size: 0.875rem !important; /* Larger description text */
+        }
+        
         /* Horizontal scroll for function buttons on small screens */
         @media (max-width: 1024px) {
             #button-bar {
