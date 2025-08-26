@@ -27,6 +27,10 @@ class SimpleGallery {
         this.lastFileHash = null;
         this.patientNames = {}; // Stockage des associations images-patients
         
+        // Proactive Bucket Management
+        this.bucketManager = null;
+        this.currentBucket = this.bucketName; // Track which bucket we're using
+        
         // Initialisation
         this.init();
         
@@ -53,7 +57,13 @@ class SimpleGallery {
             // Setup page unload cleanup
             window.addEventListener('beforeunload', () => {
                 this.cleanupRealtimeSync();
+                if (this.bucketManager) {
+                    this.bucketManager.dispose();
+                }
             });
+            
+            // Initialize proactive bucket management
+            await this.initializeBucketManager();
             
 
             
@@ -102,9 +112,61 @@ class SimpleGallery {
 
             this.isInitialized = true;
             
+            console.log('✅ SimpleGallery initialized successfully');
+            
         } catch (error) {
             console.error('❌ Erreur initialisation Supabase:', error);
             throw error;
+        }
+    }
+
+    async initializeBucketManager() {
+        try {
+            console.log('🔄 Initializing proactive bucket management...');
+            
+            // Import and initialize the bucket manager
+            const { default: ImageBucketManager } = await import('./image-bucket-manager.js');
+            
+            this.bucketManager = new ImageBucketManager({
+                supabaseUrl: this.supabaseUrl,
+                supabaseAnonKey: this.supabaseAnonKey,
+                supabaseServiceKey: this.supabaseServiceKey
+            });
+            
+            // Wait for manager to initialize
+            await new Promise(resolve => {
+                const checkInitialized = () => {
+                    if (this.bucketManager.supabase && this.bucketManager.serviceSupabase) {
+                        resolve();
+                    } else {
+                        setTimeout(checkInitialized, 100);
+                    }
+                };
+                checkInitialized();
+            });
+            
+            console.log('✅ Bucket manager initialized successfully');
+            
+            // Show bucket statistics on initialization
+            setTimeout(async () => {
+                try {
+                    const stats = await this.bucketManager.getBucketStatistics();
+                    if (stats) {
+                        console.log('📊 Bucket Statistics:', {
+                            bucketsCount: stats.buckets.length,
+                            totalSize: `${(stats.totalSize / 1024 / 1024).toFixed(2)} MB`,
+                            totalFiles: stats.totalFiles,
+                            averageUsage: `${stats.averageUsage}%`
+                        });
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Could not fetch initial bucket statistics:', error);
+                }
+            }, 2000);
+            
+        } catch (error) {
+            console.error('❌ Failed to initialize bucket manager:', error);
+            this.showMessage('⚠️ Gestion automatique des buckets désactivée', 'warning');
         }
     }
 
@@ -428,28 +490,67 @@ class SimpleGallery {
         try {
             this.showLoading(true);
 
-            
-            const { data: files, error } = await this.supabase.storage
-                .from(this.bucketName)
-                .list('', { limit: 1000 });
-            
-            if (error) {
-                throw new Error(`Erreur chargement images: ${error.message}`);
+            let allFiles = [];
+
+            // If bucket manager is available, load from all image buckets
+            if (this.bucketManager) {
+                try {
+                    const imageBuckets = await this.bucketManager.getImageBuckets();
+                    console.log(`📁 Loading images from ${imageBuckets.length} bucket(s)`);
+
+                    for (const bucket of imageBuckets) {
+                        const { data: files, error } = await this.supabase.storage
+                            .from(bucket.name)
+                            .list('', { limit: 1000 });
+                        
+                        if (!error && files) {
+                            // Add bucket info to each file
+                            const bucketFiles = files.map(file => ({
+                                ...file,
+                                bucketName: bucket.name
+                            }));
+                            allFiles.push(...bucketFiles);
+                        } else {
+                            console.warn(`⚠️ Error loading from bucket ${bucket.name}:`, error);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Error loading from multiple buckets, falling back to single bucket:', error);
+                    // Fallback to single bucket
+                    const { data: files, error: singleError } = await this.supabase.storage
+                        .from(this.bucketName)
+                        .list('', { limit: 1000 });
+                    
+                    if (singleError) {
+                        throw new Error(`Erreur chargement images: ${singleError.message}`);
+                    }
+                    allFiles = files.map(file => ({ ...file, bucketName: this.bucketName }));
+                }
+            } else {
+                // Fallback to original single bucket loading
+                const { data: files, error } = await this.supabase.storage
+                    .from(this.bucketName)
+                    .list('', { limit: 1000 });
+                
+                if (error) {
+                    throw new Error(`Erreur chargement images: ${error.message}`);
+                }
+                allFiles = files.map(file => ({ ...file, bucketName: this.bucketName }));
             }
             
             // Traiter les fichiers avec URL directe Supabase
-            this.images = files.map(file => {
+            this.images = allFiles.map(file => {
                 // URL directe Supabase pour éviter les erreurs
-                const directUrl = `${this.supabaseUrl}/storage/v1/object/public/${this.bucketName}/${encodeURIComponent(file.name)}`;
-                
-
+                const bucketName = file.bucketName || this.bucketName;
+                const directUrl = `${this.supabaseUrl}/storage/v1/object/public/${bucketName}/${encodeURIComponent(file.name)}`;
                 
                 return {
                     name: file.name,
                     size: file.metadata?.size || 0,
                     created_at: file.created_at,
                     updated_at: file.updated_at,
-                    url: directUrl
+                    url: directUrl,
+                    bucketName: bucketName
                 };
             });
             
@@ -670,18 +771,53 @@ class SimpleGallery {
         }
 
         const fileName = `${Date.now()}_${file.name}`;
+        let targetBucket = this.bucketName; // Default fallback
         
         try {
+            // Use bucket manager to find optimal bucket if available
+            if (this.bucketManager) {
+                try {
+                    targetBucket = await this.bucketManager.findOptimalBucket();
+                    console.log(`📁 Using optimal bucket for upload: ${targetBucket}`);
+                } catch (bucketError) {
+                    console.warn('⚠️ Could not find optimal bucket, using default:', bucketError);
+                    targetBucket = this.bucketName;
+                }
+            }
+
             // Utiliser la clé de service pour l'upload (bypass RLS)
             const { error } = await this.serviceSupabase.storage
-                .from(this.bucketName)
+                .from(targetBucket)
                 .upload(fileName, file, {
                     cacheControl: '3600',
                     upsert: false
                 });
 
             if (error) {
-                throw new Error(error.message);
+                // If upload fails due to bucket capacity, try to create new bucket and retry
+                if (error.message.includes('storage') && this.bucketManager) {
+                    console.log('🔄 Upload failed, attempting with new bucket...');
+                    try {
+                        const newBucket = await this.bucketManager.createOverflowBucket();
+                        const { error: retryError } = await this.serviceSupabase.storage
+                            .from(newBucket)
+                            .upload(fileName, file, {
+                                cacheControl: '3600',
+                                upsert: false
+                            });
+                        
+                        if (retryError) {
+                            throw new Error(retryError.message);
+                        }
+                        
+                        console.log(`✅ Upload successful to new bucket: ${newBucket}`);
+                        targetBucket = newBucket;
+                    } catch (retryError) {
+                        throw new Error(error.message);
+                    }
+                } else {
+                    throw new Error(error.message);
+                }
             }
 
             // Set timestamp for real-time sync
@@ -691,8 +827,9 @@ class SimpleGallery {
             await this.loadImages();
             this.forceRefreshDisplay();
             
-            // Show success message
-            this.showMessage(`Image "${file.name}" uploadée avec succès.`, 'success');
+            // Show success message with bucket info
+            const bucketInfo = targetBucket !== this.bucketName ? ` (bucket: ${targetBucket})` : '';
+            this.showMessage(`Image "${file.name}" uploadée avec succès${bucketInfo}.`, 'success');
 
             return fileName;
             
@@ -1745,6 +1882,144 @@ class SimpleGallery {
         setTimeout(updateScrollIndicators, 100);
         
         console.log('✅ Scroll indicators initialized');
+    }
+
+    // ===== BUCKET MANAGEMENT METHODS =====
+
+    /**
+     * Manually trigger cleanup of old images
+     */
+    async manualCleanup() {
+        if (!this.bucketManager) {
+            this.showMessage('⚠️ Gestion de bucket non disponible', 'warning');
+            return;
+        }
+
+        try {
+            this.showLoading(true);
+            const deletedCount = await this.bucketManager.forceCleanup();
+            
+            if (deletedCount > 0) {
+                this.showMessage(`🧹 ${deletedCount} anciennes images supprimées`, 'success');
+                // Reload images to reflect changes
+                await this.loadImages();
+            } else {
+                this.showMessage('ℹ️ Aucune image ancienne à supprimer', 'info');
+            }
+        } catch (error) {
+            console.error('❌ Error during manual cleanup:', error);
+            this.showMessage(`❌ Erreur de nettoyage: ${error.message}`, 'error');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    /**
+     * Show bucket usage statistics
+     */
+    async showBucketStatistics() {
+        if (!this.bucketManager) {
+            this.showMessage('⚠️ Gestion de bucket non disponible', 'warning');
+            return;
+        }
+
+        try {
+            this.showLoading(true);
+            const stats = await this.bucketManager.getBucketStatistics();
+            
+            if (stats) {
+                const totalSizeMB = (stats.totalSize / 1024 / 1024).toFixed(2);
+                const bucketDetails = stats.buckets.map(bucket => 
+                    `• ${bucket.bucketName}: ${bucket.totalFiles} images, ${(bucket.totalSize / 1024 / 1024).toFixed(2)} MB (${bucket.usagePercent}%)`
+                ).join('\n');
+
+                const statsMessage = `
+📊 Statistiques des buckets:
+
+${bucketDetails}
+
+📈 Total: ${stats.totalFiles} images
+💾 Taille totale: ${totalSizeMB} MB
+📊 Utilisation moyenne: ${stats.averageUsage}%
+                `.trim();
+
+                // Create a modal or use console for now
+                console.log(statsMessage);
+                this.showMessage(`📊 Statistiques: ${stats.buckets.length} bucket(s), ${stats.totalFiles} images, ${totalSizeMB} MB`, 'info');
+
+                // If there's a modal available, show detailed stats there
+                this.showDetailedStats(stats);
+            } else {
+                this.showMessage('❌ Impossible de récupérer les statistiques', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Error getting bucket statistics:', error);
+            this.showMessage(`❌ Erreur statistiques: ${error.message}`, 'error');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    /**
+     * Show detailed statistics in a modal or dedicated area
+     */
+    showDetailedStats(stats) {
+        try {
+            // Try to find a stats container or create one
+            let statsContainer = document.getElementById('bucket-stats-container');
+            
+            if (!statsContainer) {
+                // Create a temporary stats display
+                const toast = document.createElement('div');
+                toast.className = 'fixed top-4 left-4 p-6 rounded-lg shadow-lg z-50 max-w-md bg-white border';
+                toast.style.maxHeight = '80vh';
+                toast.style.overflow = 'auto';
+                
+                const totalSizeMB = (stats.totalSize / 1024 / 1024).toFixed(2);
+                
+                toast.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">📊 Statistiques des Buckets</h3>
+                        <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600">✕</button>
+                    </div>
+                    <div class="space-y-3 text-sm">
+                        <div class="bg-blue-50 p-3 rounded">
+                            <div class="font-medium">Résumé Global</div>
+                            <div>• ${stats.buckets.length} bucket(s) actif(s)</div>
+                            <div>• ${stats.totalFiles} images au total</div>
+                            <div>• ${totalSizeMB} MB utilisés</div>
+                            <div>• ${stats.averageUsage}% utilisation moyenne</div>
+                        </div>
+                        <div>
+                            <div class="font-medium mb-2">Détail par Bucket:</div>
+                            ${stats.buckets.map(bucket => `
+                                <div class="bg-gray-50 p-2 rounded mb-2">
+                                    <div class="font-medium text-xs">${bucket.bucketName}</div>
+                                    <div class="text-xs text-gray-600">
+                                        ${bucket.totalFiles} images • ${(bucket.totalSize / 1024 / 1024).toFixed(2)} MB
+                                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                                            <div class="bg-blue-600 h-1.5 rounded-full" style="width: ${Math.min(bucket.usagePercent, 100)}%"></div>
+                                        </div>
+                                        <span class="text-xs">${bucket.usagePercent}% utilisé</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(toast);
+                
+                // Auto-remove after 15 seconds
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 15000);
+            }
+        } catch (error) {
+            console.warn('⚠️ Could not show detailed stats UI:', error);
+        }
     }
 }
 
