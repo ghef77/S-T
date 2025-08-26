@@ -1663,13 +1663,16 @@ class SimpleGallery {
         this.applyZoom();
     }
     
-    // Appliquer le zoom et pan
+    // Appliquer le zoom et pan (avec valeurs arrondies pour plus de fluidité)
     applyZoom() {
         const viewerImage = document.getElementById('viewer-image');
         const zoomLevel = document.getElementById('zoom-level');
         
         if (viewerImage) {
-            viewerImage.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.currentZoom})`;
+            // Arrondir les valeurs pour de meilleures performances de rendu
+            const roundedX = Math.round(this.panX);
+            const roundedY = Math.round(this.panY);
+            viewerImage.style.transform = `translate(${roundedX}px, ${roundedY}px) scale(${this.currentZoom})`;
             viewerImage.style.transformOrigin = 'center center';
         }
         
@@ -1786,9 +1789,9 @@ class SimpleGallery {
         let startPanX = 0;
         let startPanY = 0;
         
-        // Démarrer le pan avec clic droit ou Ctrl+clic gauche
+        // Démarrer le pan avec clic droit (principal) ou Ctrl+clic gauche (alternatif)
         viewerImage.addEventListener('mousedown', (e) => {
-            if (e.button === 2 || (e.button === 0 && e.ctrlKey) || e.button === 0) { // Clic droit, Ctrl+clic gauche, OU simple clic gauche
+            if (e.button === 2 || (e.button === 0 && e.ctrlKey)) { // Clic droit (principal) ou Ctrl+clic gauche (alternatif)
                 e.preventDefault();
                 e.stopPropagation();
                 this.isPanning = true;
@@ -1800,13 +1803,14 @@ class SimpleGallery {
                 
                 console.log('🖱️ Pan started');
                 
-                // Changer le curseur pour indiquer le mode pan
+                // Améliorer le feedback visuel
                 viewerImage.style.cursor = 'grabbing';
                 document.body.style.userSelect = 'none';
+                document.body.style.cursor = 'grabbing';
             }
         });
         
-        // Continuer le pan pendant le mouvement
+        // Continuer le pan pendant le mouvement (avec optimisation légère)
         document.addEventListener('mousemove', (e) => {
             if (this.isPanning) {
                 e.preventDefault();
@@ -1817,7 +1821,10 @@ class SimpleGallery {
                 this.panX = startPanX + deltaX;
                 this.panY = startPanY + deltaY;
                 
-                console.log('🚀 Panning:', { deltaX, deltaY, panX: this.panX, panY: this.panY });
+                // Réduire les logs pour de meilleures performances
+                if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                    console.log('🚀 Panning:', Math.round(this.panX), Math.round(this.panY));
+                }
                 
                 this.applyZoom();
             }
@@ -1830,6 +1837,7 @@ class SimpleGallery {
                 this.isPanning = false;
                 viewerImage.style.cursor = 'grab';
                 document.body.style.userSelect = '';
+                document.body.style.cursor = '';
             }
         });
         
@@ -1910,8 +1918,9 @@ class SimpleGallery {
             isTouchPanning = false;
         });
         
-        // Définir le curseur par défaut
+        // Définir le curseur par défaut et styles de base
         viewerImage.style.cursor = 'grab';
+        viewerImage.style.userSelect = 'none'; // Empêcher la sélection de l'image
     }
     
     // Initialiser le filtre par patient
