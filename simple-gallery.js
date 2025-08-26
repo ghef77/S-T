@@ -1663,19 +1663,21 @@ class SimpleGallery {
         this.applyZoom();
     }
     
-    // Appliquer le zoom et pan (optimisé pour la responsivité)
+    // Appliquer le zoom et pan (ultra-rapide pour réponse instantanée)
     applyZoom() {
         const viewerImage = document.getElementById('viewer-image');
-        const zoomLevel = document.getElementById('zoom-level');
         
         if (viewerImage) {
-            // Utiliser des valeurs précises pour un mouvement plus fluide
+            // Transform direct et immédiat pour une réponse ultra-rapide
             viewerImage.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.currentZoom})`;
-            viewerImage.style.transformOrigin = 'center center';
         }
         
-        if (zoomLevel) {
-            zoomLevel.textContent = `Zoom: ${Math.round(this.currentZoom * 100)}%`;
+        // Mettre à jour le zoom seulement si pas en train de panner (évite les ralentissements)
+        if (!this.isPanning) {
+            const zoomLevel = document.getElementById('zoom-level');
+            if (zoomLevel) {
+                zoomLevel.textContent = `Zoom: ${Math.round(this.currentZoom * 100)}%`;
+            }
         }
     }
     
@@ -1792,42 +1794,37 @@ class SimpleGallery {
             if (e.button === 2 || (e.button === 0 && e.ctrlKey) || e.button === 0) { // Clic droit, Ctrl+clic gauche, OU simple clic gauche
                 e.preventDefault();
                 e.stopPropagation();
-                this.isPanning = true;
                 
+                // Démarrage immédiat du pan
+                this.isPanning = true;
                 startX = e.clientX;
                 startY = e.clientY;
                 startPanX = this.panX;
                 startPanY = this.panY;
                 
-                console.log('🖱️ Pan started');
-                
-                // Améliorer le feedback visuel
+                // Feedback visuel immédiat
                 viewerImage.style.cursor = 'grabbing';
                 document.body.style.userSelect = 'none';
                 document.body.style.cursor = 'grabbing';
             }
-        });
+        }, { passive: false });
         
-        // Continuer le pan pendant le mouvement (optimisé pour la responsivité)
-        let lastUpdate = 0;
+        // Continuer le pan pendant le mouvement (réponse immédiate et rapide)
         document.addEventListener('mousemove', (e) => {
             if (this.isPanning) {
                 e.preventDefault();
                 
-                // Limiter les mises à jour pour plus de fluidité (mais pas trop strict)
-                const now = performance.now();
-                if (now - lastUpdate < 8) return; // ~120 FPS max
-                lastUpdate = now;
-                
+                // Calcul direct et immédiat sans throttling pour une réponse ultra-rapide
                 const deltaX = e.clientX - startX;
                 const deltaY = e.clientY - startY;
                 
                 this.panX = startPanX + deltaX;
                 this.panY = startPanY + deltaY;
                 
+                // Application immédiate pour une réponse instantanée
                 this.applyZoom();
             }
-        });
+        }, { passive: false });
         
         // Arrêter le pan
         document.addEventListener('mouseup', (e) => {
