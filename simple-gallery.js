@@ -1617,16 +1617,26 @@ class SimpleGallery {
 
     // ===== FONCTIONS DE ZOOM =====
     
-    // Variables de zoom
+    // Variables de zoom et pan
     currentZoom = 1;
     minZoom = 0.1;
     maxZoom = 5;
+    panX = 0;
+    panY = 0;
+    
+    // Variables pour le pan avec clic droit
+    isPanning = false;
+    lastPanX = 0;
+    lastPanY = 0;
     
     // Initialiser le zoom
     initZoom() {
         this.currentZoom = 1;
+        this.panX = 0;
+        this.panY = 0;
         this.updateZoomDisplay();
         this.setupZoomEventListeners();
+        this.setupPanEventListeners();
     }
     
     // Zoom in
@@ -1648,16 +1658,19 @@ class SimpleGallery {
     // Reset zoom
     resetZoom() {
         this.currentZoom = 1;
+        this.panX = 0;
+        this.panY = 0;
         this.applyZoom();
     }
     
-    // Appliquer le zoom
+    // Appliquer le zoom et pan
     applyZoom() {
         const viewerImage = document.getElementById('viewer-image');
         const zoomLevel = document.getElementById('zoom-level');
         
         if (viewerImage) {
-            viewerImage.style.transform = `scale(${this.currentZoom})`;
+            viewerImage.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.currentZoom})`;
+            viewerImage.style.transformOrigin = 'center center';
         }
         
         if (zoomLevel) {
@@ -1748,6 +1761,146 @@ class SimpleGallery {
                 }
             }
         });
+    }
+    
+    // Configurer les événements de pan (déplacement avec clic droit)
+    setupPanEventListeners() {
+        const viewerImage = document.getElementById('viewer-image');
+        const imageViewer = document.getElementById('image-viewer');
+        
+        if (!viewerImage || !imageViewer) return;
+        
+        // Désactiver le menu contextuel sur l'image
+        viewerImage.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+        
+        // Variables pour le pan
+        let startX = 0;
+        let startY = 0;
+        let startPanX = 0;
+        let startPanY = 0;
+        
+        // Démarrer le pan avec clic droit
+        viewerImage.addEventListener('mousedown', (e) => {
+            if (e.button === 2) { // Clic droit
+                e.preventDefault();
+                this.isPanning = true;
+                
+                startX = e.clientX;
+                startY = e.clientY;
+                startPanX = this.panX;
+                startPanY = this.panY;
+                
+                // Changer le curseur pour indiquer le mode pan
+                viewerImage.style.cursor = 'grabbing';
+                document.body.style.userSelect = 'none';
+            }
+        });
+        
+        // Continuer le pan pendant le mouvement
+        document.addEventListener('mousemove', (e) => {
+            if (this.isPanning) {
+                e.preventDefault();
+                
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+                
+                this.panX = startPanX + deltaX;
+                this.panY = startPanY + deltaY;
+                
+                this.applyZoom();
+            }
+        });
+        
+        // Arrêter le pan
+        document.addEventListener('mouseup', (e) => {
+            if (this.isPanning && e.button === 2) {
+                this.isPanning = false;
+                viewerImage.style.cursor = 'grab';
+                document.body.style.userSelect = '';
+            }
+        });
+        
+        // Pan avec touches fléchées (bonus)
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('image-viewer') && !document.getElementById('image-viewer').classList.contains('hidden')) {
+                const panSpeed = 50;
+                let moved = false;
+                
+                switch(e.key) {
+                    case 'ArrowLeft':
+                        this.panX += panSpeed;
+                        moved = true;
+                        break;
+                    case 'ArrowRight':
+                        this.panX -= panSpeed;
+                        moved = true;
+                        break;
+                    case 'ArrowUp':
+                        this.panY += panSpeed;
+                        moved = true;
+                        break;
+                    case 'ArrowDown':
+                        this.panY -= panSpeed;
+                        moved = true;
+                        break;
+                }
+                
+                if (moved) {
+                    e.preventDefault();
+                    this.applyZoom();
+                }
+            }
+        });
+        
+        // Pan avec molette + shift (bonus pour déplacement horizontal)
+        viewerImage.addEventListener('wheel', (e) => {
+            if (e.shiftKey) {
+                e.preventDefault();
+                const panSpeed = 30;
+                this.panX -= e.deltaY > 0 ? panSpeed : -panSpeed;
+                this.applyZoom();
+            }
+        });
+        
+        // Support du pan sur mobile (touch)
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartPanX = 0;
+        let touchStartPanY = 0;
+        let isTouchPanning = false;
+        
+        viewerImage.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchStartPanX = this.panX;
+                touchStartPanY = this.panY;
+                isTouchPanning = true;
+            }
+        });
+        
+        viewerImage.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1 && isTouchPanning) {
+                e.preventDefault();
+                
+                const deltaX = e.touches[0].clientX - touchStartX;
+                const deltaY = e.touches[0].clientY - touchStartY;
+                
+                this.panX = touchStartPanX + deltaX;
+                this.panY = touchStartPanY + deltaY;
+                
+                this.applyZoom();
+            }
+        });
+        
+        viewerImage.addEventListener('touchend', () => {
+            isTouchPanning = false;
+        });
+        
+        // Définir le curseur par défaut
+        viewerImage.style.cursor = 'grab';
     }
     
     // Initialiser le filtre par patient
