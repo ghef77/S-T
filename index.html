@@ -414,6 +414,37 @@
             font-size: 0.875rem !important; /* Larger description text */
         }
         
+        /* Cell selection styling for better visual feedback */
+        .editable-cell.selected {
+            background-color: #e3f2fd !important;
+            border: 2px solid #2196f3 !important;
+            box-shadow: 0 0 8px rgba(33, 150, 243, 0.3) !important;
+            outline: none !important;
+        }
+        
+        /* Focus state for editable cells */
+        .editable-cell:focus {
+            background-color: #e3f2fd !important;
+            border: 2px solid #2196f3 !important;
+            box-shadow: 0 0 8px rgba(33, 150, 243, 0.3) !important;
+            outline: none !important;
+        }
+        
+        /* Mobile-specific cell selection */
+        @media (max-width: 768px) {
+            .editable-cell.selected {
+                background-color: #e8f5e8 !important;
+                border: 2px solid #4caf50 !important;
+                box-shadow: 0 0 12px rgba(76, 175, 80, 0.4) !important;
+            }
+            
+            .editable-cell:focus {
+                background-color: #e8f5e8 !important;
+                border: 2px solid #4caf50 !important;
+                box-shadow: 0 0 12px rgba(76, 175, 80, 0.4) !important;
+            }
+        }
+        
         /* Horizontal scroll for function buttons on small screens */
         @media (max-width: 1024px) {
             #button-bar {
@@ -2266,6 +2297,20 @@
                     updateButtonBarScroll();
                 }
             }, 100);
+            
+            // Initialize mobile keyboard detection
+            setTimeout(() => {
+                if (typeof setupMobileKeyboardDetection === 'function') {
+                    setupMobileKeyboardDetection();
+                }
+            }, 200);
+            
+            // Initialize mobile zoom prevention
+            setTimeout(() => {
+                if (typeof setupMobileZoomPrevention === 'function') {
+                    setupMobileZoomPrevention();
+                }
+            }, 300);
         });
         
         // Add resize listener to adapt messages when screen size changes
@@ -2281,6 +2326,99 @@
                 updateButtonBarScroll();
             }, 250);
         });
+        
+        // Mobile keyboard detection and cell selection management
+        let mobileKeyboardVisible = false;
+        let lastViewportHeight = window.innerHeight;
+        let keyboardDetectionTimeout = null;
+        
+        // Function to detect mobile keyboard visibility
+        function detectMobileKeyboard() {
+            const currentHeight = window.innerHeight;
+            const heightDifference = lastViewportHeight - currentHeight;
+            
+            // Keyboard is likely visible if height decreased significantly
+            if (heightDifference > 150) {
+                if (!mobileKeyboardVisible) {
+                    mobileKeyboardVisible = true;
+                    console.log('📱 Mobile keyboard detected as visible');
+                }
+            } else if (heightDifference < -50) {
+                // Keyboard is likely hidden
+                if (mobileKeyboardVisible) {
+                    mobileKeyboardVisible = false;
+                    console.log('📱 Mobile keyboard detected as hidden');
+                    
+                    // Remove cell selection when keyboard is hidden
+                    removeCellSelection();
+                }
+            }
+            
+            lastViewportHeight = currentHeight;
+        }
+        
+        // Function to remove cell selection
+        function removeCellSelection() {
+            const selectedCells = document.querySelectorAll('.editable-cell.selected');
+            selectedCells.forEach(cell => {
+                cell.classList.remove('selected');
+                cell.blur();
+            });
+            
+            // Also remove focus from any focused editable cells
+            const focusedCells = document.querySelectorAll('.editable-cell:focus');
+            focusedCells.forEach(cell => {
+                cell.classList.remove('selected');
+                cell.blur();
+            });
+            
+            console.log('🔓 Cell selection removed after keyboard hide');
+        }
+        
+        // Enhanced viewport change detection for mobile
+        function setupMobileKeyboardDetection() {
+            if (window.innerWidth <= 768) {
+                // Use visual viewport API if available (more reliable)
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', () => {
+                        clearTimeout(keyboardDetectionTimeout);
+                        keyboardDetectionTimeout = setTimeout(detectMobileKeyboard, 100);
+                    });
+                } else {
+                    // Fallback to window resize events
+                    window.addEventListener('resize', () => {
+                        clearTimeout(keyboardDetectionTimeout);
+                        keyboardDetectionTimeout = setTimeout(detectMobileKeyboard, 100);
+                    });
+                }
+                
+                // Additional detection for iOS Safari
+                if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                    // iOS-specific keyboard detection
+                    document.addEventListener('focusin', (e) => {
+                        if (e.target && e.target.contentEditable === 'true') {
+                            mobileKeyboardVisible = true;
+                            console.log('📱 iOS: Keyboard likely visible (focusin on editable cell)');
+                        }
+                    });
+                    
+                    document.addEventListener('focusout', (e) => {
+                        if (e.target && e.target.contentEditable === 'true') {
+                            // Small delay to allow for keyboard hide animation
+                            setTimeout(() => {
+                                if (!document.activeElement || document.activeElement.contentEditable !== 'true') {
+                                    mobileKeyboardVisible = false;
+                                    console.log('📱 iOS: Keyboard likely hidden (focusout from editable cell)');
+                                    removeCellSelection();
+                                }
+                            }, 300);
+                        }
+                    });
+                }
+                
+                console.log('📱 Mobile keyboard detection initialized');
+            }
+        }
         
         // Function to update button bar scroll behavior based on screen size
         function updateButtonBarScroll() {
@@ -2368,6 +2506,39 @@
             
             element._touchScrollAdded = false;
             delete element._touchScrollHandlers;
+        }
+        
+        // Global function to manually remove cell selection (for testing)
+        window.removeCellSelection = removeCellSelection;
+        window.detectMobileKeyboard = detectMobileKeyboard;
+        window.mobileKeyboardVisible = () => mobileKeyboardVisible;
+        
+        // Enhanced mobile experience: prevent zoom on double-tap
+        function setupMobileZoomPrevention() {
+            if (window.innerWidth <= 768) {
+                let lastTouchEnd = 0;
+                
+                document.addEventListener('touchend', (event) => {
+                    const now = (new Date()).getTime();
+                    if (now - lastTouchEnd <= 300) {
+                        event.preventDefault();
+                    }
+                    lastTouchEnd = now;
+                }, false);
+                
+                // Prevent zoom on input focus for iOS
+                document.addEventListener('gesturestart', (e) => {
+                    e.preventDefault();
+                });
+                
+                document.addEventListener('gesturechange', (e) => {
+                    e.preventDefault();
+                });
+                
+                document.addEventListener('gestureend', (e) => {
+                    e.preventDefault();
+                });
+            }
         }
         
         // Cleanup on page unload
@@ -4625,6 +4796,9 @@
             
             // Format when the user leaves the cell (Excel-like behavior)
             cell.addEventListener('blur', async () => {
+              // Remove selection styling
+              cell.classList.remove('selected');
+              
               const currentValue = cell.textContent;
               const formattedValue = formatNomPrenom(currentValue);
               cell.textContent = formattedValue;
@@ -4659,6 +4833,9 @@
           } else {
             // Pour les autres colonnes, Excel-like behavior
             cell.addEventListener('blur', async () => {
+              // Remove selection styling
+              cell.classList.remove('selected');
+              
               const currentValue = cell.textContent;
               // Excel-like save: save immediately when moving to another cell
               if (hasBeenModified || currentValue !== initialValue) {
@@ -4689,6 +4866,19 @@
             cell.style.color='#000';
           }
           cell.setAttribute('tabindex','0');
+          
+          // Add focus event handler for selection styling
+          cell.addEventListener('focus', () => {
+            // Remove selection from other cells
+            document.querySelectorAll('.editable-cell.selected').forEach(otherCell => {
+              if (otherCell !== cell) {
+                otherCell.classList.remove('selected');
+              }
+            });
+            
+            // Add selection styling to current cell
+            cell.classList.add('selected');
+          });
           
           // Sauvegarder seulement lors de vraies modifications (input)
           cell.oninput=()=>{
