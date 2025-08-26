@@ -1663,14 +1663,20 @@ class SimpleGallery {
         this.applyZoom();
     }
     
-    // Appliquer le zoom et pan (version simple et fluide)
+    // Appliquer le zoom et pan (version ultra-fluide avec hardware acceleration)
     applyZoom() {
         const viewerImage = document.getElementById('viewer-image');
         const zoomLevel = document.getElementById('zoom-level');
         
         if (viewerImage) {
-            viewerImage.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.currentZoom})`;
+            // Utiliser translate3d pour l'accélération hardware
+            viewerImage.style.transform = `translate3d(${this.panX}px, ${this.panY}px, 0) scale(${this.currentZoom})`;
             viewerImage.style.transformOrigin = 'center center';
+            
+            // Optimisations pour la fluidité
+            if (!this.isPanning) {
+                viewerImage.style.willChange = 'auto'; // Économiser les ressources quand pas en mouvement
+            }
         }
         
         if (zoomLevel) {
@@ -1793,13 +1799,17 @@ class SimpleGallery {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // Démarrage immédiat du pan et cache de l'image
+                // Démarrage immédiat du pan avec optimisations hardware
                 this.isPanning = true;
                 cachedViewerImage = viewerImage; // Cache l'élément image
                 startX = e.clientX;
                 startY = e.clientY;
                 startPanX = this.panX;
                 startPanY = this.panY;
+                
+                // Optimisations pour un panning ultra-fluide
+                cachedViewerImage.style.willChange = 'transform';
+                cachedViewerImage.style.pointerEvents = 'none';
                 
                 // Feedback visuel immédiat
                 viewerImage.style.cursor = 'grabbing';
@@ -1808,7 +1818,7 @@ class SimpleGallery {
             }
         }, { passive: false });
         
-        // Continuer le pan pendant le mouvement (avec cache optimisé)
+        // Continuer le pan pendant le mouvement (ultra-optimisé pour fluidité)
         document.addEventListener('mousemove', (e) => {
             if (this.isPanning && cachedViewerImage) {
                 e.preventDefault();
@@ -1819,17 +1829,24 @@ class SimpleGallery {
                 this.panX = startPanX + deltaX;
                 this.panY = startPanY + deltaY;
                 
-                // Application directe sur l'élément en cache pour une réponse immédiate
-                cachedViewerImage.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.currentZoom})`;
+                // Application avec translate3d pour accélération hardware maximale
+                cachedViewerImage.style.transform = `translate3d(${this.panX}px, ${this.panY}px, 0) scale(${this.currentZoom})`;
             }
-        });
+        }, { passive: false });
         
         // Arrêter le pan
         document.addEventListener('mouseup', (e) => {
             if (this.isPanning && (e.button === 2 || e.button === 0)) {
                 console.log('🛑 Stopping pan');
                 this.isPanning = false;
+                
+                // Nettoyage des optimisations
+                if (cachedViewerImage) {
+                    cachedViewerImage.style.willChange = 'auto';
+                    cachedViewerImage.style.pointerEvents = 'auto';
+                }
                 cachedViewerImage = null; // Reset du cache
+                
                 viewerImage.style.cursor = 'grab';
                 document.body.style.userSelect = '';
                 document.body.style.cursor = '';
