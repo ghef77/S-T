@@ -1245,6 +1245,19 @@
             overflow: hidden !important;
         }
         
+        /* Manual snapshot button disabled state */
+        #manual-snapshot-btn:disabled {
+            opacity: 0.5 !important;
+            cursor: not-allowed !important;
+            background-color: #9ca3af !important;
+            color: #6b7280 !important;
+        }
+        
+        #manual-snapshot-btn:disabled:hover {
+            background-color: #9ca3af !important;
+            transform: none !important;
+        }
+        
         /* Reduced width container styling */
         #history-bar-container > div {
             max-width: 50%;
@@ -1651,7 +1664,7 @@
                         </button>
                         
                         <!-- Bouton Snapshot Manuel -->
-                        <button onclick="createManualSnapshot()" title="Créer un snapshot manuel de la table actuelle" aria-label="Snapshot Manuel" class="bg-purple-600 text-white px-2 py-1 rounded text-xs hover:bg-purple-700 transition-colors font-medium flex items-center justify-center">
+                        <button id="manual-snapshot-btn" onclick="handleManualSnapshotClick()" title="Créer un snapshot manuel de la table actuelle" aria-label="Snapshot Manuel" class="bg-purple-600 text-white px-2 py-1 rounded text-xs hover:bg-purple-700 transition-colors font-medium flex items-center justify-center">
                             <i class="fa-solid fa-camera w-3 h-3"></i>
                         </button>
                         
@@ -7804,6 +7817,15 @@
         async function createManualSnapshot() {
             console.log('🎯 FUNCTION CALLED: createManualSnapshot() STARTED');
             console.log('⏰ Timestamp:', new Date().toISOString());
+            
+            // Check if manual snapshot is enabled (toggle must be on)
+            const historyBarContainer = document.getElementById('history-bar-container');
+            if (!historyBarContainer || historyBarContainer.classList.contains('hidden') || historyBarContainer.style.display === 'none') {
+                console.log('❌ Manual snapshot creation blocked - History bar is not visible');
+                showMessage('❌ Création de snapshot désactivée - Barre d\'historique fermée', 'error');
+                return;
+            }
+            
             try {
                 console.log('🚀 Création d\'un snapshot manuel...');
                 
@@ -9391,6 +9413,9 @@
                     height: historyBarContainer.style.height
                 };
                 console.log('✅ Final toggle state:', finalState);
+                
+                // Update manual snapshot button state after toggle
+                updateManualSnapshotButtonState();
             }, 100);
         }
         
@@ -11646,11 +11671,51 @@ ${capacityInfo.needsCleanup ?
             }
         }
         
+        // Function to manage manual snapshot button state based on toggle
+        function updateManualSnapshotButtonState() {
+            const historyBarContainer = document.getElementById('history-bar-container');
+            const manualSnapshotBtn = document.querySelector('button[onclick*="createManualSnapshot"]');
+            
+            if (!historyBarContainer || !manualSnapshotBtn) {
+                console.log('⚠️ Manual snapshot button or history container not found');
+                return;
+            }
+            
+            const isHistoryBarVisible = !historyBarContainer.classList.contains('hidden') && 
+                                     historyBarContainer.style.display !== 'none' && 
+                                     historyBarContainer.offsetHeight > 0;
+            
+            if (isHistoryBarVisible) {
+                // Enable manual snapshot button when toggle is on
+                manualSnapshotBtn.disabled = false;
+                manualSnapshotBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                manualSnapshotBtn.classList.add('hover:bg-purple-700');
+                manualSnapshotBtn.title = 'Créer un snapshot manuel de la table actuelle';
+                manualSnapshotBtn.setAttribute('aria-label', 'Snapshot Manuel (activé)');
+                console.log('✅ Manual snapshot button enabled - toggle is on');
+            } else {
+                // Disable manual snapshot button when toggle is off
+                manualSnapshotBtn.disabled = true;
+                manualSnapshotBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                manualSnapshotBtn.classList.remove('hover:bg-purple-700');
+                manualSnapshotBtn.title = 'Snapshot manuel désactivé - Barre d\'historique fermée';
+                manualSnapshotBtn.setAttribute('aria-label', 'Snapshot Manuel (désactivé)');
+                console.log('❌ Manual snapshot button disabled - toggle is off');
+            }
+        }
+        
         // Call initialization when DOM is ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initializeViewportAdaptation);
         } else {
             initializeViewportAdaptation();
+        }
+        
+        // Initialize manual snapshot button state
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', updateManualSnapshotButtonState);
+        } else {
+            updateManualSnapshotButtonState();
         }
         
         // Export functions for external use
@@ -11660,6 +11725,32 @@ ${capacityInfo.needsCleanup ?
         window.handleOrientationChange = handleOrientationChange;
         window.handleVisualViewportChange = handleVisualViewportChange;
         window.initializeViewportAdaptation = initializeViewportAdaptation;
+        
+        // Function to handle manual snapshot button clicks
+        function handleManualSnapshotClick() {
+            const historyBarContainer = document.getElementById('history-bar-container');
+            const manualSnapshotBtn = document.getElementById('manual-snapshot-btn');
+            
+            if (!historyBarContainer || !manualSnapshotBtn) {
+                console.log('⚠️ Manual snapshot button or history container not found');
+                return;
+            }
+            
+            // Check if manual snapshot is enabled
+            const isHistoryBarVisible = !historyBarContainer.classList.contains('hidden') && 
+                                     historyBarContainer.style.display !== 'none' && 
+                                     historyBarContainer.offsetHeight > 0;
+            
+            if (!isHistoryBarVisible) {
+                console.log('❌ Manual snapshot creation blocked - History bar is not visible');
+                showMessage('❌ Création de snapshot désactivée - Barre d\'historique fermée', 'error');
+                return;
+            }
+            
+            // If enabled, proceed with manual snapshot creation
+            console.log('✅ Manual snapshot creation allowed - proceeding...');
+            createManualSnapshot();
+        }
         
         // Mobile toggle button debugging function
         window.debugToggleButton = function() {
