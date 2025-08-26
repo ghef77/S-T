@@ -1669,8 +1669,14 @@ class SimpleGallery {
         const zoomLevel = document.getElementById('zoom-level');
         
         if (viewerImage) {
-            viewerImage.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.currentZoom})`;
+            const transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.currentZoom})`;
+            viewerImage.style.transform = transform;
             viewerImage.style.transformOrigin = 'center center';
+            
+            // Debug output only when panning
+            if (this.isPanning || this.panX !== 0 || this.panY !== 0) {
+                console.log('✨ Applied transform:', transform);
+            }
         }
         
         if (zoomLevel) {
@@ -1768,7 +1774,12 @@ class SimpleGallery {
         const viewerImage = document.getElementById('viewer-image');
         const imageViewer = document.getElementById('image-viewer');
         
-        if (!viewerImage || !imageViewer) return;
+        if (!viewerImage || !imageViewer) {
+            console.warn('⚠️ Pan setup failed: missing viewer elements');
+            return;
+        }
+        
+        console.log('🔧 Setting up pan event listeners...');
         
         // Désactiver le menu contextuel sur l'image
         viewerImage.addEventListener('contextmenu', (e) => {
@@ -1781,16 +1792,26 @@ class SimpleGallery {
         let startPanX = 0;
         let startPanY = 0;
         
-        // Démarrer le pan avec clic droit
+        // Démarrer le pan avec clic droit OU avec Ctrl+clic gauche
         viewerImage.addEventListener('mousedown', (e) => {
-            if (e.button === 2) { // Clic droit
+            if (e.button === 2 || (e.button === 0 && e.ctrlKey)) { // Clic droit OU Ctrl+clic gauche
                 e.preventDefault();
+                e.stopPropagation();
                 this.isPanning = true;
                 
                 startX = e.clientX;
                 startY = e.clientY;
                 startPanX = this.panX;
                 startPanY = this.panY;
+                
+                console.log('🖱️ Starting pan at:', { 
+                    button: e.button, 
+                    ctrlKey: e.ctrlKey, 
+                    startX, 
+                    startY, 
+                    startPanX, 
+                    startPanY 
+                });
                 
                 // Changer le curseur pour indiquer le mode pan
                 viewerImage.style.cursor = 'grabbing';
@@ -1809,13 +1830,16 @@ class SimpleGallery {
                 this.panX = startPanX + deltaX;
                 this.panY = startPanY + deltaY;
                 
+                console.log('🚀 Panning:', { deltaX, deltaY, panX: this.panX, panY: this.panY });
+                
                 this.applyZoom();
             }
         });
         
         // Arrêter le pan
         document.addEventListener('mouseup', (e) => {
-            if (this.isPanning && e.button === 2) {
+            if (this.isPanning && (e.button === 2 || e.button === 0)) {
+                console.log('🛑 Stopping pan');
                 this.isPanning = false;
                 viewerImage.style.cursor = 'grab';
                 document.body.style.userSelect = '';
