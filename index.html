@@ -1190,6 +1190,74 @@
             }
         }
         
+        /* Medium screen toggle button sizing - match mobile shape */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            #history-toggle-btn {
+                min-width: 44px !important;
+                min-height: 44px !important;
+                width: 44px !important;
+                height: 44px !important;
+                border-radius: 8px !important;
+                background-color: #6b7280 !important;
+                font-size: 16px !important;
+                padding: 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+            
+            #history-toggle-btn:hover {
+                background-color: #4b5563 !important;
+                transform: scale(1.05) !important;
+            }
+            
+            #history-toggle-btn:active {
+                background-color: #374151 !important;
+                transform: scale(0.97) !important;
+            }
+            
+            /* Larger icon on medium screens */
+            #history-toggle-btn i {
+                font-size: 18px !important;
+                width: 20px !important;
+                height: 20px !important;
+            }
+        }
+        
+        /* Small screen toggle button sizing - match mobile shape */
+        @media (max-width: 640px) {
+            #history-toggle-btn {
+                min-width: 44px !important;
+                min-height: 44px !important;
+                width: 44px !important;
+                height: 44px !important;
+                border-radius: 8px !important;
+                background-color: #6b7280 !important;
+                font-size: 16px !important;
+                padding: 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+            
+            #history-toggle-btn:hover {
+                background-color: #4b5563 !important;
+                transform: scale(1.05) !important;
+            }
+            
+            #history-toggle-btn:active {
+                background-color: #374151 !important;
+                transform: scale(0.97) !important;
+            }
+            
+            /* Larger icon on small screens */
+            #history-toggle-btn i {
+                font-size: 18px !important;
+                width: 20px !important;
+                height: 20px !important;
+            }
+        }
+        
         /* Perfect centering for FontAwesome icons */
         #history-toggle-btn i {
             display: flex !important;
@@ -11095,10 +11163,11 @@ ${capacityInfo.needsCleanup ?
         
         // Gestion des événements tactiles pour mobile - SOLUTION RECOMMANDÉE
         function addTouchSupport() {
-            const addButton = document.querySelector('.add-snapshot-btn, .btn-add-snapshot, button[onclick*="createManualSnapshot"], .fa-plus, [class*="add"], [class*="plus"]');
+            // More specific selector to avoid zoom buttons
+            const addButton = document.querySelector('.add-snapshot-btn, .btn-add-snapshot, button[onclick*="createManualSnapshot"], button[id="manual-snapshot-btn"]');
             
             if (addButton) {
-                console.log('🔍 Bouton trouvé:', addButton);
+                console.log('🔍 Bouton snapshot trouvé:', addButton);
                 
                 // Supprimer les anciens événements pour éviter les doublons
                 addButton.removeEventListener('click', handleButtonClick);
@@ -11112,16 +11181,28 @@ ${capacityInfo.needsCleanup ?
                 addButton.addEventListener('touchstart', handleTouchStart);
                 addButton.addEventListener('touchend', handleTouchEnd);
                 
-                console.log('✅ Événements tactiles ajoutés au bouton');
+                console.log('✅ Événements tactiles ajoutés au bouton snapshot');
             } else {
-                console.log('❌ Bouton non trouvé, recherche alternative...');
-                // Recherche alternative
-                const alternativeButtons = document.querySelectorAll('button, .btn, [onclick], .fa-plus, [class*="add"]');
+                console.log('❌ Bouton snapshot non trouvé, recherche alternative...');
+                // Recherche alternative - exclude zoom buttons
+                const alternativeButtons = document.querySelectorAll('button, .btn, [onclick]');
                 console.log('🔍 Boutons alternatifs trouvés:', alternativeButtons);
                 
                 alternativeButtons.forEach(btn => {
-                    if (btn.textContent.includes('+') || btn.innerHTML.includes('+') || btn.className.includes('add') || btn.className.includes('plus')) {
-                        console.log('🎯 Bouton alternatif identifié:', btn);
+                    // Only target buttons that are clearly snapshot-related, exclude zoom buttons
+                    const isSnapshotButton = btn.onclick && btn.onclick.toString().includes('createManualSnapshot') ||
+                                          btn.id === 'manual-snapshot-btn' ||
+                                          btn.className.includes('add-snapshot') ||
+                                          btn.className.includes('btn-add-snapshot');
+                    
+                    // Explicitly exclude zoom buttons
+                    const isZoomButton = btn.onclick && btn.onclick.toString().includes('zoomIn') ||
+                                       btn.onclick && btn.onclick.toString().includes('zoomOut') ||
+                                       btn.onclick && btn.onclick.toString().includes('zoomReset') ||
+                                       btn.id === 'zoom-display';
+                    
+                    if (isSnapshotButton && !isZoomButton) {
+                        console.log('🎯 Bouton snapshot alternatif identifié:', btn);
                         addTouchEventsToButton(btn);
                     }
                 });
@@ -11167,67 +11248,29 @@ ${capacityInfo.needsCleanup ?
         function openSnapshotBar() {
             console.log('🚀 Ouverture de la barre de snapshot...');
             
-            // Si vous avez une fonction existante, appelez-la
-            if (typeof createManualSnapshot === 'function') {
-                console.log('✅ Appel de createManualSnapshot');
+            // Use the proper manual snapshot function with state checking
+            if (typeof handleManualSnapshotClick === 'function') {
+                console.log('✅ Appel de handleManualSnapshotClick');
+                handleManualSnapshotClick();
+            } else if (typeof createManualSnapshot === 'function') {
+                console.log('✅ Appel de createManualSnapshot (fallback)');
                 createManualSnapshot();
-            } else if (typeof showSnapshotModal === 'function') {
-                console.log('✅ Appel de showSnapshotModal');
-                showSnapshotModal();
-            } else if (typeof toggleSnapshotBar === 'function') {
-                console.log('✅ Appel de toggleSnapshotBar');
-                toggleSnapshotBar();
             } else {
-                console.log('⚠️ Aucune fonction de snapshot trouvée, création d\'une fonction par défaut');
-                createDefaultSnapshotBar();
+                console.log('⚠️ Aucune fonction de snapshot trouvée');
+                showMessage('❌ Fonction de snapshot non disponible', 'error');
             }
         }
 
-        // Fonction par défaut si aucune fonction n'existe
-        function createDefaultSnapshotBar() {
-            console.log('🔧 Création d\'une barre de snapshot par défaut...');
-            
-            // Créer une barre de snapshot simple
-            const snapshotBar = document.createElement('div');
-            snapshotBar.id = 'defaultSnapshotBar';
-            snapshotBar.style.cssText = `
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: white;
-                border-top: 2px solid #007bff;
-                padding: 20px;
-                z-index: 10000;
-                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-                transform: translateY(100%);
-                transition: transform 0.3s ease;
-            `;
-            
-            snapshotBar.innerHTML = `
-                <h3>Créer un Snapshot</h3>
-                <p>Fonctionnalité de snapshot en cours de développement...</p>
-                <button onclick="this.parentElement.style.transform='translateY(100%)'" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px;">
-                    Fermer
-                </button>
-            `;
-            
-            document.body.appendChild(snapshotBar);
-            
-            // Afficher la barre
-            setTimeout(() => {
-                snapshotBar.style.transform = 'translateY(0)';
-            }, 100);
-        }
+
 
         // Fonction de débogage pour mobile
         function debugMobileButton() {
             console.log('🔍 === DÉBOGAGE MOBILE ===');
             
-            const addButton = document.querySelector('.add-snapshot-btn, .btn-add-snapshot, button[onclick*="createManualSnapshot"], .fa-plus, [class*="add"], [class*="plus"]');
+            const addButton = document.querySelector('.add-snapshot-btn, .btn-add-snapshot, button[onclick*="createManualSnapshot"], button[id="manual-snapshot-btn"]');
             
             if (addButton) {
-                console.log('🔍 Bouton trouvé:', addButton);
+                console.log('🔍 Bouton snapshot trouvé:', addButton);
                 console.log('📱 Bouton visible:', addButton.offsetParent !== null);
                 console.log('📏 Dimensions:', addButton.offsetWidth, 'x', addButton.offsetHeight);
                 console.log('📍 Position:', addButton.offsetLeft, addButton.offsetTop);
@@ -11235,19 +11278,21 @@ ${capacityInfo.needsCleanup ?
                 console.log('📱 Classes:', addButton.className);
                 console.log(' HTML:', addButton.outerHTML);
             } else {
-                console.log('❌ Bouton non trouvé');
+                console.log('❌ Bouton snapshot non trouvé');
                 
-                // Recherche de tous les boutons
+                // Recherche de tous les boutons snapshot
                 const allButtons = document.querySelectorAll('button, .btn, [onclick]');
                 console.log('🔍 Tous les boutons trouvés:', allButtons.length);
                 
                 allButtons.forEach((btn, index) => {
-                    console.log(` Bouton ${index}:`, {
-                        text: btn.textContent,
-                        classes: btn.className,
-                        onclick: btn.onclick,
-                        html: btn.outerHTML
-                    });
+                    if (btn.onclick && btn.onclick.toString().includes('createManualSnapshot')) {
+                        console.log(`🎯 Bouton snapshot ${index}:`, {
+                            text: btn.textContent,
+                            classes: btn.className,
+                            onclick: btn.onclick,
+                            html: btn.outerHTML
+                        });
+                    }
                 });
             }
         }
@@ -11713,9 +11758,19 @@ ${capacityInfo.needsCleanup ?
         
         // Initialize manual snapshot button state
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', updateManualSnapshotButtonState);
+            document.addEventListener('DOMContentLoaded', () => {
+                updateManualSnapshotButtonState();
+                // Also ensure touch support is properly initialized
+                setTimeout(() => {
+                    addTouchSupport();
+                }, 100);
+            });
         } else {
             updateManualSnapshotButtonState();
+            // Also ensure touch support is properly initialized
+            setTimeout(() => {
+                addTouchSupport();
+            }, 100);
         }
         
         // Export functions for external use
