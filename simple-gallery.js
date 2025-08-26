@@ -1663,24 +1663,14 @@ class SimpleGallery {
         this.applyZoom();
     }
     
-    // Appliquer le zoom et pan avec optimisations de performance
+    // Appliquer le zoom et pan
     applyZoom() {
         const viewerImage = document.getElementById('viewer-image');
         const zoomLevel = document.getElementById('zoom-level');
         
         if (viewerImage) {
-            // Utiliser transform3d pour l'accélération matérielle
-            const transform = `translate3d(${this.panX}px, ${this.panY}px, 0) scale(${this.currentZoom})`;
-            viewerImage.style.transform = transform;
+            viewerImage.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.currentZoom})`;
             viewerImage.style.transformOrigin = 'center center';
-            
-            // Optimisations CSS pour la performance
-            viewerImage.style.willChange = this.isPanning ? 'transform' : 'auto';
-            
-            // Debug output réduit
-            if (this.isPanning && Math.random() < 0.1) { // Log seulement 10% du temps pendant le pan
-                console.log('✨ Transform:', `${this.panX.toFixed(0)}, ${this.panY.toFixed(0)}`);
-            }
         }
         
         if (zoomLevel) {
@@ -1798,7 +1788,7 @@ class SimpleGallery {
         
         // Démarrer le pan avec clic droit ou Ctrl+clic gauche
         viewerImage.addEventListener('mousedown', (e) => {
-            if (e.button === 2 || (e.button === 0 && e.ctrlKey)) { // Clic droit ou Ctrl+clic gauche
+            if (e.button === 2 || (e.button === 0 && e.ctrlKey) || e.button === 0) { // Clic droit, Ctrl+clic gauche, OU simple clic gauche
                 e.preventDefault();
                 e.stopPropagation();
                 this.isPanning = true;
@@ -1810,27 +1800,16 @@ class SimpleGallery {
                 
                 console.log('🖱️ Pan started');
                 
-                // Feedback visuel amélioré
+                // Changer le curseur pour indiquer le mode pan
                 viewerImage.style.cursor = 'grabbing';
-                viewerImage.style.transition = 'none'; // Désactiver les transitions pendant le pan
                 document.body.style.userSelect = 'none';
-                document.body.style.cursor = 'grabbing'; // Curseur sur tout le body
-                
-                // Ajouter une classe CSS pour indiquer le mode pan
-                viewerImage.classList.add('panning');
             }
-        }, { passive: false });
+        });
         
-        // Continuer le pan pendant le mouvement avec optimisation de performance
-        let lastMoveTime = 0;
+        // Continuer le pan pendant le mouvement
         document.addEventListener('mousemove', (e) => {
             if (this.isPanning) {
                 e.preventDefault();
-                
-                // Throttle pour améliorer les performances (60 FPS max)
-                const now = Date.now();
-                if (now - lastMoveTime < 16) return; // ~60fps
-                lastMoveTime = now;
                 
                 const deltaX = e.clientX - startX;
                 const deltaY = e.clientY - startY;
@@ -1838,37 +1817,26 @@ class SimpleGallery {
                 this.panX = startPanX + deltaX;
                 this.panY = startPanY + deltaY;
                 
-                // Utiliser requestAnimationFrame pour un rendu fluide
-                requestAnimationFrame(() => {
-                    this.applyZoom();
-                });
+                console.log('🚀 Panning:', { deltaX, deltaY, panX: this.panX, panY: this.panY });
+                
+                this.applyZoom();
             }
-        }, { passive: false });
+        });
         
         // Arrêter le pan
         document.addEventListener('mouseup', (e) => {
             if (this.isPanning && (e.button === 2 || e.button === 0)) {
-                console.log('🖱️ Pan stopped');
+                console.log('🛑 Stopping pan');
                 this.isPanning = false;
-                
-                // Restaurer le feedback visuel
                 viewerImage.style.cursor = 'grab';
-                viewerImage.style.transition = 'transform 0.2s ease-out'; // Réactiver les transitions
                 document.body.style.userSelect = '';
-                document.body.style.cursor = '';
-                
-                // Retirer la classe pan
-                viewerImage.classList.remove('panning');
-                
-                // Réinitialiser willChange pour économiser les ressources
-                viewerImage.style.willChange = 'auto';
             }
         });
         
-        // Pan avec touches fléchées (optimisé)
+        // Pan avec touches fléchées (bonus)
         document.addEventListener('keydown', (e) => {
             if (document.getElementById('image-viewer') && !document.getElementById('image-viewer').classList.contains('hidden')) {
-                const panSpeed = e.shiftKey ? 100 : 50; // Shift = mouvement plus rapide
+                const panSpeed = 50;
                 let moved = false;
                 
                 switch(e.key) {
@@ -1892,10 +1860,7 @@ class SimpleGallery {
                 
                 if (moved) {
                     e.preventDefault();
-                    // Animation fluide avec requestAnimationFrame
-                    requestAnimationFrame(() => {
-                        this.applyZoom();
-                    });
+                    this.applyZoom();
                 }
             }
         });

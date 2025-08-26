@@ -96,20 +96,6 @@
         /* Styles pour le pan d'image */
         #viewer-image {
             cursor: grab;
-            transition: transform 0.2s ease-out;
-        }
-        
-        #viewer-image.panning {
-            cursor: grabbing !important;
-            transition: none !important;
-        }
-        
-        /* Amélioration des performances GPU */
-        #viewer-image {
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
-            transform-style: preserve-3d;
-            -webkit-transform-style: preserve-3d;
         }
         
         /* Patient sélectionné */
