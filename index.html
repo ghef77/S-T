@@ -16,6 +16,10 @@
     <meta name='msapplication-TileColor' content='#15803d'>
     <title>S-T synchronisé - Supabase</title>
     
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0idXJsKCNncmFkaWVudDAiLz4KPHRleHQgeD0iNTAlIiB5PSI1NSUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1mYW1pbHk9IkludGVyLCBzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iYm9sZCIgZm9udC1zaXplPSIxMiI+U1Q8L3RleHQ+CjxkZWZzPgo8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWRpZW50MCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CjxzdG9wIHN0b3AtY29sb3I9IiMxNmEzNGEiLz4KPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTU4MDNkIi8+CjwvbGluZWFyR3JhZGllbnQ+CjwvZGVmcz4KPC9zdmc+">
+    <link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iNDAiIGZpbGw9InVybCgjZ3JhZGllbnQwKSIvPgo8dGV4dCB4PSI1MCUiIHk9IjU1JSIgZG9taW5hbnQtYmFzZWxpbmU9ImNlbnRyYWwiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LWZhbWlseT0iSW50ZXIsIHNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSJib2xkIiBmb250LXNpemU9IjY4Ij5TVDwvdGV4dD4KPGRlZnM+CjxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQwIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KPHN0b3Agc3RvcC1jb2xvcj0iIzE2YTM0YSIvPgo8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxNTgwM2QiLz4KPC9saW5lYXJHcmFkaWVudD4KPC9kZWZzPgo8L3N2Zz4=">
+    
     <!-- Preload critical resources -->
     <link rel="preload" href="https://cdn.tailwindcss.com" as="script">
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm" as="script">
@@ -485,13 +489,20 @@
             min-height: 32px !important;
             font-size: 0.875rem !important;
             padding: 0.5rem 0.75rem !important;
+            margin-left: 0.5rem !important; /* Add spacing between calendar button and affichage direct */
         }
         
+        /* Add padding between function button container and snapshot controls on all screens */
+        #history-bar-container {
+            margin-top: 1rem !important; /* Add top margin for separation */
+            padding-top: 0.75rem !important; /* Add top padding */
+        }
+
         /* Add padding between function button container and snapshot controls on small screens */
         @media (max-width: 1024px) {
             #history-bar-container {
-                margin-top: 1rem !important; /* Add top margin for separation */
-                padding-top: 0.5rem !important; /* Add top padding */
+                margin-top: 1.25rem !important; /* Increase top margin for separation */
+                padding-top: 1rem !important; /* Increase top padding */
             }
             
             /* Increase spacing between function buttons and snapshot controls */
@@ -1624,8 +1635,6 @@
         
     <!-- Table container -->
     <div id='table-container' class="bg-white relative p-2 md:p-4 lg:p-6 pt-2 md:pt-4 lg:pt-6 rounded-xl w-full flex-grow overflow-y-auto transition-all duration-300 ease-in-out flex flex-col shadow-xl">
-        <!-- Title - Optimized width for text content -->
-        <h2 id="staff-title" class="text-lg md:text-xl font-bold text-gray-800 tracking-tight mb-1">S-T</h2>
         
         <!-- Status indicators -->
         <div class="flex items-center gap-2 mb-1">
