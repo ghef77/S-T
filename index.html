@@ -1836,6 +1836,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 
+    <!-- Performance Optimizers -->
+    <script src="performance-optimizer.js"></script>
+    <script src="sync-optimizer.js"></script>
+
     <!-- App -->
     <script type="module">
         // Configuration - In production, these should be environment variables
@@ -1896,33 +1900,23 @@
             }
         };
         
-        // Performance Utilities
+        // Initialize Performance Optimizer
+        const performanceOptimizer = new PerformanceOptimizer();
         const performanceUtils = {
-            // Efficient debounce function
-            debounce(func, delay, immediate = false) {
-                let timeoutId;
-                return function debounced(...args) {
-                    const callNow = immediate && !timeoutId;
-                    clearTimeout(timeoutId);
-                    timeoutId = setTimeout(() => {
-                        timeoutId = null;
-                        if (!immediate) func.apply(this, args);
-                    }, delay);
-                    if (callNow) func.apply(this, args);
-                };
-            },
+            // Enhanced debounce with cancellation support
+            debounce: performanceOptimizer.debounce.bind(performanceOptimizer),
             
-            // Throttle function for high-frequency events
-            throttle(func, delay) {
-                let lastCall = 0;
-                return function throttled(...args) {
-                    const now = Date.now();
-                    if (now - lastCall >= delay) {
-                        lastCall = now;
-                        return func.apply(this, args);
-                    }
-                };
-            },
+            // Enhanced throttle with options
+            throttle: performanceOptimizer.throttle.bind(performanceOptimizer),
+            
+            // Batch DOM updates to reduce reflows
+            batchDOMUpdates: performanceOptimizer.batchDOMUpdates.bind(performanceOptimizer),
+            
+            // Queue operations to prevent race conditions
+            queueOperation: performanceOptimizer.queueOperation.bind(performanceOptimizer),
+            
+            // Memory management for history
+            manageHistory: performanceOptimizer.manageHistory.bind(performanceOptimizer),
             
             // RAF-based smooth DOM updates
             scheduleUpdate(callback) {
@@ -1935,6 +1929,10 @@
             }
         };
         
+        // Initialize Sync Optimizer
+        const syncOptimizer = new SyncOptimizer();
+        const cursorManager = new CursorManager();
+
         // Optimized Event Management System
         const eventManager = {
             // Debounced event handlers cache
@@ -1943,7 +1941,7 @@
             // Get or create debounced handler
             getDebounced(key, handler, delay = 300) {
                 if (!this.debouncedHandlers.has(key)) {
-                    this.debouncedHandlers.set(key, performanceUtils.debounce(handler, delay));
+                    this.debouncedHandlers.set(key, performanceUtils.debounce(handler, delay, false, key));
                 }
                 return this.debouncedHandlers.get(key);
             },
@@ -1953,43 +1951,46 @@
                 const tableBody = domCache.tbody || document.querySelector('#data-table tbody');
                 if (!tableBody) return;
                 
-                // Single delegated input handler for all cells (Excel mode - no timer autosave)
-                const debouncedInput = this.getDebounced('table-input', (e) => {
-                    const cell = e.target.closest('td[contenteditable]');
-                    if (cell) {
-                        // Excel mode: Only mark as dirty, no timer-based autosave
+                // Use optimized event delegation
+                performanceOptimizer.delegateEvent(
+                    tableBody,
+                    'input',
+                    'td[contenteditable]',
+                    (event) => {
+                        const cell = event.target;
                         console.log('📝 [EXCEL-SAVE] Input detected in cell:', cell.getAttribute('data-label'), '- save on blur only');
                         isDirty = true;
                         isTyping = true;
                         lastEditAt = Date.now();
-                    }
-                }, 150);
+                    },
+                    { debounceMs: 150 }
+                );
                 
-                // Remove any existing listeners and add delegated ones
-                tableBody.removeEventListener('input', debouncedInput);
-                tableBody.addEventListener('input', debouncedInput, { passive: true });
-                
-                // Throttled scroll handler
-                const throttledScroll = performanceUtils.throttle(() => {
-                    // Update any scroll-dependent UI
-                }, 100);
-                
-                window.removeEventListener('scroll', throttledScroll);
-                window.addEventListener('scroll', throttledScroll, { passive: true });
+                // Optimized scroll handler
+                performanceOptimizer.delegateEvent(
+                    window,
+                    'scroll',
+                    'body',
+                    () => {
+                        // Update any scroll-dependent UI
+                    },
+                    { throttleMs: 100 }
+                );
             },
             
             // Cleanup unused handlers
             cleanup() {
                 this.debouncedHandlers.clear();
+                performanceOptimizer.dispose();
             },
             
             // Performance monitoring
             monitor: {
-                startTime: Date.now(),
+                startTime: performance.now(),
                 metrics: {},
                 
                 mark(name) {
-                    this.metrics[name] = Date.now() - this.startTime;
+                    this.metrics[name] = performance.now() - this.startTime;
                 },
                 
                 report() {
@@ -2003,7 +2004,10 @@
         window.appState = appState;
         window.domCache = domCache;
         window.performanceUtils = performanceUtils;
+        window.performanceOptimizer = performanceOptimizer;
         window.eventManager = eventManager;
+        window.syncOptimizer = syncOptimizer;
+        window.cursorManager = cursorManager;
         
         // Application state variables
         let isDirty = false;
@@ -2029,7 +2033,7 @@
             if (!cell || oldValue === newValue) return false;
             
             // Performance monitoring
-            PerformanceMonitor.start('save-cell');
+            eventManager.monitor.mark('save-cell-start');
             
             console.log('💾 [EXCEL-SAVE] ========== EXCEL-LIKE SAVE START ==========');
             console.log('💾 [EXCEL-SAVE] Cell modified, saving immediately:', {
@@ -2039,10 +2043,8 @@
                 timestamp: new Date().toISOString()
             });
             
-            // Immediate protection flags - set before any other operations
-            isExcelSaveInProgress = true;
-            isRestoringCursor = true; // Double protection
-            console.log('🔒 [EXCEL-SAVE] IMMEDIATE: Excel save and cursor restoration flags set');
+            // Capture cursor state before save
+            const cursorState = cursorManager.captureFocus(cell, { saveType: 'excel', timestamp: Date.now() });
             
             // Show Excel-mode status
             updateStatus('Sauvegarde Excel-like en cours...', 'saving');
@@ -2078,53 +2080,56 @@
             }
             
             try {
-                // Mark local save in progress to prevent realtime conflicts
-                window.isLocalSaveInProgress = true;
-                console.log('🔒 [EXCEL-SAVE] Local save in progress flag set');
+                // Use sync optimizer queue to prevent race conditions
+                const saveOperation = async () => {
+                    // Mark local save in progress to prevent realtime conflicts
+                    window.isLocalSaveInProgress = true;
+                    console.log('🔒 [EXCEL-SAVE] Local save in progress flag set');
+                    
+                    // Save to history and local draft first
+                    console.log('💾 [EXCEL-SAVE] Saving to local history and draft...');
+                    saveStateToHistory();
+                    saveLocalDraft();
+                    
+                    // Then sync to database
+                    console.log('💾 [EXCEL-SAVE] Syncing to database...');
+                    await syncToMaster(false); // false = not manual save
+                    
+                    console.log('✅ [EXCEL-SAVE] Database sync completed successfully');
+                    return true;
+                };
                 
-                // Save to history and local draft first
-                console.log('💾 [EXCEL-SAVE] Saving to local history and draft...');
-                saveStateToHistory();
-                saveLocalDraft();
+                // Queue the save operation with high priority for Excel saves
+                const saveId = await syncOptimizer.queueSave(saveOperation, 'excel', 10);
                 
-                // Then sync to database immediately
-                console.log('💾 [EXCEL-SAVE] Syncing to database...');
-                await syncToMaster(false); // false = not manual save
-                
-                console.log('✅ [EXCEL-SAVE] Database sync completed successfully');
                 updateStatus('Cellule sauvée (Excel-like)', 'success');
+                eventManager.monitor.mark('save-cell-end');
                 
-                // Extend the focus protection window with enhanced timestamp
-                if (capturedFocusState) {
-                    capturedFocusState.timestamp = Date.now() + 2000; // Extend protection by 2 seconds
-                    capturedFocusState.excelSaveProtection = true;
-                    console.log('🔒 [EXCEL-SAVE] Extended focus protection window with enhanced timestamp');
+                // Schedule cursor restoration after save
+                if (cursorState) {
+                    setTimeout(() => {
+                        cursorManager.restoreFocus(cursorState, 50);
+                    }, 200);
                 }
                 
                 return true;
             } catch (error) {
                 console.error('❌ [EXCEL-SAVE] Cell save failed:', error);
                 updateStatus('Erreur sauvegarde cellule', 'error');
+                eventManager.monitor.mark('save-cell-error');
                 
-                // On error, still try to maintain cursor position
-                if (capturedFocusState) {
-                    capturedFocusState.timestamp = Date.now() + 1000; // Shorter protection on error
-                    console.log('⚠️ [EXCEL-SAVE] Maintained cursor protection despite error');
+                // Still try to restore cursor on error
+                if (cursorState) {
+                    cursorManager.restoreFocus(cursorState, 100);
                 }
                 
                 return false;
             } finally {
-                // Clear local save flag immediately
-                window.isLocalSaveInProgress = false;
-                console.log('🔓 [EXCEL-SAVE] Local save flag cleared');
-                
-                // Clear cursor restoration flag after a shorter delay
+                // Clear local save flag
                 setTimeout(() => {
-                    isRestoringCursor = false;
-                    console.log('🔓 [EXCEL-SAVE] Cursor restoration flag cleared');
-                }, 1000); // 1 second for cursor flag
-                
-                // Clear Excel save flag after a longer delay for maximum protection
+                    window.isLocalSaveInProgress = false;
+                    console.log('🔓 [EXCEL-SAVE] Local save flag cleared');
+                }, 500);
                 setTimeout(() => {
                     isExcelSaveInProgress = false;
                     console.log('🔓 [EXCEL-SAVE] Excel save flag cleared - realtime sync re-enabled');
@@ -4835,7 +4840,10 @@
                 
                 if (!last || generateDataHash(s) !== generateDataHash(last)) { 
                     history.push(s); 
-                    if (history.length > 10) history.shift(); 
+                    
+                    // Use optimized history management to prevent memory leaks
+                    history = performanceUtils.manageHistory(history, 15); // Increased from 10 to 15
+                    
                     // Pushing a new state clears redo stack
                     redoHistory = [];
                     // Also record as an operation if none in progress

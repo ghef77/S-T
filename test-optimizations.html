@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Optimization Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #28a745;
+            background: #d4edda;
+        }
+        
+        .test-error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        
+        .metrics {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        .status {
+            font-weight: bold;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Staff Table Performance Optimization Test</h1>
+    
+    <div class="test-container">
+        <h2>Performance Utilities Test</h2>
+        <button onclick="testPerformanceUtils()">Test Performance Utils</button>
+        <button onclick="testSyncOptimizer()">Test Sync Optimizer</button>
+        <button onclick="testCursorManager()">Test Cursor Manager</button>
+        <button onclick="runLoadTest()">Run Load Test</button>
+        <div id="results"></div>
+    </div>
+    
+    <div class="test-container">
+        <h2>Real-time Metrics</h2>
+        <div id="metrics" class="metrics"></div>
+        <button onclick="updateMetrics()">Update Metrics</button>
+    </div>
+    
+    <div class="test-container">
+        <h2>Memory Usage</h2>
+        <div id="memory-info"></div>
+        <button onclick="checkMemory()">Check Memory</button>
+        <button onclick="simulateMemoryPressure()">Simulate Memory Pressure</button>
+    </div>
+
+    <!-- Load the optimization scripts -->
+    <script src="performance-optimizer.js"></script>
+    <script src="sync-optimizer.js"></script>
+
+    <script>
+        let performanceOptimizer;
+        let syncOptimizer;
+        let cursorManager;
+        let testResults = [];
+
+        // Initialize optimizers
+        function initializeOptimizers() {
+            try {
+                performanceOptimizer = new PerformanceOptimizer();
+                syncOptimizer = new SyncOptimizer();
+                cursorManager = new CursorManager();
+                addResult('✅ Optimizers initialized successfully', false);
+            } catch (error) {
+                addResult(`❌ Failed to initialize optimizers: ${error.message}`, true);
+            }
+        }
+
+        function addResult(message, isError = false) {
+            const resultsDiv = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = isError ? 'test-result test-error' : 'test-result';
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            resultsDiv.appendChild(div);
+            
+            testResults.push({ message, isError, timestamp: Date.now() });
+            
+            // Auto-scroll to bottom
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        async function testPerformanceUtils() {
+            addResult('🧪 Testing Performance Utilities...');
+            
+            try {
+                // Test debounce
+                let debounceCount = 0;
+                const debouncedFunction = performanceOptimizer.debounce(() => {
+                    debounceCount++;
+                }, 100);
+                
+                // Rapid fire calls
+                for (let i = 0; i < 10; i++) {
+                    debouncedFunction();
+                }
+                
+                // Wait and check
+                setTimeout(() => {
+                    if (debounceCount === 1) {
+                        addResult('✅ Debounce test passed (called once)', false);
+                    } else {
+                        addResult(`❌ Debounce test failed (called ${debounceCount} times)`, true);
+                    }
+                }, 200);
+
+                // Test throttle
+                let throttleCount = 0;
+                const throttledFunction = performanceOptimizer.throttle(() => {
+                    throttleCount++;
+                }, 50);
+                
+                // Rapid fire calls
+                for (let i = 0; i < 10; i++) {
+                    throttledFunction();
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
+                
+                addResult(`✅ Throttle test: ${throttleCount} executions (expected fewer than 10)`, throttleCount >= 10);
+
+                // Test queue operation
+                const queueResults = [];
+                const operations = [];
+                
+                for (let i = 0; i < 5; i++) {
+                    operations.push(
+                        performanceOptimizer.queueOperation(`test-${i}`, async () => {
+                            await new Promise(resolve => setTimeout(resolve, 50));
+                            queueResults.push(i);
+                            return i;
+                        })
+                    );
+                }
+                
+                await Promise.all(operations);
+                addResult(`✅ Queue operations test: ${queueResults.length} operations completed`, false);
+                
+            } catch (error) {
+                addResult(`❌ Performance utils test error: ${error.message}`, true);
+            }
+        }
+
+        async function testSyncOptimizer() {
+            addResult('🔄 Testing Sync Optimizer...');
+            
+            try {
+                // Test save queuing
+                const saveResults = [];
+                const saveOperations = [];
+                
+                for (let i = 0; i < 3; i++) {
+                    const saveOp = async () => {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        saveResults.push(`Save ${i}`);
+                        return `Result ${i}`;
+                    };
+                    
+                    saveOperations.push(
+                        syncOptimizer.queueSave(saveOp, i === 0 ? 'manual' : 'auto', i)
+                    );
+                }
+                
+                await Promise.all(saveOperations.filter(op => op !== null));
+                addResult(`✅ Save queue test: ${saveResults.length} saves processed`, false);
+                
+                // Test status
+                const status = syncOptimizer.getStatus();
+                addResult(`📊 Queue status: ${status.queueLength} items, processing: ${status.isProcessing}`, false);
+                
+            } catch (error) {
+                addResult(`❌ Sync optimizer test error: ${error.message}`, true);
+            }
+        }
+
+        async function testCursorManager() {
+            addResult('👁️ Testing Cursor Manager...');
+            
+            try {
+                // Create a test element
+                const testDiv = document.createElement('div');
+                testDiv.contentEditable = true;
+                testDiv.textContent = 'Test cursor management';
+                testDiv.style.cssText = 'border: 1px solid #ccc; padding: 10px; margin: 10px 0;';
+                document.body.appendChild(testDiv);
+                
+                // Test focus capture
+                testDiv.focus();
+                const focusState = cursorManager.captureFocus(testDiv, { test: true });
+                
+                if (focusState) {
+                    addResult('✅ Focus captured successfully', false);
+                    
+                    // Test focus restoration
+                    testDiv.blur();
+                    
+                    setTimeout(async () => {
+                        const restored = await cursorManager.restoreFocus(focusState, 0);
+                        addResult(`${restored ? '✅' : '❌'} Focus restoration: ${restored}`, !restored);
+                        
+                        // Cleanup
+                        document.body.removeChild(testDiv);
+                    }, 100);
+                } else {
+                    addResult('❌ Focus capture failed', true);
+                }
+                
+            } catch (error) {
+                addResult(`❌ Cursor manager test error: ${error.message}`, true);
+            }
+        }
+
+        async function runLoadTest() {
+            addResult('⚡ Running Load Test...');
+            
+            const startTime = performance.now();
+            const operations = [];
+            
+            // Simulate concurrent operations
+            for (let i = 0; i < 20; i++) {
+                operations.push(
+                    performanceOptimizer.queueOperation(`load-test-${i}`, async () => {
+                        // Simulate some work
+                        await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
+                        return i;
+                    })
+                );
+            }
+            
+            try {
+                const results = await Promise.all(operations);
+                const endTime = performance.now();
+                const duration = endTime - startTime;
+                
+                addResult(`✅ Load test completed: ${results.length} operations in ${duration.toFixed(2)}ms`, false);
+                addResult(`📊 Average operation time: ${(duration / results.length).toFixed(2)}ms`, false);
+                
+            } catch (error) {
+                addResult(`❌ Load test failed: ${error.message}`, true);
+            }
+        }
+
+        function updateMetrics() {
+            const metricsDiv = document.getElementById('metrics');
+            
+            const metrics = {
+                'Test Results': testResults.length,
+                'Errors': testResults.filter(r => r.isError).length,
+                'Success Rate': `${((testResults.filter(r => !r.isError).length / testResults.length) * 100).toFixed(1)}%`,
+                'Performance Now': `${performance.now().toFixed(2)}ms`,
+                'User Agent': navigator.userAgent.slice(0, 50) + '...'
+            };
+            
+            metricsDiv.innerHTML = Object.entries(metrics)
+                .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+                .join('<br>');
+        }
+
+        function checkMemory() {
+            const memoryDiv = document.getElementById('memory-info');
+            
+            if ('memory' in performance) {
+                const memory = performance.memory;
+                const info = {
+                    'Used JS Heap': `${(memory.usedJSHeapSize / 1048576).toFixed(2)} MB`,
+                    'Total JS Heap': `${(memory.totalJSHeapSize / 1048576).toFixed(2)} MB`,
+                    'JS Heap Limit': `${(memory.jsHeapSizeLimit / 1048576).toFixed(2)} MB`,
+                    'Usage': `${((memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100).toFixed(1)}%`
+                };
+                
+                memoryDiv.innerHTML = Object.entries(info)
+                    .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+                    .join('<br>');
+            } else {
+                memoryDiv.innerHTML = '⚠️ Memory API not available in this browser';
+            }
+        }
+
+        function simulateMemoryPressure() {
+            addResult('🧠 Simulating memory pressure...');
+            
+            // Create some arrays to simulate memory usage
+            const arrays = [];
+            for (let i = 0; i < 100; i++) {
+                arrays.push(new Array(10000).fill(Math.random()));
+            }
+            
+            // Test memory management
+            if (performanceOptimizer && performanceOptimizer.manageHistory) {
+                const testHistory = new Array(200).fill({ data: 'test' });
+                const managedHistory = performanceOptimizer.manageHistory(testHistory, 50);
+                addResult(`✅ Memory management: reduced from ${testHistory.length} to ${managedHistory.length} items`, false);
+            }
+            
+            // Clean up
+            setTimeout(() => {
+                arrays.length = 0;
+                addResult('🧹 Memory pressure simulation completed', false);
+                checkMemory();
+            }, 1000);
+        }
+
+        // Auto-initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeOptimizers();
+            updateMetrics();
+            checkMemory();
+            
+            // Update metrics periodically
+            setInterval(updateMetrics, 5000);
+        });
+        
+        // Performance monitoring
+        window.addEventListener('load', () => {
+            addResult(`📊 Page loaded in ${performance.now().toFixed(2)}ms`, false);
+        });
+    </script>
+</body>
+</html>
