@@ -3200,6 +3200,41 @@
                 persistHistoryStacks();
                 updateUndoButtonState();
                 
+                // 🔄 AUTOMATIC SAVE after undo operation
+                console.log('💾 Triggering automatic save after undo...');
+                
+                // Show brief save indicator
+                if (typeof showMessage === 'function') {
+                    showMessage('💾 Sauvegarde automatique...', 'info', 1000);
+                }
+                
+                setTimeout(() => {
+                    try {
+                        // Save locally first (fast backup)
+                        if (typeof saveLocalDraft === 'function') {
+                            saveLocalDraft();
+                        }
+                        
+                        // Then sync to master database
+                        if (typeof syncToMaster === 'function') {
+                            syncToMaster(true, false); // Manual save, no pruning
+                            console.log('✅ Automatic save completed after undo');
+                            
+                            // Show success message briefly
+                            setTimeout(() => {
+                                if (typeof showMessage === 'function') {
+                                    showMessage('✅ Sauvegardé', 'success', 1500);
+                                }
+                            }, 200);
+                        }
+                    } catch (saveError) {
+                        console.error('❌ Error during automatic save after undo:', saveError);
+                        if (typeof showMessage === 'function') {
+                            showMessage('❌ Erreur de sauvegarde', 'error', 2000);
+                        }
+                    }
+                }, 100); // Small delay to ensure undo is fully complete
+                
             } catch (error) {
                 console.error('❌ Error during undo:', error);
                 // Re-add operation if failed
@@ -3277,27 +3312,40 @@
                 
                 console.log(`📚 Added ${operationsToRedo.length} operation(s) back to history`);
                 
-                // ENHANCED: Schedule automatic sync after redo operation with extended suppression
-                // Extended suppression windows to prevent conflicts with autosave/realtime
-                const SUPPRESSION_MS = 3000; // Increased from 2000ms to 3000ms
-                const AUTOSAVE_SUPPRESSION_MS = 4000; // Separate, longer suppression for autosave
+                // 🔄 AUTOMATIC SAVE after redo operation
+                console.log('💾 Triggering automatic save after redo...');
                 
-                suppressRealtimeUntil = Date.now() + SUPPRESSION_MS;
-                suppressAutosaveUntil = Date.now() + AUTOSAVE_SUPPRESSION_MS;
-                
-                // Clean: Removed debug log
-                
-                if (typeof scheduleUndoRedoSync === 'function') {
-                    clearUndoRedoSyncTimeout();
-                    undoRedoSyncTimeout = setTimeout(() => {
-                        if (!isPerformingUndoRedo) {
-                            // Clean: Removed debug log
-                            // Force manual save to bypass conflict checks
-                            syncToMaster(true, true);
-                            undoRedoSyncTimeout = null;
-                        }
-                    }, 800); // Increased delay from 500ms to 800ms for better conflict prevention
+                // Show brief save indicator
+                if (typeof showMessage === 'function') {
+                    showMessage('💾 Sauvegarde automatique...', 'info', 1000);
                 }
+                
+                setTimeout(() => {
+                    try {
+                        // Save locally first (fast backup)
+                        if (typeof saveLocalDraft === 'function') {
+                            saveLocalDraft();
+                        }
+                        
+                        // Then sync to master database
+                        if (typeof syncToMaster === 'function') {
+                            syncToMaster(true, false); // Manual save, no pruning
+                            console.log('✅ Automatic save completed after redo');
+                            
+                            // Show success message briefly
+                            setTimeout(() => {
+                                if (typeof showMessage === 'function') {
+                                    showMessage('✅ Sauvegardé', 'success', 1500);
+                                }
+                            }, 200);
+                        }
+                    } catch (saveError) {
+                        console.error('❌ Error during automatic save after redo:', saveError);
+                        if (typeof showMessage === 'function') {
+                            showMessage('❌ Erreur de sauvegarde', 'error', 2000);
+                        }
+                    }
+                }, 100); // Small delay to ensure redo is fully complete
                 
             } catch (e) {
                 console.error('❌ Error during redo:', e);
