@@ -2,7 +2,18 @@
 <html lang='fr'>
 <head>
     <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no'>
+    <!-- Enhanced viewport for iOS and Android devices -->
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, shrink-to-fit=no'>
+    
+    <!-- iOS specific meta tags -->
+    <meta name='apple-mobile-web-app-capable' content='yes'>
+    <meta name='apple-mobile-web-app-status-bar-style' content='default'>
+    <meta name='apple-mobile-web-app-title' content='S-T Staff Table'>
+    
+    <!-- Android specific meta tags -->
+    <meta name='mobile-web-app-capable' content='yes'>
+    <meta name='theme-color' content='#15803d'>
+    <meta name='msapplication-TileColor' content='#15803d'>
     <title>S-T synchronisé - Supabase</title>
     
     <!-- Preload critical resources -->
@@ -15,7 +26,7 @@
 
     
     <style>
-        /* Optimized CSS Variables */
+        /* Enhanced CSS Variables with iOS/Android Safe Area Support */
         :root {
             --primary-color: #15803d;
             --primary-hover: #16a34a;
@@ -43,9 +54,19 @@
             --gpu-acceleration: translateZ(0);
             --will-change-transform: transform;
             --will-change-scroll: scroll-position;
+            
+            /* iOS/Android Safe Area Variables */
+            --safe-area-top: env(safe-area-inset-top, 0px);
+            --safe-area-right: env(safe-area-inset-right, 0px);
+            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-area-left: env(safe-area-inset-left, 0px);
+            
+            /* Dynamic viewport height for mobile browsers */
+            --vh: 1vh;
+            --dynamic-vh: calc(var(--vh, 1vh) * 100);
         }
 
-        /* Optimized base styles */
+        /* Enhanced base styles with iOS/Android viewport adaptation */
         body { 
             font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; 
             background-color: var(--bg-secondary);
@@ -55,9 +76,83 @@
             contain: layout style paint;
             will-change: var(--will-change-scroll);
             transform: var(--gpu-acceleration);
+            /* iOS/Android viewport adaptation */
+            min-height: var(--dynamic-vh);
+            padding-top: var(--safe-area-top);
+            padding-left: var(--safe-area-left);
+            padding-right: var(--safe-area-right);
+            padding-bottom: var(--safe-area-bottom);
+            /* Prevent horizontal overflow */
+            overflow-x: hidden;
+            /* Ensure proper mobile rendering */
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            text-size-adjust: 100%;
         }
         
-        /* Consistent table styles across all screen sizes */
+        /* iOS/Android Safe Area Container */
+        .safe-area-container {
+            min-height: calc(100vh - var(--safe-area-top) - var(--safe-area-bottom));
+            padding-top: max(var(--safe-area-top), 0px);
+            padding-left: max(var(--safe-area-left), 0px);
+            padding-right: max(var(--safe-area-right), 0px);
+            padding-bottom: max(var(--safe-area-bottom), 0px);
+        }
+        
+        /* Enhanced viewport handling for mobile devices */
+        @supports (padding: max(0px)) {
+            body {
+                padding-top: max(var(--safe-area-top), 0px);
+                padding-left: max(var(--safe-area-left), 0px);
+                padding-right: max(var(--safe-area-right), 0px);
+                padding-bottom: max(var(--safe-area-bottom), 0px);
+            }
+        }
+        
+        /* iOS Device Specific Adaptations */
+        @supports (-webkit-touch-callout: none) {
+            body {
+                /* iOS Safari specific viewport handling */
+                padding-top: max(calc(var(--safe-area-top) + 20px), 20px);
+                min-height: -webkit-fill-available;
+            }
+            
+            /* iOS status bar height compensation */
+            .flex.items-center.gap-2.mb-1,
+            #button-bar,
+            #table-container {
+                margin-top: max(calc(var(--safe-area-top) + 1rem), 1rem);
+            }
+        }
+        
+        /* Android Device Specific Adaptations */
+        @media screen and (-webkit-min-device-pixel-ratio: 1) {
+            body {
+                /* Android Chrome specific viewport handling */
+                padding-top: max(calc(var(--safe-area-top) + 16px), 16px);
+            }
+        }
+        
+        /* Mobile Device Viewport Height Fix */
+        @media screen and (max-width: 768px) {
+            body {
+                min-height: 100vh;
+                min-height: -webkit-fill-available;
+                min-height: -moz-available;
+                min-height: stretch;
+            }
+            
+            /* Ensure top elements are above navigation bars */
+            .flex.items-center.gap-2.mb-1,
+            #button-bar,
+            #table-container {
+                position: relative;
+                z-index: 10;
+                margin-top: max(calc(var(--safe-area-top) + 1.5rem), 1.5rem);
+            }
+        }
+        
+        /* Enhanced table styles with iOS/Android safe area support */
         #data-table { 
             border-collapse: collapse; 
             border-spacing: 0; 
@@ -71,6 +166,24 @@
             contain: layout;
             will-change: var(--will-change-scroll);
             transform: var(--gpu-acceleration);
+        }
+        
+        /* Top-level container safe area handling */
+        #table-container {
+            margin-top: max(calc(var(--safe-area-top) + 1rem), 1rem);
+            padding-top: max(var(--safe-area-top), 0px);
+        }
+        
+        /* Status indicators safe area positioning */
+        .flex.items-center.gap-2.mb-1 {
+            margin-top: max(calc(var(--safe-area-top) + 0.5rem), 0.5rem);
+            padding-top: max(var(--safe-area-top), 0px);
+        }
+        
+        /* Function button bar safe area positioning */
+        #button-bar {
+            margin-top: max(calc(var(--safe-area-top) + 0.5rem), 0.5rem);
+            top: max(calc(var(--safe-area-top) + 8px), 8px) !important;
         }
         
         #data-table th, #data-table td { 
@@ -11265,6 +11378,142 @@ ${capacityInfo.needsCleanup ?
         console.log('   - Ctrl+Left: Scroll to start');
         console.log('   - Ctrl+Right: Scroll to end');
         console.log('   - testButtonBarScrolling(): Test and debug scrolling');
+        
+        // ========================================
+        // iOS/ANDROID VIEWPORT ADAPTATION SYSTEM
+        // ========================================
+        
+        // Function to update viewport height for mobile browsers
+        function updateViewportHeight() {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+            console.log('📱 Viewport height updated:', vh, 'px');
+        }
+        
+        // Function to update safe area insets
+        function updateSafeAreaInsets() {
+            const safeAreaTop = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-top');
+            const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-bottom');
+            const safeAreaLeft = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-left');
+            const safeAreaRight = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-right');
+            
+            console.log('📱 Safe area insets updated:');
+            console.log('   - Top:', safeAreaTop);
+            console.log('   - Bottom:', safeAreaBottom);
+            console.log('   - Left:', safeAreaLeft);
+            console.log('   - Right:', safeAreaRight);
+        }
+        
+        // Function to ensure top elements are above navigation bars
+        function ensureTopElementsVisibility() {
+            const safeAreaTop = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-top');
+            const topElements = [
+                document.querySelector('.flex.items-center.gap-2.mb-1'),
+                document.getElementById('button-bar'),
+                document.getElementById('table-container')
+            ];
+            
+            topElements.forEach(element => {
+                if (element) {
+                    const currentTop = parseFloat(safeAreaTop) || 0;
+                    const minMargin = Math.max(currentTop + 16, 16);
+                    element.style.marginTop = `${minMargin}px`;
+                    element.style.paddingTop = `${Math.max(currentTop, 0)}px`;
+                }
+            });
+            
+            console.log('📱 Top elements visibility ensured with safe area compensation');
+        }
+        
+        // Function to handle viewport orientation changes
+        function handleOrientationChange() {
+            setTimeout(() => {
+                updateViewportHeight();
+                updateSafeAreaInsets();
+                ensureTopElementsVisibility();
+                console.log('📱 Orientation change handled');
+            }, 100);
+        }
+        
+        // Function to handle visual viewport changes (mobile keyboard)
+        function handleVisualViewportChange() {
+            if (window.visualViewport) {
+                updateViewportHeight();
+                ensureTopElementsVisibility();
+                console.log('📱 Visual viewport change handled');
+            }
+        }
+        
+        // Initialize viewport adaptation system
+        function initializeViewportAdaptation() {
+            console.log('🚀 Initializing iOS/Android viewport adaptation system...');
+            
+            // Initial setup
+            updateViewportHeight();
+            updateSafeAreaInsets();
+            ensureTopElementsVisibility();
+            
+            // Event listeners for dynamic updates
+            window.addEventListener('resize', updateViewportHeight);
+            window.addEventListener('orientationchange', handleOrientationChange);
+            window.addEventListener('scroll', updateViewportHeight);
+            
+            // Visual viewport API for mobile keyboard handling
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', handleVisualViewportChange);
+                window.visualViewport.addEventListener('scroll', handleVisualViewportChange);
+            }
+            
+            // iOS Safari specific handling
+            if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                console.log('🍎 iOS device detected, applying specific adaptations');
+                document.body.style.minHeight = '-webkit-fill-available';
+                
+                // Handle iOS Safari viewport issues
+                window.addEventListener('focusin', () => {
+                    setTimeout(updateViewportHeight, 100);
+                });
+                
+                window.addEventListener('focusout', () => {
+                    setTimeout(updateViewportHeight, 100);
+                });
+            }
+            
+            // Android specific handling
+            if (/Android/.test(navigator.userAgent)) {
+                console.log('🤖 Android device detected, applying specific adaptations');
+                
+                // Handle Android Chrome viewport issues
+                window.addEventListener('resize', () => {
+                    setTimeout(updateViewportHeight, 100);
+                });
+            }
+            
+            console.log('✅ iOS/Android viewport adaptation system initialized');
+        }
+        
+        // Call initialization when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeViewportAdaptation);
+        } else {
+            initializeViewportAdaptation();
+        }
+        
+        // Export functions for external use
+        window.updateViewportHeight = updateViewportHeight;
+        window.updateSafeAreaInsets = updateSafeAreaInsets;
+        window.ensureTopElementsVisibility = ensureTopElementsVisibility;
+        window.handleOrientationChange = handleOrientationChange;
+        window.handleVisualViewportChange = handleVisualViewportChange;
+        window.initializeViewportAdaptation = initializeViewportAdaptation;
+        
+        console.log('🎯 iOS/Android viewport adaptation functions added:');
+        console.log('   - updateViewportHeight(): Update dynamic viewport height');
+        console.log('   - updateSafeAreaInsets(): Update safe area insets');
+        console.log('   - ensureTopElementsVisibility(): Ensure top elements are visible');
+        console.log('   - handleOrientationChange(): Handle device orientation changes');
+        console.log('   - handleVisualViewportChange(): Handle mobile keyboard changes');
+        console.log('   - initializeViewportAdaptation(): Initialize the entire system');
     </script>
 </body>
 </html>
