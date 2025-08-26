@@ -1663,20 +1663,24 @@ class SimpleGallery {
         this.applyZoom();
     }
     
-    // Appliquer le zoom et pan (ultra-rapide pour réponse instantanée)
+    // Appliquer le zoom et pan (version ultra-directe)
     applyZoom() {
         const viewerImage = document.getElementById('viewer-image');
         
         if (viewerImage) {
-            // Transform direct et immédiat pour une réponse ultra-rapide
-            viewerImage.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.currentZoom})`;
+            // Transform avec will-change pour forcer l'accélération matérielle
+            viewerImage.style.willChange = 'transform';
+            viewerImage.style.transform = `translate3d(${this.panX}px, ${this.panY}px, 0) scale(${this.currentZoom})`;
         }
         
-        // Mettre à jour le zoom seulement si pas en train de panner (évite les ralentissements)
+        // Mettre à jour le zoom seulement si pas en train de panner
         if (!this.isPanning) {
             const zoomLevel = document.getElementById('zoom-level');
             if (zoomLevel) {
                 zoomLevel.textContent = `Zoom: ${Math.round(this.currentZoom * 100)}%`;
+            }
+            if (viewerImage) {
+                viewerImage.style.willChange = 'auto'; // Économiser les ressources
             }
         }
     }
@@ -1795,12 +1799,15 @@ class SimpleGallery {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // Démarrage immédiat du pan
+                // Démarrage immédiat du pan avec optimisations matérielles
                 this.isPanning = true;
                 startX = e.clientX;
                 startY = e.clientY;
                 startPanX = this.panX;
                 startPanY = this.panY;
+                
+                // Préparation pour l'accélération matérielle immédiate
+                viewerImage.style.willChange = 'transform';
                 
                 // Feedback visuel immédiat
                 viewerImage.style.cursor = 'grabbing';
@@ -1809,20 +1816,30 @@ class SimpleGallery {
             }
         }, { passive: false });
         
-        // Continuer le pan pendant le mouvement (réponse immédiate et rapide)
+        // Cache de l'élément image pour éviter les requêtes DOM répétées
+        let cachedViewerImage = null;
+        
+        // Continuer le pan pendant le mouvement (réponse ultra-directe)
         document.addEventListener('mousemove', (e) => {
             if (this.isPanning) {
                 e.preventDefault();
                 
-                // Calcul direct et immédiat sans throttling pour une réponse ultra-rapide
+                // Cache l'élément image au premier mouvement
+                if (!cachedViewerImage) {
+                    cachedViewerImage = document.getElementById('viewer-image');
+                }
+                
+                // Calcul et application directe sans fonction intermédiaire
                 const deltaX = e.clientX - startX;
                 const deltaY = e.clientY - startY;
                 
                 this.panX = startPanX + deltaX;
                 this.panY = startPanY + deltaY;
                 
-                // Application immédiate pour une réponse instantanée
-                this.applyZoom();
+                // Application directe du transform pour éliminer tout délai
+                if (cachedViewerImage) {
+                    cachedViewerImage.style.transform = `translate3d(${this.panX}px, ${this.panY}px, 0) scale(${this.currentZoom})`;
+                }
             }
         }, { passive: false });
         
@@ -1831,9 +1848,18 @@ class SimpleGallery {
             if (this.isPanning && (e.button === 2 || e.button === 0)) {
                 console.log('🛑 Stopping pan');
                 this.isPanning = false;
+                
+                // Reset du cache
+                cachedViewerImage = null;
+                
                 viewerImage.style.cursor = 'grab';
                 document.body.style.userSelect = '';
                 document.body.style.cursor = '';
+                
+                // Nettoyer will-change pour économiser les ressources
+                if (viewerImage) {
+                    viewerImage.style.willChange = 'auto';
+                }
             }
         });
         
