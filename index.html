@@ -150,6 +150,22 @@
                 z-index: 10;
                 margin-top: max(calc(var(--safe-area-top) + 1.5rem), 1.5rem);
             }
+            
+            /* Enhanced button bar hiding on mobile when login is visible */
+            #login-container:not(.hidden) ~ #table-container #button-bar {
+                display: none !important;
+                opacity: 0 !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+                position: absolute !important;
+                left: -9999px !important;
+                top: -9999px !important;
+            }
+            
+            /* Hide button bar completely on mobile password page */
+            #login-container:not(.hidden) ~ * #button-bar {
+                display: none !important;
+            }
         }
         
         /* Enhanced table styles with iOS/Android safe area support */
@@ -184,6 +200,23 @@
         #button-bar {
             margin-top: max(calc(var(--safe-area-top) + 0.5rem), 0.5rem);
             top: max(calc(var(--safe-area-top) + 8px), 8px) !important;
+        }
+        
+        /* Hide button bar when login container is visible */
+        #login-container:not(.hidden) ~ #table-container #button-bar,
+        #login-container:not(.hidden) + #button-bar {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+        
+        /* Alternative approach: Hide button bar when login is active */
+        body:has(#login-container:not(.hidden)) #button-bar {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
         }
         
         #data-table th, #data-table td { 
@@ -1183,6 +1216,33 @@
             min-width: 0;
             display: flex;
             justify-content: flex-end;
+            /* Ensure proper visibility on mobile */
+            transition: all 0.3s ease-in-out;
+            opacity: 1;
+            visibility: visible;
+            height: auto;
+            overflow: visible;
+        }
+        
+        /* Enhanced history bar container for mobile */
+        #history-bar-container:not(.hidden) {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            height: auto !important;
+            overflow: visible !important;
+            /* Force visibility on mobile */
+            position: relative !important;
+            z-index: 5 !important;
+        }
+        
+        /* Hidden state styling */
+        #history-bar-container.hidden {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            overflow: hidden !important;
         }
         
         /* Reduced width container styling */
@@ -9234,18 +9294,41 @@
             
             if (!historyBarContainer || !toggleBtn || !toggleIcon) {
                 console.error('❌ Toggle elements not found');
+                console.error('   - historyBarContainer:', !!historyBarContainer);
+                console.error('   - toggleBtn:', !!toggleBtn);
+                console.error('   - toggleIcon:', !!toggleIcon);
                 return;
             }
             
-            // Check current state
-            const isCurrentlyVisible = !historyBarContainer.classList.contains('hidden') && 
-                                    historyBarContainer.style.display !== 'none' && 
-                                    historyBarContainer.offsetHeight > 0;
+            // Check current state with enhanced debugging
+            const hasHiddenClass = historyBarContainer.classList.contains('hidden');
+            const displayStyle = historyBarContainer.style.display;
+            const computedDisplay = window.getComputedStyle(historyBarContainer).display;
+            const offsetHeight = historyBarContainer.offsetHeight;
+            
+            console.log('🔍 Toggle state check:');
+            console.log('   - Hidden class:', hasHiddenClass);
+            console.log('   - Inline display style:', displayStyle);
+            console.log('   - Computed display:', computedDisplay);
+            console.log('   - Offset height:', offsetHeight);
+            
+            const isCurrentlyVisible = !hasHiddenClass && 
+                                    displayStyle !== 'none' && 
+                                    computedDisplay !== 'none' &&
+                                    offsetHeight > 0;
+            
+            console.log('   - Is currently visible:', isCurrentlyVisible);
             
             if (isCurrentlyVisible) {
                 // Hide history bar
                 historyBarContainer.classList.add('hidden');
                 historyBarContainer.style.display = 'none';
+                
+                // Force hide with additional CSS properties
+                historyBarContainer.style.visibility = 'hidden';
+                historyBarContainer.style.opacity = '0';
+                historyBarContainer.style.height = '0';
+                historyBarContainer.style.overflow = 'hidden';
                 
                 // Update accessibility attributes
                 toggleBtn.setAttribute('aria-expanded', 'false');
@@ -9258,11 +9341,17 @@
                     toggleIcon.style.fontSize = '18px';
                 }
                 
-                console.log('🔽 History bar hidden');
+                console.log('🔽 History bar hidden with enhanced hiding');
             } else {
                 // Show history bar
                 historyBarContainer.classList.remove('hidden');
                 historyBarContainer.style.display = 'flex';
+                
+                // Force show with additional CSS properties
+                historyBarContainer.style.visibility = 'visible';
+                historyBarContainer.style.opacity = '1';
+                historyBarContainer.style.height = 'auto';
+                historyBarContainer.style.overflow = 'visible';
                 
                 // Update accessibility attributes
                 toggleBtn.setAttribute('aria-expanded', 'true');
@@ -9275,19 +9364,34 @@
                     toggleIcon.style.fontSize = '18px';
                 }
                 
-                console.log('🔼 History bar shown');
+                console.log('🔼 History bar shown with enhanced showing');
                 
                 // Ensure proper mobile layout
                 if (isMobile() && window.innerWidth <= 768) {
                     historyBarContainer.style.width = '100%';
                     historyBarContainer.style.maxWidth = 'none';
+                    console.log('📱 Mobile layout applied');
                 }
             }
             
             // Add haptic feedback on mobile
             if (isMobile() && navigator.vibrate) {
                 navigator.vibrate(50); // Short vibration feedback
+                console.log('📱 Haptic feedback provided');
             }
+            
+            // Final state verification
+            setTimeout(() => {
+                const finalState = {
+                    hiddenClass: historyBarContainer.classList.contains('hidden'),
+                    display: historyBarContainer.style.display,
+                    computedDisplay: window.getComputedStyle(historyBarContainer).display,
+                    visibility: historyBarContainer.style.visibility,
+                    opacity: historyBarContainer.style.opacity,
+                    height: historyBarContainer.style.height
+                };
+                console.log('✅ Final toggle state:', finalState);
+            }, 100);
         }
         
         // Mobile event listeners removed - consistent behavior across all screen sizes
@@ -11489,7 +11593,57 @@ ${capacityInfo.needsCleanup ?
                 });
             }
             
+            // Login container visibility monitoring for button bar hiding
+            initializeLoginContainerMonitoring();
+            
             console.log('✅ iOS/Android viewport adaptation system initialized');
+        }
+        
+        // Function to monitor login container visibility and hide button bar
+        function initializeLoginContainerMonitoring() {
+            console.log('🔒 Initializing login container monitoring...');
+            
+            // Monitor login container visibility changes
+            const loginContainer = document.getElementById('login-container');
+            if (loginContainer) {
+                // Initial check
+                handleLoginContainerVisibility();
+                
+                // Create observer for class changes
+                const observer = new MutationObserver(handleLoginContainerVisibility);
+                observer.observe(loginContainer, { 
+                    attributes: true, 
+                    attributeFilter: ['class'] 
+                });
+                
+                console.log('✅ Login container monitoring initialized');
+            }
+        }
+        
+        // Function to handle login container visibility changes
+        function handleLoginContainerVisibility() {
+            const loginContainer = document.getElementById('login-container');
+            const buttonBar = document.getElementById('button-bar');
+            
+            if (loginContainer && buttonBar) {
+                const isLoginVisible = !loginContainer.classList.contains('hidden');
+                
+                if (isLoginVisible) {
+                    // Hide button bar when login is visible
+                    buttonBar.style.display = 'none';
+                    buttonBar.style.opacity = '0';
+                    buttonBar.style.visibility = 'hidden';
+                    buttonBar.style.pointerEvents = 'none';
+                    console.log('🔒 Button bar hidden - login container visible');
+                } else {
+                    // Show button bar when login is hidden
+                    buttonBar.style.display = 'flex';
+                    buttonBar.style.opacity = '1';
+                    buttonBar.style.visibility = 'visible';
+                    buttonBar.style.pointerEvents = 'auto';
+                    console.log('🔓 Button bar shown - login container hidden');
+                }
+            }
         }
         
         // Call initialization when DOM is ready
@@ -11506,6 +11660,62 @@ ${capacityInfo.needsCleanup ?
         window.handleOrientationChange = handleOrientationChange;
         window.handleVisualViewportChange = handleVisualViewportChange;
         window.initializeViewportAdaptation = initializeViewportAdaptation;
+        
+        // Mobile toggle button debugging function
+        window.debugToggleButton = function() {
+            console.log('🔍 Debugging toggle button on mobile...');
+            
+            const historyBarContainer = document.getElementById('history-bar-container');
+            const toggleBtn = document.getElementById('history-toggle-btn');
+            const toggleIcon = document.getElementById('history-toggle-icon');
+            
+            if (!historyBarContainer || !toggleBtn || !toggleIcon) {
+                console.error('❌ Required elements not found');
+                return;
+            }
+            
+            console.log('📱 Mobile device check:', isMobile());
+            console.log('📱 Screen dimensions:', window.innerWidth, 'x', window.innerHeight);
+            console.log('📱 Viewport dimensions:', window.visualViewport?.width, 'x', window.visualViewport?.height);
+            
+            const containerState = {
+                element: historyBarContainer,
+                hiddenClass: historyBarContainer.classList.contains('hidden'),
+                display: historyBarContainer.style.display,
+                computedDisplay: window.getComputedStyle(historyBarContainer).display,
+                visibility: historyBarContainer.style.visibility,
+                opacity: historyBarContainer.style.opacity,
+                height: historyBarContainer.style.height,
+                offsetHeight: historyBarContainer.offsetHeight,
+                clientHeight: historyBarContainer.clientHeight,
+                scrollHeight: historyBarContainer.scrollHeight,
+                zIndex: window.getComputedStyle(historyBarContainer).zIndex
+            };
+            
+            console.log('📊 History bar container state:', containerState);
+            
+            // Test toggle functionality
+            console.log('🧪 Testing toggle functionality...');
+            const originalState = containerState.hiddenClass;
+            
+            // Simulate toggle
+            toggleHistoryBarSimple();
+            
+            // Check result after a short delay
+            setTimeout(() => {
+                const newState = historyBarContainer.classList.contains('hidden');
+                console.log('✅ Toggle test result:', {
+                    originalState,
+                    newState,
+                    toggleSuccessful: originalState !== newState
+                });
+                
+                // Restore original state if needed
+                if (originalState !== newState) {
+                    toggleHistoryBarSimple();
+                }
+            }, 200);
+        };
         
         console.log('🎯 iOS/Android viewport adaptation functions added:');
         console.log('   - updateViewportHeight(): Update dynamic viewport height');
