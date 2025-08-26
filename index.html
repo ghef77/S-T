@@ -565,7 +565,7 @@
         
         /* Table container styling - no responsive modifications */
         
-        /* Message box styles */
+        /* Message box styles - Highest z-index to appear above everything */
         .message-box {
             position: fixed;
             top: 2rem;
@@ -577,11 +577,68 @@
             margin-top: 4px;
             border-radius: 0.5rem;
             box-shadow: var(--shadow-lg);
-            z-index: 40;
+            z-index: 99999 !important; /* Highest z-index to appear above everything */
             opacity: 0;
             transition: opacity 0.5s, transform 0.5s;
             max-width: 90vw;
             word-wrap: break-word;
+            /* Ensure it's above all other elements */
+            pointer-events: none; /* Allow clicks to pass through */
+        }
+        
+        /* Message box content should be clickable */
+        .message-box p {
+            pointer-events: auto;
+        }
+        
+        /* Enhanced message box positioning and mobile optimization */
+        @media (max-width: 768px) {
+            .message-box {
+                top: 1rem !important;
+                left: 1rem !important;
+                right: 1rem !important;
+                transform: none !important;
+                max-width: none !important;
+                font-size: 0.875rem !important;
+                padding: 0.75rem 1rem !important;
+                border-radius: 0.75rem !important;
+                /* Ensure it's above mobile elements */
+                z-index: 99999 !important;
+            }
+            
+            .message-box.show {
+                transform: none !important;
+            }
+        }
+        
+        /* Ensure message box is above all other elements including modals */
+        .message-box {
+            /* Force highest stacking context */
+            isolation: isolate;
+            /* Ensure it's above any other fixed elements */
+            position: fixed !important;
+            /* Additional safety for z-index */
+            z-index: 99999 !important;
+            /* Ensure it's above all other elements */
+            transform: translateZ(0);
+            /* Force hardware acceleration */
+            will-change: opacity, transform;
+        }
+        
+        /* Override any other z-index values that might interfere */
+        .message-box,
+        .message-box * {
+            z-index: 99999 !important;
+        }
+        
+        /* Ensure message box appears above confirmation modals and other overlays */
+        .message-box {
+            /* Above confirmation modal */
+            z-index: 99999 !important;
+            /* Above snapshot bar */
+            z-index: 99999 !important;
+            /* Above any other fixed elements */
+            z-index: 99999 !important;
         }
         
         .message-box.show { 
@@ -592,16 +649,29 @@
         .message-box.success { 
             background-color: #d1fae5; 
             color: #065f46; 
+            border: 2px solid #10b981;
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
         }
         
         .message-box.info { 
             background-color: #dbeafe; 
             color: #1e40af; 
+            border: 2px solid #3b82f6;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
         }
         
         .message-box.error { 
             background-color: #fee2e2; 
             color: #991b1b; 
+            border: 2px solid #ef4444;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+        }
+        
+        .message-box.warning { 
+            background-color: #fef3c7; 
+            color: #92400e; 
+            border: 2px solid #f59e0b;
+            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
         }
         
         
@@ -2513,6 +2583,21 @@
         window.detectMobileKeyboard = detectMobileKeyboard;
         window.mobileKeyboardVisible = () => mobileKeyboardVisible;
         
+        // Enhanced message management functions
+        window.dismissMessage = function() {
+            const box = document.getElementById('message-box');
+            if (box) {
+                box.classList.remove('show');
+                setTimeout(() => box.classList.add('hidden'), 500);
+                if (window._msgTimer) {
+                    clearTimeout(window._msgTimer);
+                    window._msgTimer = null;
+                }
+            }
+        };
+        
+        window.showMessage = showMessage;
+        
         // Enhanced mobile experience: prevent zoom on double-tap
         function setupMobileZoomPrevention() {
             if (window.innerWidth <= 768) {
@@ -3357,18 +3442,42 @@
             
             if (window._msgTimer) clearTimeout(window._msgTimer); 
             
-            box.classList.remove('show'); 
+            // Remove all existing type classes
+            box.classList.remove('success', 'info', 'error', 'warning', 'show'); 
             txt.textContent = message; 
-            box.className = `message-box ${type}`; 
             
-            void box.offsetWidth; // Force reflow
+            // Add the new type class
+            box.classList.add('message-box', type); 
+            
+            // Force reflow for smooth animation
+            void box.offsetWidth; 
             box.classList.add('show'); 
             box.classList.remove('hidden'); 
+            
+            // Auto-hide after appropriate time based on type
+            let displayTime = 3000; // Default 3 seconds
+            switch(type) {
+                case 'error':
+                    displayTime = 5000; // Errors stay longer
+                    break;
+                case 'warning':
+                    displayTime = 4000; // Warnings stay medium
+                    break;
+                case 'info':
+                    displayTime = 3500; // Info stays slightly longer
+                    break;
+                case 'success':
+                    displayTime = 3000; // Success messages are quick
+                    break;
+            }
             
             window._msgTimer = setTimeout(() => {
                 box.classList.remove('show'); 
                 setTimeout(() => box.classList.add('hidden'), 500); 
-            }, 3000); 
+            }, displayTime); 
+            
+            // Log to console for debugging
+            console.log(`📢 [${type.toUpperCase()}] ${message}`);
         }
         
         // Optimized status update with DOM caching
