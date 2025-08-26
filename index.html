@@ -7107,7 +7107,13 @@
                             addRow();
                             setTimeout(() => {
                                 const nr = document.querySelector('#table-body tr:last-child');
-                                if (nr && nr.cells.length > idx) nr.cells[idx].focus();
+                                if (nr && nr.cells.length > idx) {
+                                    nr.cells[idx].focus();
+                                    // Position cursor at end of text content
+                                    setTimeout(() => {
+                                        setCaretAt(nr.cells[idx], null);
+                                    }, 0);
+                                }
                             }, 0);
                         }
                     } else if (e.key === 'ArrowDown') {
@@ -7123,7 +7129,13 @@
                             addRow();
                             setTimeout(() => {
                                 const nr = document.querySelector('#table-body tr:last-child');
-                                if (nr && nr.cells.length > idx) nr.cells[idx].focus();
+                                if (nr && nr.cells.length > idx) {
+                                    nr.cells[idx].focus();
+                                    // Position cursor at end of text content
+                                    setTimeout(() => {
+                                        setCaretAt(nr.cells[idx], null);
+                                    }, 0);
+                                }
                             }, 0);
                         }
                     } else if (e.key === 'ArrowUp') {
@@ -7136,6 +7148,10 @@
                     if (next) {
                         e.preventDefault();
                         next.focus();
+                        // Position cursor at end of text content
+                        setTimeout(() => {
+                            setCaretAt(next, null);
+                        }, 0);
                         if (isMobile()) ensureCellVisible(next);
                     }
                 }
