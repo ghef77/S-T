@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Optimization Test</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .performance-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .test-button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            transition: transform 0.1s ease;
+        }
+        
+        .test-button:hover {
+            transform: scale(1.05);
+        }
+        
+        .test-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        
+        .test-table th,
+        .test-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .test-table tr:hover {
+            background-color: #f5f5f5;
+            transform: scale(1.005);
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status.success { background: #4caf50; color: white; }
+        .status.warning { background: #ff9800; color: white; }
+        .status.error { background: #f44336; color: white; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🚀 Performance Optimization Test Suite</h1>
+        
+        <div class="test-section">
+            <h2>Performance Booster Status</h2>
+            <div id="booster-status" class="performance-info">Loading...</div>
+        </div>
+        
+        <div class="test-section">
+            <h2>DOM Cache Performance</h2>
+            <div id="cache-stats" class="performance-info">Loading...</div>
+            <button class="test-button" onclick="testDOMCache()">Test DOM Cache</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>Animation Performance Test</h2>
+            <button class="test-button" onclick="testAnimations()">Test Smooth Animations</button>
+            <button class="test-button" onclick="testTableHover()">Test Table Hover</button>
+            <div id="animation-results" class="performance-info"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Frame Rate Monitor</h2>
+            <div id="framerate" class="performance-info">Measuring...</div>
+            <button class="test-button" onclick="startFrameRateTest()">Start Frame Rate Test</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Table (Hover to Test Performance)</h2>
+            <table class="test-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Optimization</th>
+                        <th>Status</th>
+                        <th>Performance Impact</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>GPU Acceleration</td>
+                        <td>transform: translateZ(0)</td>
+                        <td><span class="status success">Active</span></td>
+                        <td>High</td>
+                    </tr>
+                    <tr>
+                        <td>RAF Scheduling</td>
+                        <td>Priority-based frame scheduling</td>
+                        <td><span class="status success">Active</span></td>
+                        <td>High</td>
+                    </tr>
+                    <tr>
+                        <td>DOM Caching</td>
+                        <td>Cached element queries</td>
+                        <td><span class="status success">Active</span></td>
+                        <td>Medium</td>
+                    </tr>
+                    <tr>
+                        <td>Timer Optimization</td>
+                        <td>Aligned timer intervals</td>
+                        <td><span class="status success">Active</span></td>
+                        <td>Medium</td>
+                    </tr>
+                    <tr>
+                        <td>Scroll Optimization</td>
+                        <td>Momentum-aware scrolling</td>
+                        <td><span class="status success">Active</span></td>
+                        <td>High</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Load our optimization scripts -->
+    <script src="performance-booster.js"></script>
+    <script src="dom-cache.js"></script>
+    
+    <script>
+        // Test functions
+        let frameCount = 0;
+        let startTime = performance.now();
+        let frameRateInterval;
+        
+        function updateBoosterStatus() {
+            const statusDiv = document.getElementById('booster-status');
+            if (window.performanceBooster) {
+                const stats = window.performanceBooster.getPerformanceStats();
+                statusDiv.innerHTML = `
+                    <strong>✅ Performance Booster Active</strong><br>
+                    Mode: ${stats.mode}<br>
+                    Active Animations: ${stats.activeAnimations}<br>
+                    Queued Operations: ${stats.queuedOperations}<br>
+                    Cache Size: ${stats.cacheSize}
+                `;
+            } else {
+                statusDiv.innerHTML = '<strong>❌ Performance Booster Not Loaded</strong>';
+            }
+        }
+        
+        function updateCacheStats() {
+            const statsDiv = document.getElementById('cache-stats');
+            if (window.domCache) {
+                const stats = window.domCache.getStats();
+                statsDiv.innerHTML = `
+                    <strong>📊 DOM Cache Statistics</strong><br>
+                    Total Queries: ${stats.queries}<br>
+                    Cache Hits: ${stats.hits}<br>
+                    Cache Misses: ${stats.misses}<br>
+                    Hit Rate: ${stats.hitRate}<br>
+                    Cache Size: ${stats.cacheSize}
+                `;
+            } else {
+                statsDiv.innerHTML = '<strong>❌ DOM Cache Not Available</strong>';
+            }
+        }
+        
+        function testDOMCache() {
+            if (!window.domCache) {
+                alert('DOM Cache not available');
+                return;
+            }
+            
+            const startTime = performance.now();
+            
+            // Test multiple queries
+            for (let i = 0; i < 100; i++) {
+                window.domCache.get('.test-table tr');
+                window.domCache.get('.test-button');
+                window.domCache.getSingle('h1');
+            }
+            
+            const endTime = performance.now();
+            const duration = endTime - startTime;
+            
+            document.getElementById('cache-stats').innerHTML += `<br>
+                <strong>🧪 Test Results:</strong> 300 queries in ${duration.toFixed(2)}ms
+            `;
+            
+            updateCacheStats();
+        }
+        
+        function testAnimations() {
+            const buttons = document.querySelectorAll('.test-button');
+            buttons.forEach(button => {
+                button.style.transform = 'translateZ(0) scale(1.1) rotate(5deg)';
+                setTimeout(() => {
+                    button.style.transform = 'translateZ(0) scale(1) rotate(0deg)';
+                }, 300);
+            });
+            
+            document.getElementById('animation-results').innerHTML = '✅ Animation test completed - Check for smoothness';
+        }
+        
+        function testTableHover() {
+            const rows = document.querySelectorAll('.test-table tr');
+            let currentRow = 0;
+            
+            function highlightNext() {
+                if (currentRow > 0) {
+                    rows[currentRow - 1].style.backgroundColor = '';
+                    rows[currentRow - 1].style.transform = '';
+                }
+                
+                if (currentRow < rows.length) {
+                    rows[currentRow].style.backgroundColor = '#f5f5f5';
+                    rows[currentRow].style.transform = 'translateZ(0) scale(1.005)';
+                    currentRow++;
+                    setTimeout(highlightNext, 200);
+                } else {
+                    rows[rows.length - 1].style.backgroundColor = '';
+                    rows[rows.length - 1].style.transform = '';
+                    document.getElementById('animation-results').innerHTML = '✅ Table hover animation test completed';
+                }
+            }
+            
+            highlightNext();
+        }
+        
+        function measureFrameRate() {
+            frameCount++;
+            const now = performance.now();
+            const elapsed = now - startTime;
+            
+            if (elapsed >= 1000) {
+                const fps = Math.round((frameCount * 1000) / elapsed);
+                document.getElementById('framerate').innerHTML = `
+                    <strong>📊 Frame Rate Monitor</strong><br>
+                    Current FPS: ${fps}<br>
+                    Target: 60 FPS<br>
+                    Status: ${fps >= 55 ? '✅ Excellent' : fps >= 30 ? '⚠️ Good' : '❌ Poor'}
+                `;
+                
+                frameCount = 0;
+                startTime = now;
+            }
+            
+            requestAnimationFrame(measureFrameRate);
+        }
+        
+        function startFrameRateTest() {
+            if (!frameRateInterval) {
+                measureFrameRate();
+                frameRateInterval = true;
+                
+                // Add some animation stress test
+                setInterval(() => {
+                    const element = document.querySelector('.test-container');
+                    element.style.transform = `translateZ(0) scale(${0.98 + Math.random() * 0.04})`;
+                }, 16); // ~60fps updates
+            }
+        }
+        
+        // Initialize tests on load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                updateBoosterStatus();
+                updateCacheStats();
+            }, 100);
+        });
+        
+        // Auto-update stats every 2 seconds
+        setInterval(() => {
+            updateBoosterStatus();
+            updateCacheStats();
+        }, 2000);
+        
+        console.log('🧪 Performance test suite loaded');
+    </script>
+</body>
+</html>

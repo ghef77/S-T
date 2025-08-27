@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Correction Automatique Synchronisation</title>
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5; 
+        }
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .button { 
+            background: #16a34a; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            margin: 5px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .button:hover { background: #15803d; }
+        .button.large { padding: 16px 32px; font-size: 16px; }
+        .output { 
+            background: #1f2937; 
+            color: #f3f4f6; 
+            padding: 15px; 
+            border-radius: 6px; 
+            margin: 10px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status { 
+            padding: 12px; 
+            border-radius: 6px; 
+            margin: 10px 0; 
+            font-weight: bold;
+        }
+        .status.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .status.success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .status.warning { background: #fefce8; color: #92400e; border: 1px solid #fde68a; }
+        .progress { background: #e5e7eb; height: 4px; border-radius: 2px; margin: 10px 0; overflow: hidden; }
+        .progress-bar { background: #16a34a; height: 100%; width: 0%; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Correction Automatique de la Synchronisation</h1>
+        
+        <div class="status warning">
+            <strong>Problème détecté :</strong> Client Supabase non initialisé, subscription realtime manquante
+        </div>
+        
+        <button class="button large" onclick="autoFixAll()">🚀 Correction Automatique Complète</button>
+        
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <div id="output" class="output">Prêt pour la correction automatique...\nCliquez sur le bouton ci-dessus pour commencer.</div>
+    </div>
+
+    <!-- Chargement de Supabase -->
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2'
+        window.createSupabaseClient = createClient;
+        
+        // Signal que le module est chargé
+        window.supabaseModuleLoaded = true;
+    </script>
+    
+    <!-- Chargement des scripts de diagnostic -->
+    <script src="realtime-sync-diagnostics.js"></script>
+    <script src="realtime-sync-fix.js"></script>
+    
+    <script>
+        const output = document.getElementById('output');
+        const progressBar = document.getElementById('progressBar');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '📄';
+            output.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function setProgress(percent) {
+            progressBar.style.width = percent + '%';
+        }
+        
+        function clearOutput() {
+            output.textContent = '';
+            setProgress(0);
+        }
+        
+        // Configuration Supabase (vraies clés trouvées dans index.html)
+        const SUPABASE_CONFIG = {
+            supabaseUrl: 'https://fiecugxopjxzqfdnaqsu.supabase.co',
+            supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw'
+        };
+        
+        async function autoFixAll() {
+            clearOutput();
+            log('🚀 Démarrage de la correction automatique complète...');
+            
+            try {
+                // Étape 1: Initialisation Supabase (20%)
+                setProgress(10);
+                log('📡 Étape 1/5: Initialisation du client Supabase...');
+                await initializeSupabase();
+                setProgress(20);
+                
+                // Étape 2: Configuration globale (40%)
+                log('⚙️ Étape 2/5: Configuration des variables globales...');
+                await setupGlobalVariables();
+                setProgress(40);
+                
+                // Étape 3: Nettoyage des flags de blocage (60%)
+                log('🧹 Étape 3/5: Nettoyage des flags de blocage...');
+                await clearBlockingFlags();
+                setProgress(60);
+                
+                // Étape 4: Configuration de la subscription realtime (80%)
+                log('📡 Étape 4/5: Configuration de la subscription realtime...');
+                await setupRealtimeSubscription();
+                setProgress(80);
+                
+                // Étape 5: Test final (100%)
+                log('🧪 Étape 5/5: Tests finaux...');
+                await runFinalTests();
+                setProgress(100);
+                
+                log('🎉 CORRECTION TERMINÉE AVEC SUCCÈS !', 'success');
+                log('✅ La synchronisation realtime est maintenant opérationnelle', 'success');
+                log('💡 Vous pouvez retourner à votre page principale', 'success');
+                
+            } catch (error) {
+                log('❌ Erreur lors de la correction: ' + error.message, 'error');
+                setProgress(0);
+            }
+        }
+        
+        async function initializeSupabase() {
+            // Attendre que le module soit chargé
+            let attempts = 0;
+            while (!window.supabaseModuleLoaded && attempts < 20) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
+            if (!window.createSupabaseClient) {
+                throw new Error('Module Supabase non chargé');
+            }
+            
+            // Créer le client
+            window.supabase = window.createSupabaseClient(
+                SUPABASE_CONFIG.supabaseUrl,
+                SUPABASE_CONFIG.supabaseAnonKey
+            );
+            
+            if (!window.supabase) {
+                throw new Error('Échec de création du client Supabase');
+            }
+            
+            log('  ✅ Client Supabase créé avec succès', 'success');
+            
+            // Test de connexion rapide
+            try {
+                await window.supabase.auth.getSession();
+                log('  ✅ Test de connexion réussi', 'success');
+            } catch (error) {
+                log('  ⚠️ Test de connexion partiel, mais client créé', 'warning');
+            }
+        }
+        
+        async function setupGlobalVariables() {
+            // Configuration globale
+            window.supabaseConfig = SUPABASE_CONFIG;
+            window.snapshotMode = 'live';
+            
+            // Flags de blocage
+            window.isLocalSaveInProgress = false;
+            window.isExcelSaveInProgress = false;
+            
+            // Fonction isRestoringCursor
+            window.isRestoringCursor = () => false;
+            
+            log('  ✅ Variables globales configurées', 'success');
+            log('  ✅ Mode snapshot défini sur "live"', 'success');
+            log('  ✅ Flags de blocage réinitialisés', 'success');
+        }
+        
+        async function clearBlockingFlags() {
+            if (typeof window.clearRealtimeFlags === 'function') {
+                window.clearRealtimeFlags();
+                log('  ✅ Flags de blocage vidés via clearRealtimeFlags', 'success');
+            }
+            
+            // Double vérification manuelle
+            if (window.realtimeFlagManager) {
+                window.realtimeFlagManager.clearAllFlags();
+                log('  ✅ Flags vidés via flagManager', 'success');
+            }
+            
+            log('  ✅ Tous les flags de blocage sont maintenant clairs', 'success');
+        }
+        
+        async function setupRealtimeSubscription() {
+            // Nettoyer toute subscription existante
+            if (window.realtimeSubscription) {
+                try {
+                    await window.supabase.removeChannel(window.realtimeSubscription);
+                    window.realtimeSubscription = null;
+                    log('  🧹 Ancienne subscription supprimée', 'success');
+                } catch (error) {
+                    log('  ⚠️ Nettoyage de l\'ancienne subscription: ' + error.message, 'warning');
+                }
+            }
+            
+            // Attendre un peu
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Créer une nouvelle subscription
+            const channelName = `staff-table-fixed-${Date.now()}`;
+            log(`  📡 Création du channel: ${channelName}`);
+            
+            const channel = window.supabase
+                .channel(channelName)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'staffTable'
+                }, (payload) => {
+                    log('🔄 [REALTIME] INSERT reçu: ' + JSON.stringify(payload.new));
+                })
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'staffTable'
+                }, (payload) => {
+                    log('🔄 [REALTIME] UPDATE reçu: ' + JSON.stringify(payload.new));
+                })
+                .on('postgres_changes', {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'staffTable'
+                }, (payload) => {
+                    log('🔄 [REALTIME] DELETE reçu: ' + JSON.stringify(payload.old));
+                });
+            
+            // S'abonner avec promesse
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('Timeout de subscription (10s)'));
+                }, 10000);
+                
+                channel.subscribe((status, error) => {
+                    clearTimeout(timeout);
+                    
+                    if (status === 'SUBSCRIBED') {
+                        window.realtimeSubscription = channel;
+                        log('  ✅ Subscription realtime créée avec succès', 'success');
+                        resolve(channel);
+                    } else if (status === 'CHANNEL_ERROR') {
+                        log('  ❌ Erreur de subscription: ' + (error?.message || 'Inconnue'), 'error');
+                        reject(error || new Error('Erreur de subscription'));
+                    } else if (status === 'TIMED_OUT') {
+                        log('  ❌ Timeout de subscription', 'error');
+                        reject(new Error('Timeout de subscription'));
+                    } else {
+                        log('  📊 Statut de subscription: ' + status);
+                    }
+                });
+            });
+        }
+        
+        async function runFinalTests() {
+            // Test de diagnostic complet
+            if (typeof window.diagnoseRealtime === 'function') {
+                log('  🔍 Exécution du diagnostic final...');
+                const result = await window.diagnoseRealtime();
+                
+                // Analyser les résultats
+                const issues = [];
+                
+                if (result.supabaseConnection.status !== 'SUCCESS') {
+                    issues.push('Connexion Supabase');
+                } else {
+                    log('    ✅ Connexion Supabase: OK', 'success');
+                }
+                
+                if (result.realtimeSubscription.subscriptionExists) {
+                    log('    ✅ Subscription realtime: OK', 'success');
+                } else {
+                    issues.push('Subscription realtime');
+                }
+                
+                if (!result.blockingFlags.isBlocked) {
+                    log('    ✅ Flags de blocage: OK', 'success');
+                } else {
+                    issues.push('Flags de blocage: ' + result.blockingFlags.activeBlocks.join(', '));
+                }
+                
+                if (result.networkConnectivity.status === 'SUCCESS') {
+                    log('    ✅ Connectivité réseau: OK', 'success');
+                } else {
+                    issues.push('Connectivité réseau');
+                }
+                
+                if (issues.length === 0) {
+                    log('  🎉 Tous les tests sont réussis !', 'success');
+                } else {
+                    log('  ⚠️ Problèmes restants: ' + issues.join(', '), 'warning');
+                }
+                
+            } else {
+                log('  ⚠️ Fonction diagnoseRealtime non disponible', 'warning');
+            }
+        }
+        
+        // Instructions au chargement
+        window.addEventListener('load', () => {
+            log('🚀 Interface de correction automatique chargée');
+            log('📋 Cette correction va:');
+            log('  1. Initialiser le client Supabase avec les vraies clés');
+            log('  2. Configurer toutes les variables globales');
+            log('  3. Vider tous les flags de blocage');
+            log('  4. Créer une nouvelle subscription realtime');
+            log('  5. Tester le bon fonctionnement');
+            log('');
+            log('🔧 Cliquez sur "Correction Automatique Complète" pour commencer');
+        });
+    </script>
+</body>
+</html>

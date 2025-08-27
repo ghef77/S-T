@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Supabase Initialization</title>
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .button { 
+            background: #16a34a; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover { background: #15803d; }
+        .button.danger { background: #dc2626; }
+        .button.danger:hover { background: #b91c1c; }
+        .output { 
+            background: #1f2937; 
+            color: #f3f4f6; 
+            padding: 15px; 
+            border-radius: 6px; 
+            margin: 10px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .status { 
+            padding: 10px; 
+            border-radius: 6px; 
+            margin: 10px 0; 
+            font-weight: bold;
+        }
+        .status.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .status.success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Fix Supabase Initialization</h1>
+        
+        <div class="status error">
+            <strong>Problème détecté :</strong> Client Supabase non initialisé
+        </div>
+        
+        <button class="button" onclick="initializeSupabase()">Initialiser Supabase</button>
+        <button class="button" onclick="testAfterInit()">Tester après initialisation</button>
+        <button class="button danger" onclick="forceFullFix()">Correction complète</button>
+        
+        <div id="output" class="output">Prêt à initialiser Supabase...</div>
+    </div>
+
+    <!-- Chargement de Supabase -->
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2'
+        window.createSupabaseClient = createClient;
+    </script>
+    
+    <script src="realtime-sync-diagnostics.js"></script>
+    <script src="realtime-sync-fix.js"></script>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '📄';
+            output.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function clearOutput() {
+            output.textContent = '';
+        }
+        
+        // Configuration Supabase (remplacez par vos vraies clés)
+        const SUPABASE_CONFIG = {
+            supabaseUrl: 'https://your-project.supabase.co',
+            supabaseAnonKey: 'your-anon-key'
+        };
+        
+        async function initializeSupabase() {
+            clearOutput();
+            log('🚀 Initialisation du client Supabase...');
+            
+            try {
+                // Vérifier si createClient est disponible
+                if (typeof window.createSupabaseClient !== 'function') {
+                    log('⚠️ Module Supabase en cours de chargement, tentative dans 2s...', 'warning');
+                    setTimeout(initializeSupabase, 2000);
+                    return;
+                }
+                
+                // Créer le client Supabase
+                log('📡 Création du client avec les paramètres...');
+                window.supabase = window.createSupabaseClient(
+                    SUPABASE_CONFIG.supabaseUrl,
+                    SUPABASE_CONFIG.supabaseAnonKey
+                );
+                
+                if (window.supabase) {
+                    log('✅ Client Supabase créé avec succès', 'success');
+                    
+                    // Définir la configuration globale
+                    window.supabaseConfig = SUPABASE_CONFIG;
+                    
+                    // Définir le mode snapshot
+                    window.snapshotMode = 'live';
+                    
+                    log('📊 Configuration globale définie', 'success');
+                    log('🔧 Mode snapshot défini sur "live"', 'success');
+                    
+                    // Test rapide de connexion
+                    await testConnection();
+                    
+                } else {
+                    log('❌ Échec de création du client', 'error');
+                }
+                
+            } catch (error) {
+                log('❌ Erreur lors de l\'initialisation: ' + error.message, 'error');
+                log('💡 Vérifiez vos clés Supabase dans le script', 'warning');
+            }
+        }
+        
+        async function testConnection() {
+            log('🔗 Test de connexion...');
+            
+            try {
+                // Test simple avec une requête vers auth
+                const { data, error } = await window.supabase.auth.getSession();
+                
+                if (error && !error.message.includes('Invalid API key')) {
+                    log('⚠️ Problème d\'authentification mais client initialisé', 'warning');
+                } else {
+                    log('✅ Test de connexion réussi', 'success');
+                }
+                
+                return true;
+                
+            } catch (error) {
+                log('❌ Test de connexion échoué: ' + error.message, 'error');
+                return false;
+            }
+        }
+        
+        async function testAfterInit() {
+            clearOutput();
+            log('🧪 Test après initialisation...');
+            
+            if (!window.supabase) {
+                log('❌ Client Supabase non disponible, initialisation requise', 'error');
+                return;
+            }
+            
+            // Re-exécuter le diagnostic
+            try {
+                if (typeof window.diagnoseRealtime === 'function') {
+                    log('🔍 Nouveau diagnostic en cours...');
+                    const result = await window.diagnoseRealtime();
+                    
+                    // Analyser les résultats
+                    if (result.supabaseConnection.status === 'SUCCESS') {
+                        log('✅ Connexion Supabase : OK', 'success');
+                    } else {
+                        log('❌ Connexion Supabase : ' + result.supabaseConnection.error, 'error');
+                    }
+                    
+                    if (result.networkConnectivity.status === 'SUCCESS') {
+                        log('✅ Connectivité réseau : OK', 'success');
+                    }
+                    
+                    if (result.blockingFlags.isBlocked) {
+                        log('⚠️ Flags de blocage actifs : ' + result.blockingFlags.activeBlocks.join(', '), 'warning');
+                    } else {
+                        log('✅ Aucun flag de blocage', 'success');
+                    }
+                    
+                } else {
+                    log('❌ Fonction diagnoseRealtime non disponible', 'error');
+                }
+                
+            } catch (error) {
+                log('❌ Erreur lors du test: ' + error.message, 'error');
+            }
+        }
+        
+        async function forceFullFix() {
+            clearOutput();
+            log('🔧 Correction complète en cours...');
+            
+            // 1. Initialiser Supabase
+            await initializeSupabase();
+            
+            // Attendre un peu
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 2. Vider les flags de blocage
+            if (typeof window.clearRealtimeFlags === 'function') {
+                log('🧹 Vidage des flags de blocage...');
+                window.clearRealtimeFlags();
+            }
+            
+            // 3. Forcer la reconnexion realtime
+            if (typeof window.forceRealtimeReconnect === 'function') {
+                log('🔄 Reconnexion realtime forcée...');
+                window.forceRealtimeReconnect();
+            }
+            
+            // 4. Test final
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            await testAfterInit();
+            
+            log('✅ Correction complète terminée', 'success');
+            log('💡 Vous pouvez maintenant tester la synchronisation sur votre page principale', 'success');
+        }
+        
+        // Instructions d'utilisation
+        window.addEventListener('load', () => {
+            log('🚀 Interface de correction chargée');
+            log('⚠️ IMPORTANT: Modifiez les clés Supabase dans le script avant d\'utiliser');
+            log('📝 Ligne ~55-58: Remplacez par vos vraies clés');
+            log('');
+            log('🔧 Actions disponibles:');
+            log('  1. Initialiser Supabase - Crée le client');
+            log('  2. Tester après init - Vérifie le fonctionnement');
+            log('  3. Correction complète - Tout en un');
+        });
+    </script>
+</body>
+</html>

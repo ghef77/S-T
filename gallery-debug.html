@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery Debug & Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .debug-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .debug-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+        
+        .debug-btn {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            background: #007bff;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .debug-btn:hover {
+            background: #0056b3;
+        }
+        
+        .debug-btn.success { background: #28a745; }
+        .debug-btn.warning { background: #ffc107; color: #212529; }
+        .debug-btn.danger { background: #dc3545; }
+        
+        .debug-output {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        
+        .status-good { color: #48bb78; }
+        .status-warning { color: #ed8936; }
+        .status-error { color: #f56565; }
+        .status-info { color: #63b3ed; }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .test-image {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .loading-shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>🔧 Gallery Debug & Test Console</h1>
+        <p>Debug and test gallery optimizations, fallback handling, and error recovery.</p>
+        
+        <div class="debug-section">
+            <h3>🔍 System Status</h3>
+            <div id="system-status"></div>
+            <button class="debug-btn" onclick="checkSystemStatus()">Check Status</button>
+            <button class="debug-btn" onclick="testNetworkStatus()">Test Network</button>
+        </div>
+        
+        <div class="debug-section">
+            <h3>🖼️ Gallery Tests</h3>
+            <button class="debug-btn success" onclick="enableDemoMode()">Enable Demo Mode</button>
+            <button class="debug-btn warning" onclick="disableDemoMode()">Disable Demo Mode</button>
+            <button class="debug-btn" onclick="testFallbackMode()">Test Fallback</button>
+            <button class="debug-btn danger" onclick="simulateSupabaseError()">Simulate DB Error</button>
+        </div>
+        
+        <div class="debug-section">
+            <h3>⚡ Performance Tests</h3>
+            <button class="debug-btn" onclick="testLazyLoading()">Test Lazy Loading</button>
+            <button class="debug-btn" onclick="testImageOptimization()">Test Image Optimization</button>
+            <button class="debug-btn" onclick="measureLoadTime()">Measure Load Time</button>
+            <button class="debug-btn" onclick="runStressTest()">Stress Test</button>
+        </div>
+        
+        <div class="debug-section">
+            <h3>📱 Mobile Tests</h3>
+            <button class="debug-btn" onclick="testTouchGestures()">Test Touch Gestures</button>
+            <button class="debug-btn" onclick="testResponsiveness()">Test Responsiveness</button>
+            <button class="debug-btn" onclick="simulateMobileView()">Simulate Mobile</button>
+        </div>
+        
+        <div class="debug-section">
+            <h3>🔄 Error Recovery</h3>
+            <button class="debug-btn" onclick="testErrorRecovery()">Test Error Recovery</button>
+            <button class="debug-btn" onclick="clearErrorState()">Clear Error State</button>
+            <button class="debug-btn success" onclick="resetToNormal()">Reset to Normal</button>
+        </div>
+        
+        <div class="debug-output" id="debug-output">
+            <span class="status-info">🔄 Gallery Debug Console initialized. Ready for testing.</span>
+        </div>
+        
+        <div class="debug-section">
+            <h3>🎯 Test Images</h3>
+            <div class="test-grid" id="test-grid">
+                <!-- Test images will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the gallery scripts -->
+    <script src="gallery-optimizer.js"></script>
+    <script src="smooth-image-viewer.js"></script>
+    <script src="gallery-fallback.js"></script>
+    
+    <script>
+        let testGallery = null;
+        let testOptimizer = null;
+        let testViewer = null;
+        let testFallback = null;
+
+        // Utility functions
+        function log(message, type = 'info') {
+            const output = document.getElementById('debug-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = `status-${type}`;
+            
+            const line = document.createElement('div');
+            line.className = className;
+            line.textContent = `[${timestamp}] ${message}`;
+            
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('debug-output').innerHTML = '';
+        }
+
+        // System status checks
+        function checkSystemStatus() {
+            log('🔍 Checking system status...', 'info');
+            
+            const status = {
+                galleryOptimizer: !!window.GalleryOptimizer,
+                smoothViewer: !!window.SmoothImageViewer,
+                galleryFallback: !!window.GalleryFallback,
+                online: navigator.onLine,
+                serviceWorker: 'serviceWorker' in navigator,
+                intersectionObserver: 'IntersectionObserver' in window,
+                webP: checkWebPSupport(),
+                touchSupport: 'ontouchstart' in window
+            };
+            
+            const statusDiv = document.getElementById('system-status');
+            statusDiv.innerHTML = Object.entries(status)
+                .map(([key, value]) => 
+                    `<div><strong>${key}:</strong> <span class="${value ? 'status-good' : 'status-error'}">${value ? '✅' : '❌'}</span></div>`
+                ).join('');
+            
+            log(`📊 System Status: ${Object.values(status).filter(Boolean).length}/${Object.keys(status).length} features available`, 'success');
+        }
+
+        function testNetworkStatus() {
+            log('🌐 Testing network connectivity...', 'info');
+            
+            fetch('https://httpbin.org/get', { method: 'HEAD' })
+                .then(() => log('✅ Network connection is working', 'success'))
+                .catch(() => log('❌ Network connection failed', 'error'));
+            
+            // Test Supabase connectivity (will likely fail due to 401)
+            fetch('https://fiecugxopjxzqfdnaqsu.supabase.co/rest/v1/', { method: 'HEAD' })
+                .then(response => {
+                    if (response.status === 401) {
+                        log('🔐 Supabase reachable but authentication required (expected)', 'warning');
+                    } else {
+                        log('✅ Supabase connection successful', 'success');
+                    }
+                })
+                .catch(() => log('❌ Supabase connection failed', 'error'));
+        }
+
+        function checkWebPSupport() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1;
+            canvas.height = 1;
+            return canvas.toDataURL('image/webp').indexOf('image/webp') === 5;
+        }
+
+        // Gallery tests
+        function enableDemoMode() {
+            log('🎭 Enabling demo mode...', 'info');
+            
+            if (window.enableGalleryDemo) {
+                const success = window.enableGalleryDemo();
+                if (success) {
+                    log('✅ Demo mode enabled successfully', 'success');
+                    loadTestImages();
+                } else {
+                    log('❌ Failed to enable demo mode', 'error');
+                }
+            } else {
+                log('❌ Demo mode function not available', 'error');
+            }
+        }
+
+        function disableDemoMode() {
+            log('🔄 Disabling demo mode...', 'info');
+            
+            if (window.disableGalleryDemo) {
+                window.disableGalleryDemo();
+                log('✅ Demo mode disabled', 'success');
+                clearTestImages();
+            } else {
+                log('❌ Demo mode disable function not available', 'error');
+            }
+        }
+
+        function testFallbackMode() {
+            log('🔄 Testing fallback mode...', 'info');
+            
+            if (window.galleryFallback) {
+                window.galleryFallback.enablePersistentFallbackMode();
+                log('✅ Fallback mode activated', 'success');
+                loadTestImages();
+            } else {
+                log('❌ Fallback handler not available', 'error');
+            }
+        }
+
+        function simulateSupabaseError() {
+            log('🚨 Simulating Supabase error...', 'warning');
+            
+            // Simulate a 401 error
+            const originalFetch = window.fetch;
+            window.fetch = async (url, ...args) => {
+                if (typeof url === 'string' && url.includes('supabase.co')) {
+                    throw new Error('Simulated Supabase error');
+                }
+                return originalFetch(url, ...args);
+            };
+            
+            log('⚠️ Supabase error simulation active', 'warning');
+            
+            // Restore after 10 seconds
+            setTimeout(() => {
+                window.fetch = originalFetch;
+                log('🔄 Supabase error simulation ended', 'info');
+            }, 10000);
+        }
+
+        // Performance tests
+        function testLazyLoading() {
+            log('⚡ Testing lazy loading performance...', 'info');
+            
+            const testImages = [
+                'https://picsum.photos/300/200?random=1',
+                'https://picsum.photos/300/200?random=2',
+                'https://picsum.photos/300/200?random=3',
+                'https://picsum.photos/300/200?random=4',
+                'https://picsum.photos/300/200?random=5',
+                'https://picsum.photos/300/200?random=6'
+            ];
+            
+            const testGrid = document.getElementById('test-grid');
+            testGrid.innerHTML = '';
+            
+            let loadedCount = 0;
+            const startTime = performance.now();
+            
+            testImages.forEach((src, index) => {
+                const img = document.createElement('img');
+                img.className = 'test-image loading-shimmer';
+                img.dataset.src = src;
+                img.alt = `Test Image ${index + 1}`;
+                
+                // Simulate lazy loading
+                setTimeout(() => {
+                    img.src = src;
+                    img.onload = () => {
+                        img.classList.remove('loading-shimmer');
+                        loadedCount++;
+                        if (loadedCount === testImages.length) {
+                            const loadTime = performance.now() - startTime;
+                            log(`✅ Lazy loading test completed in ${loadTime.toFixed(2)}ms`, 'success');
+                        }
+                    };
+                }, index * 200); // Stagger loading
+                
+                testGrid.appendChild(img);
+            });
+            
+            log(`🔄 Loading ${testImages.length} test images with lazy loading...`, 'info');
+        }
+
+        function testImageOptimization() {
+            log('🖼️ Testing image optimization...', 'info');
+            
+            if (window.GalleryOptimizer) {
+                const testOptimizer = new window.GalleryOptimizer({
+                    images: [],
+                    isInitialized: true
+                });
+                
+                const stats = testOptimizer.getPerformanceStats();
+                log(`📊 Optimizer stats: Cache: ${stats.cacheSize}, WebP: ${stats.webPSupport}`, 'info');
+                
+                testOptimizer.dispose();
+                log('✅ Image optimization test completed', 'success');
+            } else {
+                log('❌ Gallery Optimizer not available', 'error');
+            }
+        }
+
+        function measureLoadTime() {
+            log('⏱️ Measuring gallery load time...', 'info');
+            
+            const startTime = performance.now();
+            
+            // Simulate gallery loading
+            setTimeout(() => {
+                const loadTime = performance.now() - startTime;
+                log(`📈 Simulated gallery load time: ${loadTime.toFixed(2)}ms`, 'success');
+                
+                // Memory usage approximation
+                const memUsage = (performance.memory?.usedJSHeapSize || 0) / 1024 / 1024;
+                log(`💾 Estimated memory usage: ${memUsage.toFixed(2)} MB`, 'info');
+            }, Math.random() * 1000 + 500);
+        }
+
+        function runStressTest() {
+            log('🏋️ Running stress test with 100 images...', 'warning');
+            
+            const testGrid = document.getElementById('test-grid');
+            testGrid.innerHTML = '';
+            
+            const startTime = performance.now();
+            let loadedCount = 0;
+            
+            for (let i = 0; i < 100; i++) {
+                const img = document.createElement('img');
+                img.className = 'test-image loading-shimmer';
+                img.src = `https://picsum.photos/200/150?random=${i}`;
+                img.alt = `Stress Test Image ${i + 1}`;
+                
+                img.onload = () => {
+                    img.classList.remove('loading-shimmer');
+                    loadedCount++;
+                    if (loadedCount % 20 === 0) {
+                        log(`📈 Loaded ${loadedCount}/100 images...`, 'info');
+                    }
+                    if (loadedCount === 100) {
+                        const totalTime = performance.now() - startTime;
+                        log(`🏁 Stress test completed: 100 images in ${totalTime.toFixed(2)}ms`, 'success');
+                    }
+                };
+                
+                img.onerror = () => {
+                    img.classList.remove('loading-shimmer');
+                    loadedCount++;
+                };
+                
+                testGrid.appendChild(img);
+            }
+        }
+
+        // Mobile tests
+        function testTouchGestures() {
+            log('📱 Testing touch gesture support...', 'info');
+            
+            const touchSupport = {
+                touchStart: 'ontouchstart' in window,
+                touchMove: 'ontouchmove' in window,
+                touchEnd: 'ontouchend' in window,
+                pointerEvents: 'PointerEvent' in window,
+                gestureEvents: 'ongesturestart' in window
+            };
+            
+            Object.entries(touchSupport).forEach(([key, supported]) => {
+                log(`  ${key}: ${supported ? '✅' : '❌'}`, supported ? 'success' : 'warning');
+            });
+            
+            const supportedCount = Object.values(touchSupport).filter(Boolean).length;
+            log(`📊 Touch support: ${supportedCount}/${Object.keys(touchSupport).length} features`, 'info');
+        }
+
+        function testResponsiveness() {
+            log('📐 Testing responsive design...', 'info');
+            
+            const viewports = [
+                { name: 'Mobile', width: 375, height: 667 },
+                { name: 'Tablet', width: 768, height: 1024 },
+                { name: 'Desktop', width: 1920, height: 1080 }
+            ];
+            
+            viewports.forEach(viewport => {
+                const mediaQuery = `(max-width: ${viewport.width}px)`;
+                const matches = window.matchMedia(mediaQuery).matches;
+                log(`  ${viewport.name} (${viewport.width}x${viewport.height}): ${matches ? '🎯 Active' : '⚪ Inactive'}`, 'info');
+            });
+        }
+
+        function simulateMobileView() {
+            log('📱 Simulating mobile view...', 'info');
+            
+            document.body.style.maxWidth = '375px';
+            document.body.style.margin = '0 auto';
+            
+            log('✅ Mobile view simulation active', 'success');
+            log('💡 Refresh page to restore normal view', 'info');
+        }
+
+        // Error recovery tests
+        function testErrorRecovery() {
+            log('🔄 Testing error recovery mechanisms...', 'info');
+            
+            if (window.galleryFallback) {
+                const status = window.galleryFallback.getStatus();
+                log(`📊 Fallback status: Online: ${status.isOnline}, Attempts: ${status.errorRecoveryAttempts}/${status.maxRecoveryAttempts}`, 'info');
+                
+                // Simulate error recovery
+                window.galleryFallback.handleSupabaseError('Test error');
+                log('⚡ Error recovery test initiated', 'success');
+            } else {
+                log('❌ Fallback handler not available', 'error');
+            }
+        }
+
+        function clearErrorState() {
+            log('🧹 Clearing error state...', 'info');
+            
+            if (window.galleryFallback) {
+                window.galleryFallback.errorRecoveryAttempts = 0;
+                log('✅ Error state cleared', 'success');
+            } else {
+                log('❌ Fallback handler not available', 'error');
+            }
+        }
+
+        function resetToNormal() {
+            log('🔄 Resetting to normal state...', 'info');
+            
+            // Clear test images
+            clearTestImages();
+            
+            // Clear error states
+            clearErrorState();
+            
+            // Remove demo mode
+            const demoIndicator = document.getElementById('demo-mode-indicator');
+            if (demoIndicator) {
+                demoIndicator.remove();
+            }
+            
+            // Reset body styles
+            document.body.style.maxWidth = '';
+            document.body.style.margin = '';
+            
+            log('✅ Reset to normal state completed', 'success');
+        }
+
+        // Helper functions
+        function loadTestImages() {
+            const testGrid = document.getElementById('test-grid');
+            if (testGrid.children.length === 0) {
+                testLazyLoading();
+            }
+        }
+
+        function clearTestImages() {
+            document.getElementById('test-grid').innerHTML = '';
+            log('🗑️ Test images cleared', 'info');
+        }
+
+        // Initialize debug console
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🔧 Gallery Debug Console initialized', 'success');
+            log('💡 Use the buttons above to test various gallery features', 'info');
+            
+            // Auto-check system status on load
+            setTimeout(checkSystemStatus, 1000);
+        });
+    </script>
+</body>
+</html>

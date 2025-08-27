@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test des outils de synchronisation</title>
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5; 
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .button { 
+            background: #16a34a; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover { background: #15803d; }
+        .button.danger { background: #dc2626; }
+        .button.danger:hover { background: #b91c1c; }
+        .button.warning { background: #eab308; color: #000; }
+        .button.warning:hover { background: #ca8a04; }
+        .output { 
+            background: #1f2937; 
+            color: #f3f4f6; 
+            padding: 15px; 
+            border-radius: 6px; 
+            margin: 10px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .status { 
+            padding: 10px; 
+            border-radius: 6px; 
+            margin: 10px 0; 
+            font-weight: bold;
+        }
+        .status.success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .status.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .status.warning { background: #fefce8; color: #92400e; border: 1px solid #fde68a; }
+        .status.info { background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; }
+        h1, h2, h3 { color: #1f2937; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test des outils de synchronisation</h1>
+        
+        <div class="status info">
+            <strong>Serveur local:</strong> http://localhost:8001
+        </div>
+        
+        <h2>🔍 Diagnostics</h2>
+        <div class="grid">
+            <button class="button" onclick="runDiagnostic()">Diagnostic complet</button>
+            <button class="button" onclick="testConnection()">Test connexion</button>
+            <button class="button" onclick="testSubscription()">Test subscription</button>
+            <button class="button" onclick="checkFlags()">Vérifier flags</button>
+        </div>
+        
+        <h2>🛠️ Corrections</h2>
+        <div class="grid">
+            <button class="button warning" onclick="fixRealtime()">Correction auto</button>
+            <button class="button danger" onclick="forceReconnect()">Reconnexion forcée</button>
+            <button class="button warning" onclick="clearFlags()">Vider flags</button>
+            <button class="button" onclick="getStatus()">État actuel</button>
+        </div>
+        
+        <h2>📊 Résultats</h2>
+        <div id="output" class="output">Cliquez sur un bouton pour commencer les tests...</div>
+    </div>
+
+    <!-- Chargement des scripts de diagnostic -->
+    <script src="realtime-sync-diagnostics.js"></script>
+    <script src="realtime-sync-fix.js"></script>
+    <script src="supabase-diagnostic.js"></script>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '📄';
+            output.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function clearOutput() {
+            output.textContent = '';
+        }
+        
+        // Capture les logs de la console
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            log(args.join(' '), 'info');
+        };
+        
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            log(args.join(' '), 'error');
+        };
+        
+        // Fonctions de test
+        async function runDiagnostic() {
+            clearOutput();
+            log('🔍 Démarrage du diagnostic complet...');
+            
+            try {
+                if (typeof window.diagnoseRealtime === 'function') {
+                    const result = await window.diagnoseRealtime();
+                    log('✅ Diagnostic terminé avec succès', 'success');
+                    log('Résultats: ' + JSON.stringify(result, null, 2));
+                } else {
+                    log('❌ Fonction diagnoseRealtime non disponible', 'error');
+                }
+            } catch (error) {
+                log('❌ Erreur lors du diagnostic: ' + error.message, 'error');
+            }
+        }
+        
+        async function testConnection() {
+            clearOutput();
+            log('🔗 Test de connexion Supabase...');
+            
+            try {
+                if (window.realtimeDiagnostics) {
+                    const result = await window.realtimeDiagnostics.testSupabaseConnection();
+                    log('Résultat: ' + JSON.stringify(result, null, 2));
+                } else {
+                    log('❌ Diagnostics non disponibles', 'error');
+                }
+            } catch (error) {
+                log('❌ Erreur lors du test: ' + error.message, 'error');
+            }
+        }
+        
+        function testSubscription() {
+            clearOutput();
+            log('📡 Test de subscription realtime...');
+            
+            try {
+                if (window.realtimeDiagnostics) {
+                    const result = window.realtimeDiagnostics.testRealtimeSubscription();
+                    log('Résultat: ' + JSON.stringify(result, null, 2));
+                } else {
+                    log('❌ Diagnostics non disponibles', 'error');
+                }
+            } catch (error) {
+                log('❌ Erreur lors du test: ' + error.message, 'error');
+            }
+        }
+        
+        function checkFlags() {
+            clearOutput();
+            log('🏁 Vérification des flags de blocage...');
+            
+            try {
+                if (window.realtimeDiagnostics) {
+                    const result = window.realtimeDiagnostics.checkBlockingFlags();
+                    log('Résultat: ' + JSON.stringify(result, null, 2));
+                } else {
+                    log('❌ Diagnostics non disponibles', 'error');
+                }
+            } catch (error) {
+                log('❌ Erreur lors de la vérification: ' + error.message, 'error');
+            }
+        }
+        
+        async function fixRealtime() {
+            clearOutput();
+            log('🛠️ Correction automatique des problèmes...');
+            
+            try {
+                if (typeof window.fixRealtime === 'function') {
+                    const result = await window.fixRealtime();
+                    log('✅ Correction terminée', 'success');
+                    log('Résultats: ' + JSON.stringify(result, null, 2));
+                } else {
+                    log('❌ Fonction fixRealtime non disponible', 'error');
+                }
+            } catch (error) {
+                log('❌ Erreur lors de la correction: ' + error.message, 'error');
+            }
+        }
+        
+        function forceReconnect() {
+            clearOutput();
+            log('🔄 Reconnexion forcée...');
+            
+            try {
+                if (typeof window.forceRealtimeReconnect === 'function') {
+                    window.forceRealtimeReconnect();
+                    log('✅ Reconnexion initiée', 'success');
+                } else {
+                    log('❌ Fonction forceRealtimeReconnect non disponible', 'error');
+                }
+            } catch (error) {
+                log('❌ Erreur lors de la reconnexion: ' + error.message, 'error');
+            }
+        }
+        
+        function clearFlags() {
+            clearOutput();
+            log('🧹 Vidage des flags de blocage...');
+            
+            try {
+                if (typeof window.clearRealtimeFlags === 'function') {
+                    window.clearRealtimeFlags();
+                    log('✅ Flags vidés', 'success');
+                } else {
+                    log('❌ Fonction clearRealtimeFlags non disponible', 'error');
+                }
+            } catch (error) {
+                log('❌ Erreur lors du vidage: ' + error.message, 'error');
+            }
+        }
+        
+        function getStatus() {
+            clearOutput();
+            log('📊 Récupération de l\'état actuel...');
+            
+            try {
+                if (typeof window.getRealtimeStatus === 'function') {
+                    const status = window.getRealtimeStatus();
+                    log('État: ' + JSON.stringify(status, null, 2));
+                } else {
+                    log('❌ Fonction getRealtimeStatus non disponible', 'error');
+                }
+            } catch (error) {
+                log('❌ Erreur lors de la récupération: ' + error.message, 'error');
+            }
+        }
+        
+        // Auto-diagnostic au chargement
+        window.addEventListener('load', () => {
+            log('🚀 Interface de test chargée');
+            log('📡 Serveur local actif sur http://localhost:8001');
+            
+            // Vérifier les outils disponibles
+            const tools = [
+                'diagnoseRealtime',
+                'fixRealtime',
+                'forceRealtimeReconnect',
+                'getRealtimeStatus',
+                'clearRealtimeFlags'
+            ];
+            
+            tools.forEach(tool => {
+                if (typeof window[tool] === 'function') {
+                    log(`✅ ${tool} disponible`);
+                } else {
+                    log(`⚠️ ${tool} non disponible`, 'warning');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
