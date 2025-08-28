@@ -1678,7 +1678,7 @@
             <button onclick="downloadImage()" title="Exporter en image (PNG)" aria-label="Exporter en image (PNG)" class="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center w-9 h-9">
                 <i class="fa-solid fa-image w-4.5 h-4.5"></i>
             </button>
-            <button onclick="document.getElementById('excel-input').click()" title="Importer depuis Excel" aria-label="Importer depuis Excel" class="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center w-9 h-9">
+            <button onclick="SafeDOM.safeClick('excel-input')" title="Importer depuis Excel" aria-label="Importer depuis Excel" class="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center w-9 h-9">
                 <i class="fa-solid fa-upload w-4.5 h-4.5"></i>
             </button>
             <button onclick="openSimpleGallery()" title="Galerie d'images (G)" aria-label="Galerie d'images" class="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center w-9 h-9">
@@ -1851,7 +1851,8 @@
         const supabaseConfig = { 
             supabaseUrl: 'https://fiecugxopjxzqfdnaqsu.supabase.co', 
             supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw', 
-            supabaseServiceKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDUwNTY1NywiZXhwIjoyMDcwMDgxNjU3fQ.5m7nLHxHxOkxQf8maZis7Y7jynqu2dWqIzEbgWvOTcE',
+            // SECURITY FIX: Service key removed from client-side code
+            // Use server-side API endpoints for operations requiring elevated privileges
             tableName: 'staffTable', 
             primaryKeyColumn: 'No' 
         };
@@ -1873,6 +1874,286 @@
             serverColumns: null 
         };
         
+        // Race Condition Protection System
+        const RaceConditionGuard = {
+            flags: new Map(),
+            
+            setFlag(flag, value = true) {
+                const oldValue = this.flags.get(flag) || false;
+                this.flags.set(flag, value);
+                
+                if (oldValue !== value) {
+                    console.debug(`Race condition flag "${flag}" changed: ${oldValue} -> ${value}`);
+                }
+                
+                return oldValue;
+            },
+            
+            getFlag(flag) {
+                return this.flags.get(flag) || false;
+            },
+            
+            isAnyFlagSet(flags) {
+                return flags.some(flag => this.getFlag(flag));
+            },
+            
+            clearFlag(flag) {
+                const wasSet = this.flags.get(flag) || false;
+                this.flags.set(flag, false);
+                return wasSet;
+            },
+            
+            clearAllFlags() {
+                this.flags.clear();
+            },
+            
+            withFlag(flag, asyncOperation) {
+                return async (...args) => {
+                    if (this.getFlag(flag)) {
+                        console.warn(`Operation blocked: ${flag} is already in progress`);
+                        return null;
+                    }
+                    
+                    this.setFlag(flag, true);
+                    try {
+                        return await asyncOperation(...args);
+                    } finally {
+                        this.clearFlag(flag);
+                    }
+                };
+            },
+            
+            getActiveFlags() {
+                return Array.from(this.flags.entries()).filter(([key, value]) => value).map(([key]) => key);
+            }
+        };
+        
+        // Initialize common race condition flags
+        RaceConditionGuard.setFlag('isLocalSaveInProgress', false);
+        RaceConditionGuard.setFlag('isExcelSaveInProgress', false);
+        RaceConditionGuard.setFlag('isBulkEditInProgress', false);
+        RaceConditionGuard.setFlag('isRestoringFromSnapshot', false);
+        RaceConditionGuard.setFlag('isInitializingApp', false);
+        
+        // Legacy compatibility - map old global variables
+        Object.defineProperty(window, 'isLocalSaveInProgress', {
+            get: () => RaceConditionGuard.getFlag('isLocalSaveInProgress'),
+            set: (value) => RaceConditionGuard.setFlag('isLocalSaveInProgress', value)
+        });
+        
+        // Event Listener Management System for Memory Leak Prevention
+        const EventListenerManager = {
+            listeners: new Map(),
+            
+            addEventListener(element, eventType, handler, options = {}) {
+                if (!element || typeof handler !== 'function') return;
+                
+                const key = `${element.tagName || 'window'}-${eventType}-${Date.now()}`;
+                element.addEventListener(eventType, handler, options);
+                
+                this.listeners.set(key, {
+                    element,
+                    eventType,
+                    handler,
+                    options
+                });
+                
+                return key; // Return key for manual removal if needed
+            },
+            
+            removeEventListener(key) {
+                if (!this.listeners.has(key)) return false;
+                
+                const { element, eventType, handler } = this.listeners.get(key);
+                element.removeEventListener(eventType, handler);
+                this.listeners.delete(key);
+                return true;
+            },
+            
+            cleanup() {
+                for (const [key, { element, eventType, handler }] of this.listeners) {
+                    try {
+                        element.removeEventListener(eventType, handler);
+                    } catch (e) {
+                        console.warn(`Failed to remove event listener ${key}:`, e);
+                    }
+                }
+                this.listeners.clear();
+            },
+            
+            getActiveListeners() {
+                return this.listeners.size;
+            }
+        };
+        
+        // Timer Management System
+        const TimerManager = {
+            timers: new Map(),
+            
+            setTimeout(callback, delay, id = null) {
+                const timerId = id || `timeout-${Date.now()}`;
+                const timeoutId = setTimeout(() => {
+                    this.timers.delete(timerId);
+                    callback();
+                }, delay);
+                
+                this.timers.set(timerId, { type: 'timeout', id: timeoutId });
+                return timerId;
+            },
+            
+            setInterval(callback, delay, id = null) {
+                const timerId = id || `interval-${Date.now()}`;
+                const intervalId = setInterval(callback, delay);
+                
+                this.timers.set(timerId, { type: 'interval', id: intervalId });
+                return timerId;
+            },
+            
+            clearTimer(timerId) {
+                if (!this.timers.has(timerId)) return false;
+                
+                const timer = this.timers.get(timerId);
+                if (timer.type === 'timeout') {
+                    clearTimeout(timer.id);
+                } else if (timer.type === 'interval') {
+                    clearInterval(timer.id);
+                }
+                
+                this.timers.delete(timerId);
+                return true;
+            },
+            
+            cleanup() {
+                for (const [timerId, timer] of this.timers) {
+                    if (timer.type === 'timeout') {
+                        clearTimeout(timer.id);
+                    } else if (timer.type === 'interval') {
+                        clearInterval(timer.id);
+                    }
+                }
+                this.timers.clear();
+            },
+            
+            getActiveTimers() {
+                return this.timers.size;
+            }
+        };
+
+        // Safe DOM Access Utilities
+        const SafeDOM = {
+            getElementById(id, required = false) {
+                const element = document.getElementById(id);
+                if (!element && required) {
+                    console.error(`Required element with ID '${id}' not found`);
+                }
+                return element;
+            },
+            
+            querySelector(selector, required = false) {
+                const element = document.querySelector(selector);
+                if (!element && required) {
+                    console.error(`Required element with selector '${selector}' not found`);
+                }
+                return element;
+            },
+            
+            querySelectorAll(selector) {
+                return document.querySelectorAll(selector) || [];
+            },
+            
+            safeClick(elementOrId) {
+                const element = typeof elementOrId === 'string' ? 
+                    this.getElementById(elementOrId) : elementOrId;
+                    
+                if (element && typeof element.click === 'function') {
+                    element.click();
+                    return true;
+                }
+                return false;
+            },
+            
+            safeSetValue(elementOrId, value) {
+                const element = typeof elementOrId === 'string' ? 
+                    this.getElementById(elementOrId) : elementOrId;
+                    
+                if (element) {
+                    element.value = value;
+                    return true;
+                }
+                return false;
+            },
+            
+            safeAddClass(elementOrId, className) {
+                const element = typeof elementOrId === 'string' ? 
+                    this.getElementById(elementOrId) : elementOrId;
+                    
+                if (element && element.classList) {
+                    element.classList.add(className);
+                    return true;
+                }
+                return false;
+            },
+            
+            safeRemoveClass(elementOrId, className) {
+                const element = typeof elementOrId === 'string' ? 
+                    this.getElementById(elementOrId) : elementOrId;
+                    
+                if (element && element.classList) {
+                    element.classList.remove(className);
+                    return true;
+                }
+                return false;
+            },
+            
+            // Safe HTML setting - prevents XSS
+            safeSetHTML(elementOrId, htmlContent, allowedTags = ['i', 'span']) {
+                const element = typeof elementOrId === 'string' ? 
+                    this.getElementById(elementOrId) : elementOrId;
+                    
+                if (!element) return false;
+                
+                // For simple icon HTML, use innerHTML directly as it's safe
+                if (typeof htmlContent === 'string' && this.isSimpleIconHTML(htmlContent, allowedTags)) {
+                    element.innerHTML = htmlContent;
+                    return true;
+                }
+                
+                // For other content, use textContent to prevent XSS
+                element.textContent = htmlContent;
+                return true;
+            },
+            
+            // Check if HTML content is safe (only simple icons)
+            isSimpleIconHTML(html, allowedTags = ['i', 'span']) {
+                if (!html || typeof html !== 'string') return false;
+                
+                // Check for dangerous patterns
+                const dangerousPatterns = [
+                    /<script/i,
+                    /javascript:/i,
+                    /on\w+\s*=/i,
+                    /<iframe/i,
+                    /<object/i,
+                    /<embed/i
+                ];
+                
+                if (dangerousPatterns.some(pattern => pattern.test(html))) {
+                    return false;
+                }
+                
+                // Check if only allowed tags are used
+                const tagRegex = /<(\w+)/g;
+                let match;
+                while ((match = tagRegex.exec(html)) !== null) {
+                    if (!allowedTags.includes(match[1].toLowerCase())) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            }
+        };
+
         // DOM Element Cache for Performance
         const domCache = {
             table: null,
@@ -1883,10 +2164,10 @@
             historyBar: null,
             autosaveIndicator: null,
             
-            // Initialize cache
+            // Initialize cache with null safety
             init() {
-                this.table = document.getElementById('data-table');
-                this.tbody = document.querySelector('#data-table tbody');
+                this.table = SafeDOM.getElementById('data-table');
+                this.tbody = SafeDOM.querySelector('#data-table tbody');
                 this.status = document.getElementById('sync-status');
                 this.saveBtn = document.getElementById('save-btn');
                 this.refreshBtn = document.getElementById('refresh-btn');
@@ -2020,7 +2301,7 @@
                                 
                                 // Restore caret position if possible
                                 if (focusState.caretOffset > 0) {
-                                    setTimeout(() => {
+                                    TimerManager.setTimeout(() => {
                                         try {
                                             const range = document.createRange();
                                             const sel = window.getSelection();
@@ -2063,7 +2344,7 @@
                 console.log('🚫 CursorManager: Cursor restoration prevented for next operation');
                 
                 // Auto-reset the flag after a short delay to allow normal operation to resume
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     this.preventRestore = false;
                     console.log('✅ CursorManager: Cursor restoration re-enabled');
                 }, 1000);
@@ -2099,7 +2380,8 @@
                     'td[contenteditable]',
                     (event) => {
                         const cell = event.target;
-                        console.log('📝 [EXCEL-SAVE] Input detected in cell:', cell.getAttribute('data-label'), '- save on blur only');
+                        const label = cell && cell.getAttribute ? cell.getAttribute('data-label') : 'unknown';
+                        console.log('📝 [EXCEL-SAVE] Input detected in cell:', label, '- save on blur only');
                         isDirty = true;
                         isTyping = true;
                         lastEditAt = Date.now();
@@ -2160,7 +2442,7 @@
         let capturedFocusState = null;
         let focusRestorationEnabled = true;
         let isRestoringCursor = false; // Flag to prevent save cascades during restoration
-        let isExcelSaveInProgress = false; // Flag for Excel-like save operations
+        // Removed: now using RaceConditionGuard.getFlag('isExcelSaveInProgress')
         
         // Function to update global reference
         function updateGlobalFocusState(newState) {
@@ -2248,7 +2530,7 @@
                 
                 // Schedule cursor restoration after save
                 if (cursorState) {
-                    setTimeout(() => {
+                    TimerManager.setTimeout(() => {
                         cursorManager.restoreFocus(cursorState, 50);
                     }, 200);
                 }
@@ -2267,12 +2549,12 @@
                 return false;
             } finally {
                 // Clear local save flag
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     window.isLocalSaveInProgress = false;
                     console.log('🔓 [EXCEL-SAVE] Local save flag cleared');
                 }, 500);
-                setTimeout(() => {
-                    isExcelSaveInProgress = false;
+                TimerManager.setTimeout(() => {
+                    RaceConditionGuard.clearFlag('isExcelSaveInProgress');
                     console.log('🔓 [EXCEL-SAVE] Excel save flag cleared - realtime sync re-enabled');
                 }, 4000); // Extended to 4 seconds for better protection
                 
@@ -2782,48 +3064,62 @@
         };
         
         // Initialize performance monitoring
-        window.addEventListener('load', () => {
+        EventListenerManager.addEventListener(window, 'load', () => {
             PerformanceMonitor.start('page-load');
             DOM_CACHE.init();
             
             // Complete page load timing
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 PerformanceMonitor.end('page-load');
             }, 0);
             
             // Check performance periodically with low impact
-            setInterval(() => {
+            TimerManager.setInterval(() => {
                 if (Math.random() < 0.1) { // 10% chance
                     requestIdleCallback(() => {
                         PerformanceMonitor.checkMemory();
                     });
                 }
-            }, 30000); // Every 30 seconds
+            }, 30000, 'performance-monitor'); // Every 30 seconds
             
             // Initialize button bar scroll behavior
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 if (typeof updateButtonBarScroll === 'function') {
                     updateButtonBarScroll();
                 }
             }, 100);
             
             // Initialize mobile keyboard detection
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 if (typeof setupMobileKeyboardDetection === 'function') {
                     setupMobileKeyboardDetection();
                 }
             }, 200);
             
             // Initialize mobile zoom prevention
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 if (typeof setupMobileZoomPrevention === 'function') {
                     setupMobileZoomPrevention();
                 }
             }, 300);
         });
         
+        // Cleanup system - prevent memory leaks on page unload
+        EventListenerManager.addEventListener(window, 'beforeunload', () => {
+            EventListenerManager.cleanup();
+            TimerManager.cleanup();
+        });
+        
+        // Also cleanup when the page becomes hidden (mobile apps, tab switching)
+        EventListenerManager.addEventListener(document, 'visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                // Optional: pause expensive operations
+                console.log('Page hidden - consider pausing operations');
+            }
+        });
+        
         // Add resize listener to adapt messages when screen size changes
-        window.addEventListener('resize', () => {
+        EventListenerManager.addEventListener(window, 'resize', () => {
             // Debounce resize events to avoid excessive updates
             clearTimeout(window.resizeTimeout);
             window.resizeTimeout = setTimeout(() => {
@@ -2914,7 +3210,7 @@
                     document.addEventListener('focusout', (e) => {
                         if (e.target && e.target.contentEditable === 'true') {
                             // Small delay to allow for keyboard hide animation
-                            setTimeout(() => {
+                            TimerManager.setTimeout(() => {
                                 if (!document.activeElement || document.activeElement.contentEditable !== 'true') {
                                     mobileKeyboardVisible = false;
                                     console.log('📱 iOS: Keyboard likely hidden (focusout from editable cell)');
@@ -2944,7 +3240,7 @@
                 buttonBar.style.scrollBehavior = 'smooth';
                 
                 // Auto-scroll to show active buttons if needed
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     const activeButton = buttonBar.querySelector('.bg-blue-500, .bg-green-500, .bg-yellow-500');
                     if (activeButton) {
                         activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -3363,7 +3659,7 @@
                     showMessage('💾 Sauvegarde automatique...', 'info', 1000);
                 }
                 
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     try {
                         // Save locally first (fast backup)
                         if (typeof saveLocalDraft === 'function') {
@@ -3376,7 +3672,7 @@
                             console.log('✅ Automatic save completed after undo');
                             
                             // Show success message briefly
-                            setTimeout(() => {
+                            TimerManager.setTimeout(() => {
                                 if (typeof showMessage === 'function') {
                                     showMessage('✅ Sauvegardé', 'success', 1500);
                                 }
@@ -3475,7 +3771,7 @@
                     showMessage('💾 Sauvegarde automatique...', 'info', 1000);
                 }
                 
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     try {
                         // Save locally first (fast backup)
                         if (typeof saveLocalDraft === 'function') {
@@ -3488,7 +3784,7 @@
                             console.log('✅ Automatic save completed after redo');
                             
                             // Show success message briefly
-                            setTimeout(() => {
+                            TimerManager.setTimeout(() => {
                                 if (typeof showMessage === 'function') {
                                     showMessage('✅ Sauvegardé', 'success', 1500);
                                 }
@@ -4240,13 +4536,13 @@
             if (!btn) return;
             
             if (paintMode === 'auto') { 
-                btn.innerHTML = '<i class="fa-solid fa-arrows-rotate w-4 h-4"></i>'; 
+                SafeDOM.safeSetHTML(btn, '<i class="fa-solid fa-arrows-rotate w-4 h-4"></i>'); 
                 btn.title = 'Mode Auto: Cliquez pour colorer/décolorer (P pour changer)'; 
             } else if (paintMode === 'color') { 
-                btn.innerHTML = '<i class="fa-solid fa-paintbrush w-4 h-4"></i>'; 
+                SafeDOM.safeSetHTML(btn, '<i class="fa-solid fa-paintbrush w-4 h-4"></i>'); 
                 btn.title = 'Mode Colorer (P pour changer)'; 
             } else { 
-                btn.innerHTML = '<i class="fa-solid fa-eraser w-4 h-4"></i>'; 
+                SafeDOM.safeSetHTML(btn, '<i class="fa-solid fa-eraser w-4 h-4"></i>'); 
                 btn.title = 'Mode Effacer (P pour changer)'; 
             }
         }
@@ -4276,7 +4572,7 @@
             if (!btn) return;
             
             if (showOnlyColored) {
-                btn.innerHTML = '<i class="fa-solid fa-eye w-4 h-4"></i>';
+                SafeDOM.safeSetHTML(btn, '<i class="fa-solid fa-eye w-4 h-4"></i>');
                 btn.title = 'Afficher toutes les lignes';
                 btn.setAttribute('aria-pressed', 'true');
             } else {
@@ -4315,7 +4611,7 @@
             } else {
                 btn.className = 'bg-blue-200 text-blue-800 p-2 rounded-lg hover:bg-blue-300 transition-colors flex items-center justify-center w-8 h-8';
                 btn.title = 'Activer le mode visualisation (lecture seule)';
-                btn.innerHTML = '<i class="fa-solid fa-eye w-4 h-4"></i>';
+                SafeDOM.safeSetHTML(btn, '<i class="fa-solid fa-eye w-4 h-4"></i>');
             }
         }
         
@@ -4384,7 +4680,7 @@
             // Réactiver les sauvegardes après un délai adaptatif selon l'appareil
             if (isViewMode && Object.keys(originalFunctions).length > 0) {
                 const restoreDelay = isMobile() ? 6000 : 3000;
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     if (originalFunctions.markEdited) {
                         window.markEdited = originalFunctions.markEdited;
                     }
@@ -4443,7 +4739,7 @@
                 
                 // Réactiver les sauvegardes après un délai adaptatif selon l'appareil
                 const restoreDelay = isMobile() ? 4000 : 2000;
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     window.markEdited = originalMarkEdited;
                 }, restoreDelay);
             }
@@ -4631,7 +4927,7 @@
                     cell.scrollIntoView({ block: 'center', inline: 'nearest' }); 
                 } catch(_) {}
                 
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     try {
                         cell.dispatchEvent(new Event('pointerdown', { bubbles: true }));
                         cell.dispatchEvent(new Event('mousedown', { bubbles: true }));
@@ -4657,7 +4953,7 @@
                             });
                         } catch(_) {}
                         
-                        setTimeout(() => { 
+                        TimerManager.setTimeout(() => { 
                             setCaretAt(cell, null); 
                         }, 250);
                     } catch(_) {
@@ -4840,7 +5136,7 @@
             } catch(_) {}
             
             if (!placed) { 
-                setTimeout(() => { 
+                TimerManager.setTimeout(() => { 
                     try { 
                         setCaretAt(cell, null); 
                     } catch(_) {} 
@@ -5069,7 +5365,7 @@
                             // Clean: Removed debug log
                             
                             // Appliquer le mode visualisation aux nouvelles cellules
-                            setTimeout(() => {
+                            TimerManager.setTimeout(() => {
                                 // Clean: Removed debug log
                                 const editableCells = document.querySelectorAll('.editable-cell');
                                 editableCells.forEach(cell => {
@@ -5105,7 +5401,7 @@
                                 // Clean: Removed debug log
                                 
                                 // Réactiver les sauvegardes après un délai adaptatif
-                                setTimeout(() => {
+                                TimerManager.setTimeout(() => {
                                     // Clean: Removed debug log
                                     if (originalFunctions.markEdited) {
                                         window.markEdited = originalFunctions.markEdited;
@@ -5214,7 +5510,7 @@
           sel.addEventListener('change',()=>{ row.classList.toggle('selected-row', sel.checked); });
           const deleteButton=document.createElement('button');
           deleteButton.className='text-red-500 hover:text-red-700 font-bold p-2 transition-colors';
-          deleteButton.innerHTML='🗑️';
+          deleteButton.textContent='🗑️';
           deleteButton.onclick=(e)=>{
             e.stopPropagation();
             const selected = Array.from(document.querySelectorAll('#table-body tr.selected-row'));
@@ -5319,7 +5615,7 @@
             
             // Gérer le collage (seulement si le contenu change)
             cell.addEventListener('paste', () => {
-              setTimeout(() => {
+              TimerManager.setTimeout(() => {
                 const pastedValue = cell.textContent;
                 const formattedValue = formatNomPrenom(pastedValue);
                 cell.textContent = formattedValue;
@@ -5351,7 +5647,7 @@
             });
             
             cell.addEventListener('paste', () => {
-              setTimeout(() => {
+              TimerManager.setTimeout(() => {
                 const pastedValue = cell.textContent;
                 // Sauvegarder seulement si le contenu collé est différent
                 if (pastedValue !== initialValue) {
@@ -6282,7 +6578,7 @@
                 if (capturedFocusState && (capturedFocusState.element || (capturedFocusState.rowIndex >= 0 && capturedFocusState.colLabel))) {
                     log(`🔄 Restauration de la cellule sélectionnée après sauvegarde: ${capturedFocusState.colLabel}`, 'info');
                     
-                    setTimeout(() => {
+                    TimerManager.setTimeout(() => {
                         try {
                             // Set restoration flag to prevent save cascades
                             isRestoringCursor = true;
@@ -6345,7 +6641,7 @@
                                 targetElement.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                                 
                                 // Clear captured focus state after successful restoration
-                                setTimeout(() => {
+                                TimerManager.setTimeout(() => {
                                     updateGlobalFocusState(null);
                                     log('🧹 Captured focus state cleared after successful restoration');
                                 }, 1000);
@@ -6358,7 +6654,7 @@
                             log(`❌ Erreur lors de la restauration de la cellule sélectionnée: ${error.message}`, 'error');
                         } finally {
                             // Always clear the restoration flag
-                            setTimeout(() => {
+                            TimerManager.setTimeout(() => {
                                 isRestoringCursor = false;
                                 console.log('🔓 Cursor restoration completed - save operations re-enabled');
                             }, 1500); // Give extra time for all restoration operations to complete
@@ -6377,7 +6673,7 @@
                     
                     // Restaurer le focus directement sans recharger les données
                     // car les données sont déjà synchronisées avec Supabase
-                    setTimeout(() => {
+                    TimerManager.setTimeout(() => {
                         log('🔍 Restauration directe du focus sans rechargement...');
                         
                         // Try simple row/cell index first
@@ -6391,10 +6687,10 @@
                             
                             if (!infoResult) {
                                 log('🔍 Both focus methods failed, trying delayed retry...');
-                                setTimeout(() => { 
+                                TimerManager.setTimeout(() => { 
                                     if (!focusCellByPos(lastCellPos) && !focusCellFromInfo(lastFocusInfo)) { 
                                         log('🔍 Delayed retry also failed, trying final attempt...');
-                                        setTimeout(() => { 
+                                        TimerManager.setTimeout(() => { 
                                             const finalPos = focusCellByPos(lastCellPos);
                                             const finalInfo = focusCellFromInfo(lastFocusInfo);
                                             log(`🔍 Final attempt - pos: ${finalPos}, info: ${finalInfo}`);
@@ -6440,9 +6736,9 @@
             if (isRestoringCursor) {
                 console.log('⚠️ [REALTIME] Update BLOCKED - cursor restoration in progress (primary protection)');
                 // Retry after cursor restoration is complete
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     console.log('🔄 [REALTIME] Retrying update after cursor restoration...');
-                    if (typeof fetchInitialData === 'function' && !isRestoringCursor && !isExcelSaveInProgress) {
+                    if (typeof fetchInitialData === 'function' && !isRestoringCursor && !RaceConditionGuard.getFlag('isExcelSaveInProgress')) {
                         fetchInitialData(true); // Force refresh for retry
                     }
                 }, 2000); // Wait for cursor restoration to complete
@@ -6450,12 +6746,12 @@
             }
             
             // ✅ HIGH PRIORITY: Block if Excel-like save is in progress
-            if (isExcelSaveInProgress) {
+            if (RaceConditionGuard.getFlag('isExcelSaveInProgress')) {
                 console.log('⚠️ [REALTIME] Update BLOCKED - Excel-like save in progress (Excel protection)');
                 // Retry after Excel save is complete
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     console.log('🔄 [REALTIME] Retrying update after Excel save...');
-                    if (typeof fetchInitialData === 'function' && !isRestoringCursor && !isExcelSaveInProgress) {
+                    if (typeof fetchInitialData === 'function' && !isRestoringCursor && !RaceConditionGuard.getFlag('isExcelSaveInProgress')) {
                         fetchInitialData(true); // Force refresh for retry
                     }
                 }, 4000); // Wait for Excel save to complete
@@ -6479,7 +6775,7 @@
             if (capturedFocusState && capturedFocusState.element && capturedFocusState.timestamp && (Date.now() - capturedFocusState.timestamp < 5000)) {
                 console.log('⚠️ [REALTIME] Update DELAYED - Excel-like save protection window active (5 seconds)');
                 // Extended retry delay for Excel-like saves
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     console.log('🔄 [REALTIME] Retrying update after Excel-like save window...');
                     if (typeof fetchInitialData === 'function' && !isRestoringCursor) {
                         fetchInitialData(true); // Force refresh for retry
@@ -6507,7 +6803,7 @@
             }
             
             // Refresh data from Supabase after a short delay
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 if (typeof fetchInitialData === 'function') {
                     console.log('🔄 [REALTIME] Starting data refresh...');
                     fetchInitialData(true).then(() => { // Force refresh for realtime updates
@@ -6534,10 +6830,10 @@
                         // ✅ Enhanced cursor restoration with stronger protection
                         if (capturedFocusState && capturedFocusState.colLabel) {
                             console.log('🔄 [REALTIME] Starting enhanced cursor restoration after realtime refresh...');
-                            setTimeout(() => {
+                            TimerManager.setTimeout(() => {
                                 console.log('🔄 [REALTIME] Setting restoration flags...');
                                 isRestoringCursor = true; // Primary flag
-                                isExcelSaveInProgress = true; // Secondary protection during restoration
+                                RaceConditionGuard.setFlag('isExcelSaveInProgress', true); // Secondary protection during restoration
                                 
                                 try {
                                     let targetElement = capturedFocusState.element;
@@ -6581,17 +6877,17 @@
                                     console.error('❌ [REALTIME] Error during enhanced cursor restoration:', error);
                                 } finally {
                                     // Clear restoration flags with staggered timing
-                                    setTimeout(() => {
+                                    TimerManager.setTimeout(() => {
                                         isRestoringCursor = false;
                                         console.log('✅ [REALTIME] Cursor restoration flag cleared');
                                     }, 800); // Clear cursor flag first
                                     
-                                    setTimeout(() => {
-                                        isExcelSaveInProgress = false;
+                                    TimerManager.setTimeout(() => {
+                                        RaceConditionGuard.clearFlag('isExcelSaveInProgress');
                                         console.log('✅ [REALTIME] Excel save protection flag cleared');
                                     }, 2000); // Keep Excel protection longer
                                     
-                                    setTimeout(() => {
+                                    TimerManager.setTimeout(() => {
                                         if (!wasAlreadyCaptured) {
                                             updateGlobalFocusState(null);
                                             console.log('✅ [REALTIME] Focus state cleared (was captured during realtime)');
@@ -6677,7 +6973,8 @@
 
         // Password authentication
         function checkPassword() { 
-            const pwd = document.getElementById('password').value; 
+            const passwordElement = SafeDOM.getElementById('password');
+            const pwd = passwordElement ? passwordElement.value : ''; 
             const err = document.getElementById('error-message'); 
             const passwordInput = document.getElementById('password');
             const togglePassword = document.getElementById('toggle-password');
@@ -6687,8 +6984,8 @@
                 sessionStorage.setItem('isLoggedIn', '1'); 
                 
                 // Masquer le login et afficher le tableau immédiatement
-                document.getElementById('login-container').classList.add('hidden'); 
-                document.getElementById('table-container').classList.remove('hidden'); 
+                SafeDOM.safeAddClass('login-container', 'hidden'); 
+                SafeDOM.safeRemoveClass('table-container', 'hidden'); 
                 
                 // S'assurer que le tableau est visible
                 const tableContainer = document.getElementById('table-container');
@@ -7196,12 +7493,12 @@
                                 return;
                             }
                             addRow();
-                            setTimeout(() => {
+                            TimerManager.setTimeout(() => {
                                 const nr = document.querySelector('#table-body tr:last-child');
                                 if (nr && nr.cells.length > idx) {
                                     nr.cells[idx].focus();
                                     // Position cursor at end of text content
-                                    setTimeout(() => {
+                                    TimerManager.setTimeout(() => {
                                         setCaretAt(nr.cells[idx], null);
                                     }, 0);
                                 }
@@ -7218,12 +7515,12 @@
                                 return;
                             }
                             addRow();
-                            setTimeout(() => {
+                            TimerManager.setTimeout(() => {
                                 const nr = document.querySelector('#table-body tr:last-child');
                                 if (nr && nr.cells.length > idx) {
                                     nr.cells[idx].focus();
                                     // Position cursor at end of text content
-                                    setTimeout(() => {
+                                    TimerManager.setTimeout(() => {
                                         setCaretAt(nr.cells[idx], null);
                                     }, 0);
                                 }
@@ -7240,7 +7537,7 @@
                         e.preventDefault();
                         next.focus();
                         // Position cursor at end of text content
-                        setTimeout(() => {
+                        TimerManager.setTimeout(() => {
                             setCaretAt(next, null);
                         }, 0);
                         if (isMobile()) ensureCellVisible(next);
@@ -7401,7 +7698,7 @@
             } catch(_) {}
             
             // Some mobile browsers need a second tick to reliably open the keyboard
-            setTimeout(() => { 
+            TimerManager.setTimeout(() => { 
                 if (document.activeElement !== keyCapture) {
                     keyCapture.focus({ preventScroll: true }); 
                 }
@@ -8623,26 +8920,14 @@
                         // METHOD 3: Service role key with fresh client
                         try {
                             console.log('🔄 METHOD 3: Service role with fresh client...');
-                            const serviceSupabase = createClient(
-                                'https://fiecugxopjxzqfdnaqsu.supabase.co',
-                                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDUwNTY1NywiZXhwIjoyMDcwMDgxNjU3fQ.5m7nLHxHxOkxQf8maZis7Y7jynqu2dWqIzEbgWvOTcE'
-                            );
-                            
-                            const downloadPath = snapshotInfo.object_path;
-                            const serviceResult = await serviceSupabase.storage
-                                .from('table-snapshots')
-                                .download(downloadPath);
-                            
-                            if (serviceResult.error) {
-                                throw new Error(`Service role download failed: ${serviceResult.error.message}`);
-                            }
-                            
-                            snapshotData = serviceResult.data;
-                            console.log('✅ METHOD 3 SUCCESS: Service role, Size:', snapshotData.size);
+                            // SECURITY WARNING: This operation requires server-side implementation
+                            // Service keys should never be exposed in client-side code
+                            console.error('SECURITY: Service key operations disabled - implement server-side API');
+                            throw new Error('Service key operations disabled for security');
                             
                         } catch (method3Err) {
-                            console.error('❌ All methods failed!');
-                            throw new Error(`All download methods failed for ${downloadPath}. Method1: ${method1Err.message}, Method2: ${method2Err.message}, Method3: ${method3Err.message}`);
+                            console.error('❌ All methods failed - Service key operations disabled for security!');
+                            throw new Error(`All download methods failed - Service operations are disabled for security reasons.`);
                         }
                     }
                 }
@@ -8868,26 +9153,14 @@
                         // METHOD 3: Service role key with fresh client
                         try {
                             console.log('🔄 METHOD 3: Service role with fresh client...');
-                            const serviceSupabase = createClient(
-                                'https://fiecugxopjxzqfdnaqsu.supabase.co',
-                                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDUwNTY1NywiZXhwIjoyMDcwMDgxNjU3fQ.5m7nLHxHxOkxQf8maZis7Y7jynqu2dWqIzEbgWvOTcE'
-                            );
-                            
-                            const downloadPath = snapshotInfo.object_path;
-                            const serviceResult = await serviceSupabase.storage
-                                .from('table-snapshots')
-                                .download(downloadPath);
-                            
-                            if (serviceResult.error) {
-                                throw new Error(`Service role download failed: ${serviceResult.error.message}`);
-                            }
-                            
-                            snapshotData = serviceResult.data;
-                            console.log('✅ METHOD 3 SUCCESS: Service role, Size:', snapshotData.size);
+                            // SECURITY WARNING: This operation requires server-side implementation
+                            // Service keys should never be exposed in client-side code
+                            console.error('SECURITY: Service key operations disabled - implement server-side API');
+                            throw new Error('Service key operations disabled for security');
                             
                         } catch (method3Err) {
-                            console.error('❌ All methods failed!');
-                            throw new Error(`All download methods failed for ${downloadPath}. Method1: ${method1Err.message}, Method2: ${method2Err.message}, Method3: ${method3Err.message}`);
+                            console.error('❌ All methods failed - Service key operations disabled for security!');
+                            throw new Error(`All download methods failed - Service operations are disabled for security reasons.`);
                         }
                     }
                 }
@@ -9384,7 +9657,7 @@
             console.log('🔒 DEBUG: disableTableEditing called');
             
             // Wait for DOM to be ready
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 const cells = document.querySelectorAll('#table-body td.editable-cell');
                 console.log('🔒 DEBUG: Found', cells.length, 'editable cells to disable');
                 
@@ -9421,7 +9694,7 @@
             console.log('🔓 DEBUG: enableTableEditing called');
             
             // Wait for DOM to be ready
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 const cells = document.querySelectorAll('#table-body td.editable-cell');
                 console.log('🔓 DEBUG: Found', cells.length, 'editable cells to enable');
                 
@@ -9592,7 +9865,7 @@
             }
             
             // Final state verification
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 const finalState = {
                     hiddenClass: historyBarContainer.classList.contains('hidden'),
                     display: historyBarContainer.style.display,
@@ -9645,7 +9918,7 @@
             console.log('🔄 Testing toggle functionality...');
             toggleHistoryBarSimple();
             
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 const afterToggleHidden = historyBarContainer.classList.contains('hidden');
                 const afterToggleDisplay = historyBarContainer.style.display;
                 const afterToggleHeight = historyBarContainer.offsetHeight;
@@ -9656,11 +9929,11 @@
                 console.log('  - Offset height:', afterToggleHeight);
                 
                 // Test toggle back
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     console.log('🔄 Testing toggle back...');
                     toggleHistoryBarSimple();
                     
-                    setTimeout(() => {
+                    TimerManager.setTimeout(() => {
                         const finalHidden = historyBarContainer.classList.contains('hidden');
                         const finalDisplay = historyBarContainer.style.display;
                         const finalHeight = historyBarContainer.offsetHeight;
@@ -9733,7 +10006,7 @@
                 toggleIcon.className = 'fa-solid fa-plus w-2 h-2 flex items-center justify-center text-center leading-none';
                 
                 // Vérification post-initialisation pour mobile
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     if (isMobile()) {
                         const isHidden = historyBarContainer.classList.contains('hidden') && 
                                         historyBarContainer.style.display === 'none';
@@ -9817,7 +10090,7 @@
                     
                     // Wait for table to be fully rendered and image icons updated (only for regular loads)
                     // Use a longer delay to ensure all table updates are complete
-                    setTimeout(() => {
+                    TimerManager.setTimeout(() => {
                         // Double-check undo/redo state before performing cursor restoration
                         if (isMobile() && isPerformingUndoRedo) {
                             log('🚫 Skipping delayed cursor restoration on mobile during undo/redo');
@@ -9828,7 +10101,7 @@
                         
                         // Additional mobile retry if needed
                         if (isMobile() && !isPerformingUndoRedo) {
-                            setTimeout(() => { 
+                            TimerManager.setTimeout(() => { 
                                 if (!isPerformingUndoRedo) {
                                     performCursorRestoration();
                                 }
@@ -9850,7 +10123,7 @@
                 updateSnapshotBanner();
                 
                 // Update calendar display after loading snapshots
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     populateSnapshotCalendar();
                 }, 500);
                 
@@ -9880,14 +10153,14 @@
                 setTimeout(showImageSyncStatus, 600);
                 
                 // Enable focus capture after initialization is complete
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     isInitialLoad = false;
                     log(`✅ Initial load complete - focus capture now enabled`);
                     
                     // Ensure cursor restoration happens after all updates are complete
                     if (lastFocusInfo || lastCellPos) {
                         // Clean: Removed debug log
-                        setTimeout(() => {
+                        TimerManager.setTimeout(() => {
                             performCursorRestoration();
                         }, 100);
                     }
@@ -10243,6 +10516,17 @@
                 
                 if (error) {
                     console.error('Erreur lors du chargement des images:', error);
+                    
+                    // Handle specific error types
+                    if (error.code === 'PGRST301' || error.message?.includes('401')) {
+                        console.warn('🔒 Gallery images: Authentication required or insufficient permissions');
+                        // Don't show error to user as this might be expected behavior
+                    } else if (error.code === 'PGRST116') {
+                        console.warn('🚫 Gallery images: Table not accessible or doesn\'t exist');
+                    } else {
+                        console.error('💥 Gallery images: Unexpected error:', error.message);
+                    }
+                    
                     return;
                 }
                 
@@ -10865,7 +11149,7 @@
                     toggleHistoryBarSimple();
                     
                     // Check new state after toggle
-                    setTimeout(() => {
+                    TimerManager.setTimeout(() => {
                         const newState = !historyBarContainer.classList.contains('hidden') && 
                                        historyBarContainer.style.display !== 'none' && 
                                        historyBarContainer.offsetHeight > 0;
@@ -10962,7 +11246,7 @@ ${capacityInfo.needsCleanup ?
                 console.log('🧪 Testing realtime sync with cursor preservation...');
                 
                 // Simulate a realtime update by calling the handler directly
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     console.log('🔄 Simulating realtime update...');
                     if (typeof window.handleRealtimeUpdate === 'function') {
                         window.handleRealtimeUpdate({
@@ -11022,7 +11306,7 @@ ${capacityInfo.needsCleanup ?
                 
                 // Blur and then restore after 2 seconds
                 activeElement.blur();
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     console.log('🔄 Restoring cursor...');
                     isRestoringCursor = true; // Set flag during test restoration
                     
@@ -11038,7 +11322,7 @@ ${capacityInfo.needsCleanup ?
                                 console.log('✅ Cursor restoration test completed');
                                 
                                 // Clear flag after test
-                                setTimeout(() => {
+                                TimerManager.setTimeout(() => {
                                     isRestoringCursor = false;
                                     console.log('🔓 Test restoration flag cleared');
                                 }, 1000);
@@ -11291,7 +11575,7 @@ ${capacityInfo.needsCleanup ?
             setupExtendedKeyboardShortcuts();
             
             // Adapter l'affichage du statut selon la taille d'écran initiale
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 adaptStatusDisplay();
             }, 100);
             
@@ -11383,7 +11667,7 @@ ${capacityInfo.needsCleanup ?
             console.log('📱 Touch end détecté sur le bouton snapshot');
             
             // Petit délai pour éviter les doubles déclenchements
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 openSnapshotBar();
             }, 100);
         }
@@ -11446,13 +11730,13 @@ ${capacityInfo.needsCleanup ?
             console.log('🚀 Initialisation du support tactile mobile...');
             
             // Attendre un peu que la page soit complètement chargée
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 addTouchSupport();
                 debugMobileButton();
             }, 500);
             
             // Réessayer après un délai plus long (au cas où)
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 addTouchSupport();
             }, 2000);
         });
@@ -11745,7 +12029,7 @@ ${capacityInfo.needsCleanup ?
         
         // Function to handle viewport orientation changes
         function handleOrientationChange() {
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 updateViewportHeight();
                 updateSafeAreaInsets();
                 ensureTopElementsVisibility();
@@ -11905,14 +12189,14 @@ ${capacityInfo.needsCleanup ?
             document.addEventListener('DOMContentLoaded', () => {
                 updateManualSnapshotButtonState();
                 // Also ensure touch support is properly initialized
-                setTimeout(() => {
+                TimerManager.setTimeout(() => {
                     addTouchSupport();
                 }, 100);
             });
         } else {
             updateManualSnapshotButtonState();
             // Also ensure touch support is properly initialized
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 addTouchSupport();
             }, 100);
         }
@@ -11992,7 +12276,7 @@ ${capacityInfo.needsCleanup ?
             toggleHistoryBarSimple();
             
             // Check result after a short delay
-            setTimeout(() => {
+            TimerManager.setTimeout(() => {
                 const newState = historyBarContainer.classList.contains('hidden');
                 console.log('✅ Toggle test result:', {
                     originalState,
