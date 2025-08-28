@@ -1929,6 +1929,147 @@
             }
         };
         
+        // Cursor Management System
+        class CursorManager {
+            constructor() {
+                this.lastFocusInfo = null;
+                this.restoreAttempts = new Map();
+                this.preventRestore = false;
+            }
+            
+            captureFocus() {
+                const active = document.activeElement;
+                if (!(active && active.tagName === 'TD' && active.isContentEditable)) {
+                    return null;
+                }
+                
+                // Skip capture if restoration was prevented (e.g., during navigation)
+                if (this.preventRestore) {
+                    console.log('⚠️ CursorManager: Skipping focus capture - restoration was prevented');
+                    return null;
+                }
+                
+                const row = active.closest('tr');
+                const tbody = document.getElementById('table-body');
+                const rowIndex = Array.from(tbody.querySelectorAll('tr')).indexOf(row);
+                const cellIndex = Array.from(row.cells).indexOf(active);
+                const colLabel = active.getAttribute('data-label') || '';
+                const rowKey = row ? row.dataset.key || null : null;
+                
+                // Get caret position within the cell
+                let caretOffset = 0;
+                try {
+                    const selection = window.getSelection();
+                    if (selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        caretOffset = range.startOffset;
+                    }
+                } catch (_) {}
+                
+                const focusState = {
+                    rowIndex,
+                    cellIndex,
+                    colLabel,
+                    rowKey,
+                    caretOffset,
+                    timestamp: Date.now()
+                };
+                
+                this.lastFocusInfo = focusState;
+                return focusState;
+            }
+            
+            restoreFocus(focusState, maxAttempts = 3) {
+                if (!focusState) return false;
+                
+                // Check if restoration is currently prevented
+                if (this.preventRestore) {
+                    console.log('🚫 CursorManager: Restore focus skipped - prevention flag is set');
+                    return false;
+                }
+                
+                const attemptKey = `${focusState.rowIndex}-${focusState.cellIndex}`;
+                const attempts = (this.restoreAttempts.get(attemptKey) || 0) + 1;
+                
+                if (attempts > maxAttempts) {
+                    this.restoreAttempts.delete(attemptKey);
+                    console.log(`❌ CursorManager: Max restore attempts reached for ${attemptKey}`);
+                    return false;
+                }
+                
+                this.restoreAttempts.set(attemptKey, attempts);
+                
+                try {
+                    const tbody = document.getElementById('table-body');
+                    const rows = tbody.querySelectorAll('tr');
+                    
+                    // Find target cell by row index and cell index
+                    if (focusState.rowIndex >= 0 && focusState.rowIndex < rows.length) {
+                        const targetRow = rows[focusState.rowIndex];
+                        const cells = targetRow.cells;
+                        
+                        if (focusState.cellIndex >= 0 && focusState.cellIndex < cells.length) {
+                            const targetCell = cells[focusState.cellIndex];
+                            
+                            // Verify this is still the same cell by checking data-label
+                            const cellLabel = targetCell.getAttribute('data-label') || '';
+                            if (cellLabel === focusState.colLabel) {
+                                
+                                // Focus the cell
+                                targetCell.focus({ preventScroll: true });
+                                
+                                // Restore caret position if possible
+                                if (focusState.caretOffset > 0) {
+                                    setTimeout(() => {
+                                        try {
+                                            const range = document.createRange();
+                                            const sel = window.getSelection();
+                                            
+                                            if (targetCell.firstChild) {
+                                                const textNode = targetCell.firstChild;
+                                                const maxOffset = textNode.textContent ? textNode.textContent.length : 0;
+                                                const offset = Math.min(focusState.caretOffset, maxOffset);
+                                                
+                                                range.setStart(textNode, offset);
+                                                range.setEnd(textNode, offset);
+                                                sel.removeAllRanges();
+                                                sel.addRange(range);
+                                            }
+                                        } catch (e) {
+                                            console.log('⚠️ CursorManager: Could not restore caret position:', e.message);
+                                        }
+                                    }, 50);
+                                }
+                                
+                                this.restoreAttempts.delete(attemptKey);
+                                console.log(`✅ CursorManager: Successfully restored focus to ${attemptKey}`);
+                                return true;
+                            }
+                        }
+                    }
+                    
+                    console.log(`⚠️ CursorManager: Could not find target cell for ${attemptKey}, attempt ${attempts}`);
+                    return false;
+                    
+                } catch (error) {
+                    console.error('❌ CursorManager: Error restoring focus:', error);
+                    return false;
+                }
+            }
+            
+            // Method to prevent cursor restoration during navigation
+            preventNextRestore() {
+                this.preventRestore = true;
+                console.log('🚫 CursorManager: Cursor restoration prevented for next operation');
+                
+                // Auto-reset the flag after a short delay to allow normal operation to resume
+                setTimeout(() => {
+                    this.preventRestore = false;
+                    console.log('✅ CursorManager: Cursor restoration re-enabled');
+                }, 1000);
+            }
+        }
+
         // Initialize Sync Optimizer
         const syncOptimizer = new SyncOptimizer();
         const cursorManager = new CursorManager();
@@ -7026,6 +7167,11 @@
                     
                     // ✅ CORRECTION: Éviter le double traitement des touches de navigation
                     if (e.defaultPrevented) return;
+                    
+                    // Prevent cursor restoration during keyboard navigation
+                    if (['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(e.key)) {
+                        cursorManager.preventNextRestore();
+                    }
                     
                     const row = active.parentElement;
                     const idx = Array.from(row.cells).indexOf(active);
