@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎛️ Tableau de Bord Maître - Synchronisation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #1f2937;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 1.1rem; }
+        
+        .container { 
+            max-width: 1600px; 
+            margin: 0 auto; 
+            padding: 20px;
+        }
+        
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); 
+            gap: 20px; 
+            margin: 20px 0;
+        }
+        
+        .card { 
+            background: white; 
+            border-radius: 12px; 
+            padding: 20px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .card:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .card h3 { 
+            color: #374151; 
+            margin-bottom: 15px; 
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .card h3 .emoji { margin-right: 10px; font-size: 1.5rem; }
+        
+        .status-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); 
+            gap: 15px; 
+            margin: 15px 0;
+        }
+        
+        .status-item { 
+            text-align: center; 
+            padding: 15px; 
+            border-radius: 8px; 
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            transition: all 0.2s;
+        }
+        
+        .status-item.healthy { border-color: #10b981; background: #ecfdf5; }
+        .status-item.warning { border-color: #f59e0b; background: #fffbeb; }
+        .status-item.error { border-color: #ef4444; background: #fef2f2; }
+        
+        .status-value { font-size: 1.5rem; font-weight: bold; margin-bottom: 5px; }
+        .status-label { font-size: 0.85rem; opacity: 0.8; }
+        
+        .button { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin: 5px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .button:hover { 
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .button.success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .button.warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .button.danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+        
+        .metrics-display {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .timeline {
+            max-height: 250px;
+            overflow-y: auto;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .timeline-item:last-child { border-bottom: none; }
+        
+        .timeline-time {
+            min-width: 80px;
+            font-size: 12px;
+            color: #64748b;
+            font-family: monospace;
+        }
+        
+        .timeline-event {
+            flex: 1;
+            font-size: 14px;
+        }
+        
+        .timeline-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        .timeline-status.success { background: #10b981; }
+        .timeline-status.warning { background: #f59e0b; }
+        .timeline-status.error { background: #ef4444; }
+        .timeline-status.info { background: #3b82f6; }
+        
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .system-health {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, #f0fff4 0%, #dcfce7 100%);
+            border: 1px solid #bbf7d0;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        
+        .health-indicator {
+            display: flex;
+            align-items: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .health-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        .health-dot.healthy { background: #10b981; }
+        .health-dot.warning { background: #f59e0b; }
+        .health-dot.error { background: #ef4444; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .progress-ring {
+            width: 60px;
+            height: 60px;
+            margin: 10px;
+        }
+        
+        .progress-ring-circle {
+            fill: none;
+            stroke: #e5e7eb;
+            stroke-width: 4;
+        }
+        
+        .progress-ring-progress {
+            fill: none;
+            stroke: #10b981;
+            stroke-width: 4;
+            stroke-linecap: round;
+            transform-origin: 50% 50%;
+            transform: rotate(-90deg);
+            transition: stroke-dasharray 0.3s;
+        }
+        
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+            .header h1 { font-size: 2rem; }
+            .container { padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎛️ Tableau de Bord Maître</h1>
+        <p>Surveillance Complète de la Synchronisation Temps Réel</p>
+    </div>
+    
+    <div class="container">
+        <!-- État de santé du système -->
+        <div class="system-health">
+            <div class="health-indicator">
+                <div class="health-dot healthy" id="systemHealthDot"></div>
+                <span id="systemHealthText">Système Opérationnel</span>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <svg class="progress-ring" width="60" height="60">
+                    <circle class="progress-ring-circle" cx="30" cy="30" r="26"></circle>
+                    <circle class="progress-ring-progress" cx="30" cy="30" r="26" 
+                            id="healthProgressCircle" stroke-dasharray="0 164"></circle>
+                </svg>
+                <div>
+                    <div style="font-weight: bold;" id="systemScore">95%</div>
+                    <div style="font-size: 0.9rem; opacity: 0.8;">Score de Santé</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Grille principale -->
+        <div class="grid">
+            <!-- État en temps réel -->
+            <div class="card">
+                <h3><span class="emoji">📡</span>État Temps Réel</h3>
+                <div class="status-grid">
+                    <div class="status-item" id="connectionStatus">
+                        <div class="status-value">-</div>
+                        <div class="status-label">Connexion</div>
+                    </div>
+                    <div class="status-item" id="subscriptionStatus">
+                        <div class="status-value">-</div>
+                        <div class="status-label">Subscription</div>
+                    </div>
+                    <div class="status-item" id="eventsStatus">
+                        <div class="status-value">0</div>
+                        <div class="status-label">Événements</div>
+                    </div>
+                    <div class="status-item" id="latencyStatus">
+                        <div class="status-value">-</div>
+                        <div class="status-label">Latence</div>
+                    </div>
+                </div>
+                <div class="quick-actions">
+                    <button class="button success" onclick="refreshStatus()">🔄 Actualiser</button>
+                    <button class="button" onclick="openMonitor()">👁️ Monitoring</button>
+                </div>
+            </div>
+            
+            <!-- Actions rapides -->
+            <div class="card">
+                <h3><span class="emoji">⚡</span>Actions Rapides</h3>
+                <div class="quick-actions">
+                    <button class="button success" onclick="runQuickDiagnostic()">🔍 Diagnostic Rapide</button>
+                    <button class="button warning" onclick="runFullAnalysis()">🧪 Analyse Complète</button>
+                    <button class="button danger" onclick="forceReconnect()">🔄 Reconnexion Forcée</button>
+                </div>
+                <div class="quick-actions">
+                    <button class="button" onclick="testEdgeCases()">🧪 Test Cas Limites</button>
+                    <button class="button" onclick="checkSyncIssues()">🔍 Problèmes Sync</button>
+                    <button class="button" onclick="exportAllLogs()">📁 Exporter Logs</button>
+                </div>
+            </div>
+            
+            <!-- Métriques de performance -->
+            <div class="card">
+                <h3><span class="emoji">📊</span>Métriques</h3>
+                <div class="metrics-display" id="metricsDisplay">
+                    Chargement des métriques...
+                </div>
+                <div class="quick-actions">
+                    <button class="button" onclick="updateMetrics()">📈 Actualiser</button>
+                    <button class="button" onclick="resetMetrics()">🗑️ Réinitialiser</button>
+                </div>
+            </div>
+            
+            <!-- Timeline des événements -->
+            <div class="card">
+                <h3><span class="emoji">⏰</span>Timeline</h3>
+                <div class="timeline" id="eventTimeline">
+                    <div class="timeline-item">
+                        <div class="timeline-status info"></div>
+                        <div class="timeline-time">--:--:--</div>
+                        <div class="timeline-event">Tableau de bord initialisé</div>
+                    </div>
+                </div>
+                <div class="quick-actions">
+                    <button class="button" onclick="clearTimeline()">🗑️ Vider</button>
+                </div>
+            </div>
+            
+            <!-- Outils de correction -->
+            <div class="card">
+                <h3><span class="emoji">🔧</span>Outils de Correction</h3>
+                <div class="quick-actions">
+                    <button class="button success" onclick="autoFixAll()">🚀 Correction Auto</button>
+                    <button class="button warning" onclick="clearBlockingFlags()">🏁 Vider Flags</button>
+                    <button class="button" onclick="reinitializeSupabase()">📡 Réinit Supabase</button>
+                </div>
+                <div class="quick-actions">
+                    <button class="button" onclick="openDirectFix()">🔧 Fix Direct</button>
+                    <button class="button" onclick="openDiagnostics()">🔍 Diagnostics</button>
+                </div>
+            </div>
+            
+            <!-- Rapport de santé -->
+            <div class="card">
+                <h3><span class="emoji">📋</span>Rapport de Santé</h3>
+                <div class="metrics-display" id="healthReport">
+                    Génération du rapport...
+                </div>
+                <div class="quick-actions">
+                    <button class="button" onclick="generateHealthReport()">📋 Générer</button>
+                    <button class="button" onclick="exportHealthReport()">📤 Exporter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module">
+        // Import Supabase
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+        
+        // Configuration
+        const supabaseConfig = {
+            supabaseUrl: 'https://fiecugxopjxzqfdnaqsu.supabase.co',
+            supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw'
+        };
+        
+        // Variables globales du dashboard
+        window.dashboardData = {
+            supabase: null,
+            subscription: null,
+            startTime: Date.now(),
+            events: [],
+            metrics: {
+                eventCount: 0,
+                errorCount: 0,
+                avgLatency: 0,
+                connectionUptime: 100
+            }
+        };
+        
+        // Initialisation du dashboard
+        async function initDashboard() {
+            try {
+                addTimelineEvent('info', 'Initialisation du dashboard...');
+                
+                // Créer le client Supabase
+                window.dashboardData.supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
+                window.supabase = window.dashboardData.supabase; // Pour compatibilité
+                
+                addTimelineEvent('success', 'Client Supabase initialisé');
+                
+                // Démarrer la surveillance
+                await startMonitoring();
+                
+                // Première mise à jour des métriques
+                await updateSystemHealth();
+                await updateMetrics();
+                
+                // Démarrer les mises à jour automatiques
+                setInterval(updateSystemHealth, 10000); // 10 secondes
+                setInterval(updateMetrics, 5000); // 5 secondes
+                setInterval(checkSystemHealth, 30000); // 30 secondes
+                
+                addTimelineEvent('success', 'Dashboard complètement initialisé');
+                
+            } catch (error) {
+                console.error('Erreur initialisation dashboard:', error);
+                addTimelineEvent('error', 'Erreur initialisation: ' + error.message);
+                updateSystemHealth('error', 0);
+            }
+        }
+        
+        // Démarrer la surveillance
+        async function startMonitoring() {
+            try {
+                const channelName = `dashboard-${Date.now()}`;
+                
+                window.dashboardData.subscription = window.dashboardData.supabase
+                    .channel(channelName)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'staffTable'
+                    }, (payload) => {
+                        handleRealtimeEvent(payload);
+                    })
+                    .subscribe((status, error) => {
+                        if (status === 'SUBSCRIBED') {
+                            addTimelineEvent('success', `Monitoring actif (${channelName})`);
+                            window.realtimeSubscription = window.dashboardData.subscription; // Compatibilité
+                        } else if (status === 'CHANNEL_ERROR') {
+                            addTimelineEvent('error', 'Erreur subscription: ' + (error?.message || 'Inconnue'));
+                            window.dashboardData.metrics.errorCount++;
+                        }
+                    });
+                    
+            } catch (error) {
+                addTimelineEvent('error', 'Erreur monitoring: ' + error.message);
+            }
+        }
+        
+        // Gérer les événements realtime
+        function handleRealtimeEvent(payload) {
+            window.dashboardData.metrics.eventCount++;
+            window.dashboardData.events.push({
+                timestamp: Date.now(),
+                type: payload.event,
+                payload: payload
+            });
+            
+            // Garder seulement les 100 derniers événements
+            if (window.dashboardData.events.length > 100) {
+                window.dashboardData.events.shift();
+            }
+            
+            const eventType = payload.event.toLowerCase();
+            addTimelineEvent(eventType, `${payload.event}: ${payload.new?.id || payload.old?.id || 'N/A'}`);
+        }
+        
+        // Mettre à jour la santé du système
+        async function updateSystemHealth(forceStatus = null, forceScore = null) {
+            try {
+                let healthScore = forceScore !== null ? forceScore : 95;
+                let healthStatus = forceStatus || 'healthy';
+                
+                if (forceStatus === null) {
+                    // Calculer le score de santé basé sur différents facteurs
+                    let score = 100;
+                    
+                    // Connexion Supabase (-20 si pas de client)
+                    if (!window.dashboardData.supabase) {
+                        score -= 20;
+                        healthStatus = 'error';
+                    }
+                    
+                    // Subscription (-15 si pas connectée)
+                    if (!window.dashboardData.subscription || window.dashboardData.subscription.state !== 'joined') {
+                        score -= 15;
+                        if (healthStatus !== 'error') healthStatus = 'warning';
+                    }
+                    
+                    // Erreurs récentes (-10 si plus de 3 erreurs)
+                    if (window.dashboardData.metrics.errorCount > 3) {
+                        score -= 10;
+                        if (healthStatus !== 'error') healthStatus = 'warning';
+                    }
+                    
+                    // Latence (-5 si plus de 2000ms)
+                    if (window.dashboardData.metrics.avgLatency > 2000) {
+                        score -= 5;
+                    }
+                    
+                    healthScore = Math.max(0, score);
+                }
+                
+                // Mise à jour de l'interface
+                const healthDot = document.getElementById('systemHealthDot');
+                const healthText = document.getElementById('systemHealthText');
+                const systemScore = document.getElementById('systemScore');
+                const healthProgressCircle = document.getElementById('healthProgressCircle');
+                
+                if (healthDot) {
+                    healthDot.className = `health-dot ${healthStatus}`;
+                }
+                
+                if (healthText) {
+                    const statusTexts = {
+                        healthy: 'Système Opérationnel',
+                        warning: 'Attention Requise',
+                        error: 'Problème Critique'
+                    };
+                    healthText.textContent = statusTexts[healthStatus] || 'État Inconnu';
+                }
+                
+                if (systemScore) {
+                    systemScore.textContent = healthScore + '%';
+                }
+                
+                if (healthProgressCircle) {
+                    const circumference = 2 * Math.PI * 26; // rayon = 26
+                    const progress = (healthScore / 100) * circumference;
+                    healthProgressCircle.style.strokeDasharray = `${progress} ${circumference}`;
+                }
+                
+                // Mettre à jour les statuts individuels
+                await updateIndividualStatuses();
+                
+            } catch (error) {
+                console.error('Erreur mise à jour santé:', error);
+            }
+        }
+        
+        // Mettre à jour les statuts individuels
+        async function updateIndividualStatuses() {
+            // Connexion
+            const connectionEl = document.getElementById('connectionStatus');
+            if (connectionEl) {
+                const isConnected = !!window.dashboardData.supabase;
+                connectionEl.className = `status-item ${isConnected ? 'healthy' : 'error'}`;
+                connectionEl.querySelector('.status-value').textContent = isConnected ? '✅' : '❌';
+            }
+            
+            // Subscription
+            const subscriptionEl = document.getElementById('subscriptionStatus');
+            if (subscriptionEl) {
+                const isSubscribed = window.dashboardData.subscription && 
+                                   window.dashboardData.subscription.state === 'joined';
+                subscriptionEl.className = `status-item ${isSubscribed ? 'healthy' : 'error'}`;
+                subscriptionEl.querySelector('.status-value').textContent = isSubscribed ? '📡' : '❌';
+            }
+            
+            // Événements
+            const eventsEl = document.getElementById('eventsStatus');
+            if (eventsEl) {
+                eventsEl.className = 'status-item healthy';
+                eventsEl.querySelector('.status-value').textContent = window.dashboardData.metrics.eventCount;
+            }
+            
+            // Latence
+            const latencyEl = document.getElementById('latencyStatus');
+            if (latencyEl) {
+                const latency = window.dashboardData.metrics.avgLatency;
+                const latencyStatus = latency > 2000 ? 'error' : latency > 1000 ? 'warning' : 'healthy';
+                latencyEl.className = `status-item ${latencyStatus}`;
+                latencyEl.querySelector('.status-value').textContent = latency > 0 ? `${Math.round(latency)}ms` : '-';
+            }
+        }
+        
+        // Mettre à jour les métriques
+        function updateMetrics() {
+            const metricsDisplay = document.getElementById('metricsDisplay');
+            if (!metricsDisplay) return;
+            
+            const uptime = Math.floor((Date.now() - window.dashboardData.startTime) / 1000);
+            const uptimeMinutes = Math.floor(uptime / 60);
+            const uptimeSeconds = uptime % 60;
+            
+            const metrics = `
+📊 MÉTRIQUES TEMPS RÉEL
+=====================
+⏱️  Uptime: ${uptimeMinutes}m ${uptimeSeconds}s
+🔔 Événements reçus: ${window.dashboardData.metrics.eventCount}
+❌ Erreurs: ${window.dashboardData.metrics.errorCount}
+📊 Latence moyenne: ${window.dashboardData.metrics.avgLatency}ms
+🔗 État connexion: ${window.dashboardData.supabase ? 'Connecté' : 'Déconnecté'}
+📡 État subscription: ${window.dashboardData.subscription?.state || 'N/A'}
+
+📈 STATISTIQUES
+==============
+🎯 Taux de succès: ${((window.dashboardData.metrics.eventCount - window.dashboardData.metrics.errorCount) / Math.max(window.dashboardData.metrics.eventCount, 1) * 100).toFixed(1)}%
+⚡ Événements/min: ${Math.round(window.dashboardData.metrics.eventCount / Math.max(uptimeMinutes, 1))}
+🛡️ Stabilité: ${window.dashboardData.metrics.connectionUptime}%
+
+🔧 SYSTÈME
+==========
+💾 Mémoire utilisée: ${performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) + 'MB' : 'N/A'}
+🌐 URL Supabase: ${supabaseConfig.supabaseUrl}
+📅 Dernière MAJ: ${new Date().toLocaleTimeString()}
+            `;
+            
+            metricsDisplay.textContent = metrics;
+        }
+        
+        // Ajouter un événement à la timeline
+        function addTimelineEvent(type, message) {
+            const timeline = document.getElementById('eventTimeline');
+            if (!timeline) return;
+            
+            const timelineItem = document.createElement('div');
+            timelineItem.className = 'timeline-item';
+            
+            const statusClass = type === 'insert' ? 'success' : 
+                              type === 'update' ? 'warning' :
+                              type === 'delete' ? 'error' : type;
+            
+            timelineItem.innerHTML = `
+                <div class="timeline-status ${statusClass}"></div>
+                <div class="timeline-time">${new Date().toLocaleTimeString()}</div>
+                <div class="timeline-event">${message}</div>
+            `;
+            
+            timeline.insertBefore(timelineItem, timeline.firstChild);
+            
+            // Garder seulement les 20 derniers événements visibles
+            while (timeline.children.length > 20) {
+                timeline.removeChild(timeline.lastChild);
+            }
+        }
+        
+        // Vérifier la santé du système
+        async function checkSystemHealth() {
+            try {
+                // Test de connexion Supabase
+                if (window.dashboardData.supabase) {
+                    const start = performance.now();
+                    const { data, error } = await window.dashboardData.supabase.auth.getSession();
+                    const latency = performance.now() - start;
+                    
+                    window.dashboardData.metrics.avgLatency = latency;
+                    
+                    if (error) {
+                        window.dashboardData.metrics.errorCount++;
+                        addTimelineEvent('error', 'Erreur connexion: ' + error.message);
+                    }
+                }
+                
+                // Vérifier les flags de blocage
+                const hasBlocks = window.isLocalSaveInProgress || window.isExcelSaveInProgress ||
+                                 (typeof window.isRestoringCursor === 'function' && window.isRestoringCursor());
+                
+                if (hasBlocks) {
+                    addTimelineEvent('warning', 'Flags de blocage détectés');
+                }
+                
+            } catch (error) {
+                window.dashboardData.metrics.errorCount++;
+                addTimelineEvent('error', 'Erreur vérification: ' + error.message);
+            }
+        }
+        
+        // Fonctions globales pour les boutons
+        window.refreshStatus = async function() {
+            addTimelineEvent('info', 'Actualisation manuelle des statuts...');
+            await updateSystemHealth();
+            await updateMetrics();
+        };
+        
+        window.openMonitor = function() {
+            window.open('realtime-sync-monitor.html', '_blank');
+        };
+        
+        window.runQuickDiagnostic = async function() {
+            addTimelineEvent('info', 'Diagnostic rapide en cours...');
+            
+            // Simulation d'un diagnostic rapide
+            try {
+                const issues = [];
+                
+                if (!window.dashboardData.supabase) {
+                    issues.push('Client Supabase non initialisé');
+                }
+                
+                if (!window.dashboardData.subscription || window.dashboardData.subscription.state !== 'joined') {
+                    issues.push('Subscription realtime non active');
+                }
+                
+                const hasBlocks = window.isLocalSaveInProgress || window.isExcelSaveInProgress;
+                if (hasBlocks) {
+                    issues.push('Flags de blocage actifs');
+                }
+                
+                if (issues.length === 0) {
+                    addTimelineEvent('success', 'Diagnostic rapide: Aucun problème détecté');
+                } else {
+                    addTimelineEvent('warning', `Diagnostic rapide: ${issues.length} problèmes trouvés`);
+                    issues.forEach(issue => {
+                        addTimelineEvent('error', `- ${issue}`);
+                    });
+                }
+                
+            } catch (error) {
+                addTimelineEvent('error', 'Erreur diagnostic: ' + error.message);
+            }
+        };
+        
+        window.runFullAnalysis = function() {
+            addTimelineEvent('info', 'Analyse complète lancée...');
+            window.open('test-sync-tools.html', '_blank');
+        };
+        
+        window.forceReconnect = async function() {
+            addTimelineEvent('info', 'Reconnexion forcée...');
+            
+            try {
+                if (window.dashboardData.subscription) {
+                    await window.dashboardData.supabase.removeChannel(window.dashboardData.subscription);
+                    window.dashboardData.subscription = null;
+                }
+                
+                await startMonitoring();
+                addTimelineEvent('success', 'Reconnexion réussie');
+            } catch (error) {
+                addTimelineEvent('error', 'Erreur reconnexion: ' + error.message);
+            }
+        };
+        
+        window.testEdgeCases = function() {
+            window.open('edge-case-tester.html', '_blank');
+        };
+        
+        window.checkSyncIssues = function() {
+            window.open('sync-issues-detector.html', '_blank');
+        };
+        
+        window.exportAllLogs = function() {
+            const logs = {
+                timestamp: new Date().toISOString(),
+                dashboardData: window.dashboardData,
+                systemHealth: document.getElementById('systemScore')?.textContent,
+                timeline: Array.from(document.querySelectorAll('.timeline-item')).map(item => ({
+                    time: item.querySelector('.timeline-time')?.textContent,
+                    event: item.querySelector('.timeline-event')?.textContent,
+                    type: item.querySelector('.timeline-status')?.className
+                }))
+            };
+            
+            const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sync-dashboard-logs-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            addTimelineEvent('success', 'Logs exportés');
+        };
+        
+        window.autoFixAll = function() {
+            window.open('auto-fix-sync.html', '_blank');
+        };
+        
+        window.clearBlockingFlags = function() {
+            window.isLocalSaveInProgress = false;
+            window.isExcelSaveInProgress = false;
+            addTimelineEvent('success', 'Flags de blocage vidés');
+        };
+        
+        window.reinitializeSupabase = async function() {
+            addTimelineEvent('info', 'Réinitialisation Supabase...');
+            try {
+                window.dashboardData.supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
+                window.supabase = window.dashboardData.supabase;
+                addTimelineEvent('success', 'Supabase réinitialisé');
+            } catch (error) {
+                addTimelineEvent('error', 'Erreur réinitialisation: ' + error.message);
+            }
+        };
+        
+        window.openDirectFix = function() {
+            window.open('fix-sync-direct.html', '_blank');
+        };
+        
+        window.openDiagnostics = function() {
+            window.open('realtime-sync-diagnostics.js', '_blank');
+        };
+        
+        window.generateHealthReport = async function() {
+            const healthReport = document.getElementById('healthReport');
+            if (!healthReport) return;
+            
+            addTimelineEvent('info', 'Génération rapport de santé...');
+            
+            const report = `
+🏥 RAPPORT DE SANTÉ SYSTÈME
+===========================
+📅 Généré le: ${new Date().toLocaleString()}
+⏱️ Uptime: ${Math.floor((Date.now() - window.dashboardData.startTime) / 60000)} minutes
+
+🔍 ÉTAT GÉNÉRAL
+===============
+✅ Score de santé: ${document.getElementById('systemScore')?.textContent || 'N/A'}
+🔗 Connexion Supabase: ${window.dashboardData.supabase ? '✅ OK' : '❌ KO'}
+📡 Subscription: ${window.dashboardData.subscription?.state === 'joined' ? '✅ Connectée' : '❌ Déconnectée'}
+🏁 Flags de blocage: ${(window.isLocalSaveInProgress || window.isExcelSaveInProgress) ? '⚠️ Actifs' : '✅ Clairs'}
+
+📊 MÉTRIQUES PERFORMANCE
+========================
+🔔 Événements traités: ${window.dashboardData.metrics.eventCount}
+❌ Erreurs totales: ${window.dashboardData.metrics.errorCount}
+📊 Latence moyenne: ${window.dashboardData.metrics.avgLatency}ms
+🎯 Taux de succès: ${((window.dashboardData.metrics.eventCount - window.dashboardData.metrics.errorCount) / Math.max(window.dashboardData.metrics.eventCount, 1) * 100).toFixed(1)}%
+
+💡 RECOMMANDATIONS
+==================
+${window.dashboardData.metrics.errorCount > 3 ? '⚠️ Taux d\'erreur élevé - Investigation requise\n' : ''}${window.dashboardData.metrics.avgLatency > 2000 ? '⚠️ Latence élevée - Optimisation réseau recommandée\n' : ''}${!window.dashboardData.subscription || window.dashboardData.subscription.state !== 'joined' ? '🔧 Recréer la subscription realtime\n' : ''}${window.dashboardData.metrics.errorCount === 0 && window.dashboardData.metrics.avgLatency < 1000 ? '🎉 Système en excellente santé - Aucune action requise\n' : ''}
+
+🔧 ACTIONS SUGGÉRÉES
+====================
+1. Surveillance continue des métriques
+2. Tests réguliers des cas limites
+3. Maintenance préventive hebdomadaire
+4. Mise à jour des outils de diagnostic
+            `;
+            
+            healthReport.textContent = report;
+            addTimelineEvent('success', 'Rapport de santé généré');
+        };
+        
+        window.exportHealthReport = function() {
+            const healthReport = document.getElementById('healthReport')?.textContent || 'Rapport non généré';
+            
+            const blob = new Blob([healthReport], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `health-report-${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            addTimelineEvent('success', 'Rapport de santé exporté');
+        };
+        
+        window.clearTimeline = function() {
+            const timeline = document.getElementById('eventTimeline');
+            if (timeline) {
+                timeline.innerHTML = `
+                    <div class="timeline-item">
+                        <div class="timeline-status info"></div>
+                        <div class="timeline-time">${new Date().toLocaleTimeString()}</div>
+                        <div class="timeline-event">Timeline vidée</div>
+                    </div>
+                `;
+            }
+        };
+        
+        // Initialiser au chargement
+        initDashboard();
+        
+    </script>
+</body>
+</html>
