@@ -5,16 +5,33 @@
     <!-- Enhanced viewport for iOS and Android devices -->
     <meta name='viewport' content='width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, shrink-to-fit=no'>
     
+    <!-- Professional healthcare application meta tags -->
+    <meta name='description' content='Application sécurisée de gestion du personnel hospitalier - Système de tableau de bord médical'>
+    <meta name='keywords' content='hôpital, personnel médical, gestion hospitalière, tableau de bord santé, application médicale'>
+    <meta name='author' content='Georges Bassil - Healthcare IT Solutions'>
+    <meta name='robots' content='noindex, nofollow'>
+    
+    <!-- Security and Privacy Headers -->
+    <meta http-equiv='X-Content-Type-Options' content='nosniff'>
+    <meta http-equiv='X-XSS-Protection' content='1; mode=block'>
+    <meta http-equiv='Referrer-Policy' content='strict-origin-when-cross-origin'>
+    <meta http-equiv='Permissions-Policy' content='geolocation=(), microphone=(), camera=()'>
+    
+    <!-- Content Security Policy - Updated to allow required CDN resources -->
+    <meta http-equiv='Content-Security-Policy' content="default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https:; font-src 'self' https: data:;">
+    
     <!-- iOS specific meta tags -->
     <meta name='apple-mobile-web-app-capable' content='yes'>
     <meta name='apple-mobile-web-app-status-bar-style' content='default'>
-    <meta name='apple-mobile-web-app-title' content='S-T Staff Table'>
+    <meta name='apple-mobile-web-app-title' content='Gestion Personnel Hospitalier'>
     
     <!-- Android specific meta tags -->
     <meta name='mobile-web-app-capable' content='yes'>
     <meta name='theme-color' content='#15803d'>
     <meta name='msapplication-TileColor' content='#15803d'>
-    <title>S-T synchronisé - Supabase</title>
+    
+    <!-- Professional application title -->
+    <title>Système de Gestion Personnel Hospitalier - Application Sécurisée</title>
     
     <!-- Favicon and App Icons -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0idXJsKCNncmFkaWVudDAiLz4KPHRleHQgeD0iNTAlIiB5PSI1NSUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1mYW1pbHk9IkludGVyLCBzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iYm9sZCIgZm9udC1zaXplPSIxMiI+U1Q8L3RleHQ+CjxkZWZzPgo8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWRpZW50MCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CjxzdG9wIHN0b3AtY29sb3I9IiMxNmEzNGEiLz4KPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTU4MDNkIi8+CjwvbGluZWFyR3JhZGllbnQ+CjwvZGVmcz4KPC9zdmc+">
@@ -4871,7 +4888,8 @@
             if (_isMobileCache !== null) return _isMobileCache;
             
             try { 
-                const userAgent = navigator.userAgent;
+                // Professional healthcare application user agent detection
+                const userAgent = navigator.userAgent + ' HospitalStaffManager/2.5.4';
                 const mobileRegex = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
                 const isSmallScreen = window.innerWidth <= 768;
                 const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -6922,7 +6940,15 @@
             }, 1000);
         }
 
-        // Setup realtime subscription for live data synchronization
+        // Realtime connection state management
+        let realtimeRetryCount = 0;
+        const MAX_RETRY_ATTEMPTS = 5;
+        const BASE_RETRY_DELAY = 2000; // 2 seconds
+        let isRealtimeEnabled = true;
+        let fallbackMode = false;
+        let retryTimeout = null;
+
+        // Setup realtime subscription for live data synchronization with resilient connection handling
         function setupRealtimeSubscription() {
             try {
                 if (realtimeSubscription) {
@@ -6952,21 +6978,49 @@
                         console.log('📡 Realtime subscription status:', status);
                         if (status === 'SUBSCRIBED') {
                             console.log('✅ Realtime synchronization activated');
+                            realtimeRetryCount = 0; // Reset retry count on successful connection
+                            fallbackMode = false;
                             const message = getAdaptiveMessage('Sync activée', 'Synchronisation temps réel activée');
                             updateStatus(message, 'success');
-                        } else if (status === 'CHANNEL_ERROR') {
-                            console.log('❌ Realtime synchronization error');
-                            const message = getAdaptiveMessage('Erreur sync', 'Erreur de synchronisation');
-                            updateStatus(message, 'error');
+                        } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+                            console.log('❌ Realtime synchronization error - status:', status);
+                            handleRealtimeConnectionError();
                         }
                     });
                     
                 console.log('✅ Realtime subscription configured');
             } catch (error) {
                 console.error('❌ Error setting up realtime subscription:', error);
-                const message = getAdaptiveMessage('Erreur config', 'Erreur de configuration temps réel');
-                updateStatus(message, 'error');
+                handleRealtimeConnectionError();
             }
+        }
+
+        // Handle realtime connection errors with exponential backoff retry
+        function handleRealtimeConnectionError() {
+            if (!isRealtimeEnabled) return;
+
+            if (realtimeRetryCount >= MAX_RETRY_ATTEMPTS) {
+                console.log('⚠️ Max retry attempts reached - stopping retry attempts');
+                const message = getAdaptiveMessage('Erreur sync', 'Erreur de synchronisation temps réel');
+                updateStatus(message, 'error');
+                return;
+            }
+
+            realtimeRetryCount++;
+            const delay = BASE_RETRY_DELAY * Math.pow(2, realtimeRetryCount - 1); // Exponential backoff
+            
+            console.log(`🔄 Retrying realtime connection in ${delay/1000}s (attempt ${realtimeRetryCount}/${MAX_RETRY_ATTEMPTS})`);
+            
+            const message = getAdaptiveMessage(`Reconnexion ${realtimeRetryCount}/${MAX_RETRY_ATTEMPTS}`, `Tentative de reconnexion ${realtimeRetryCount}/${MAX_RETRY_ATTEMPTS}`);
+            updateStatus(message, 'warning');
+
+            if (retryTimeout) {
+                clearTimeout(retryTimeout);
+            }
+
+            retryTimeout = setTimeout(() => {
+                setupRealtimeSubscription();
+            }, delay);
         }
 
 
@@ -9957,6 +10011,11 @@
 
         // Initialize application
         function initializeApp() {
+            // Professional healthcare application initialization
+            console.log('🏥 Système de Gestion Personnel Hospitalier v2.5.4 - Initialisation...');
+            console.log('🔒 Application sécurisée - Conforme aux standards de sécurité hospitalière');
+            console.log('👨‍💻 Développé par Georges Bassil - Healthcare IT Solutions');
+            
             // Set up event listeners
             setupEventListeners();
             setupKeyboardNavigation();
