@@ -6950,6 +6950,14 @@
         let fallbackMode = false;
         let retryTimeout = null;
 
+        // HTTP Polling Fallback for Firefox WebSocket Issues
+        let httpPollingInterval = null;
+        let lastDataHash = null;
+        let isHttpPollingActive = false;
+        const HTTP_POLLING_INTERVAL = 3000; // 3 seconds
+        const HTTP_POLLING_MAX_ATTEMPTS = 20; // 20 attempts = 1 minute
+        let httpPollingAttempts = 0;
+
         // Setup realtime subscription for live data synchronization with resilient connection handling
         function setupRealtimeSubscription() {
             try {
@@ -7025,7 +7033,214 @@
             }, delay);
         }
 
+        // Start HTTP polling fallback when WebSocket fails
+        function startHttpPollingFallback() {
+            if (isHttpPollingActive) return;
+            
+            console.log('🔄 Starting HTTP polling fallback for realtime sync...');
+            isHttpPollingActive = true;
+            httpPollingAttempts = 0;
+            
+            const message = getAdaptiveMessage('Mode polling', 'Synchronisation par polling HTTP activée');
+            updateStatus(message, 'warning');
+            
+            // Clear any existing polling interval
+            if (httpPollingInterval) {
+                clearInterval(httpPollingInterval);
+            }
+            
+            httpPollingInterval = setInterval(async () => {
+                try {
+                    await performHttpPollingSync();
+                } catch (error) {
+                    console.error('❌ HTTP polling error:', error);
+                    httpPollingAttempts++;
+                    
+                    if (httpPollingAttempts >= HTTP_POLLING_MAX_ATTEMPTS) {
+                        console.log('⚠️ Max HTTP polling attempts reached');
+                        stopHttpPollingFallback();
+                        const message = getAdaptiveMessage('Sync échouée', 'Synchronisation échouée - mode hors ligne');
+                        updateStatus(message, 'error');
+                    }
+                }
+            }, HTTP_POLLING_INTERVAL);
+        }
 
+        // Stop HTTP polling fallback
+        function stopHttpPollingFallback() {
+            if (!isHttpPollingActive) return;
+            
+            console.log('🛑 Stopping HTTP polling fallback...');
+            isHttpPollingActive = false;
+            
+            if (httpPollingInterval) {
+                clearInterval(httpPollingInterval);
+                httpPollingInterval = null;
+            }
+            
+            httpPollingAttempts = 0;
+        }
+
+        // Perform HTTP polling sync
+        async function performHttpPollingSync() {
+            try {
+                // Check for active operations that should block polling sync
+                if (RaceConditionGuard.getFlag('isExcelSaveInProgress')) {
+                    console.log('⚠️ [HTTP-POLLING] Sync BLOCKED - Excel-like save in progress');
+                    return;
+                }
+                
+                if (isPerformingUndoRedo) {
+                    console.log('⚠️ [HTTP-POLLING] Sync BLOCKED - Undo/Redo in progress');
+                    return;
+                }
+                
+                if (isSyncing) {
+                    console.log('⚠️ [HTTP-POLLING] Sync BLOCKED - Another sync in progress');
+                    return;
+                }
+                
+                // Check if user is currently editing (recent edit activity)
+                if (Date.now() - lastEditAt < 2000) { // 2 second buffer after last edit
+                    console.log('⚠️ [HTTP-POLLING] Sync BLOCKED - Recent user activity detected');
+                    return;
+                }
+                
+                // Check if autosave is about to trigger (avoid interfering with autosave timing)
+                const AUTOSAVE_DELAY_MS = 1000; // Same as defined in autosave logic
+                if (lastEditAt > 0 && (Date.now() - lastEditAt) < (AUTOSAVE_DELAY_MS + 500)) { // 500ms buffer
+                    console.log('⚠️ [HTTP-POLLING] Sync BLOCKED - Autosave timing window');
+                    return;
+                }
+
+                // Fetch current data from Supabase
+                const { data, error } = await supabase
+                    .from('staffTable')
+                    .select('*')
+                    .order('id', { ascending: true });
+
+                if (error) {
+                    throw new Error(`HTTP polling error: ${error.message}`);
+                }
+
+                // Create hash of current data
+                const currentDataHash = JSON.stringify(data);
+                
+                // Check if data has changed
+                if (lastDataHash && lastDataHash !== currentDataHash) {
+                    console.log('📡 HTTP polling detected data changes - updating table');
+                    
+                    // Set sync flag to prevent conflicts
+                    isSyncing = true;
+                    
+                    try {
+                        // Update the table with new data - with same protection as real-time sync
+                        if (typeof fetchInitialData === 'function' && !isRestoringCursor && !RaceConditionGuard.getFlag('isExcelSaveInProgress')) {
+                            await fetchInitialData(true);
+                            
+                            // Show success message
+                            const message = getAdaptiveMessage('Sync OK', 'Données synchronisées via polling');
+                            updateStatus(message, 'success');
+                        }
+                    } finally {
+                        isSyncing = false;
+                    }
+                }
+                
+                lastDataHash = currentDataHash;
+                httpPollingAttempts = 0; // Reset attempts on successful sync
+                
+            } catch (error) {
+                console.error('❌ HTTP polling sync failed:', error);
+                isSyncing = false; // Reset flag on error
+                throw error;
+            }
+        }
+
+        // Enhanced error handling with HTTP polling fallback
+        function handleRealtimeConnectionErrorWithFallback() {
+            if (!isRealtimeEnabled) return;
+
+            if (realtimeRetryCount >= MAX_RETRY_ATTEMPTS) {
+                console.log('⚠️ Max retry attempts reached - switching to HTTP polling fallback');
+                
+                // Stop WebSocket retries and start HTTP polling
+                if (retryTimeout) {
+                    clearTimeout(retryTimeout);
+                    retryTimeout = null;
+                }
+                
+                startHttpPollingFallback();
+                return;
+            }
+
+            realtimeRetryCount++;
+            const delay = BASE_RETRY_DELAY * Math.pow(2, realtimeRetryCount - 1);
+            
+            console.log(`🔄 Retrying realtime connection in ${delay/1000}s (attempt ${realtimeRetryCount}/${MAX_RETRY_ATTEMPTS})`);
+            
+            const message = getAdaptiveMessage(`Reconnexion ${realtimeRetryCount}/${MAX_RETRY_ATTEMPTS}`, `Tentative de reconnexion ${realtimeRetryCount}/${MAX_RETRY_ATTEMPTS}`);
+            updateStatus(message, 'warning');
+
+            if (retryTimeout) {
+                clearTimeout(retryTimeout);
+            }
+
+            retryTimeout = setTimeout(() => {
+                setupRealtimeSubscription();
+            }, delay);
+        }
+
+        // Replace the original error handler
+        handleRealtimeConnectionError = handleRealtimeConnectionErrorWithFallback;
+
+        // Manual control functions
+        window.enableHttpPollingMode = function() {
+            console.log('🔄 Manually enabling HTTP polling mode...');
+            
+            // Stop WebSocket attempts
+            if (realtimeSubscription) {
+                supabase.removeChannel(realtimeSubscription);
+                realtimeSubscription = null;
+            }
+            
+            if (retryTimeout) {
+                clearTimeout(retryTimeout);
+                retryTimeout = null;
+            }
+            
+            // Start HTTP polling
+            startHttpPollingFallback();
+            
+            const message = getAdaptiveMessage('Mode polling activé', 'Mode polling HTTP activé manuellement');
+            updateStatus(message, 'success');
+        };
+
+        window.enableWebSocketMode = function() {
+            console.log('🔄 Manually enabling WebSocket mode...');
+            
+            // Stop HTTP polling
+            stopHttpPollingFallback();
+            
+            // Reset retry count and try WebSocket again
+            realtimeRetryCount = 0;
+            setupRealtimeSubscription();
+            
+            const message = getAdaptiveMessage('Mode WebSocket activé', 'Mode WebSocket activé manuellement');
+            updateStatus(message, 'success');
+        };
+
+        window.getCurrentSyncMode = function() {
+            return {
+                isWebSocketActive: !!realtimeSubscription,
+                isHttpPollingActive: isHttpPollingActive,
+                realtimeRetryCount: realtimeRetryCount,
+                httpPollingAttempts: httpPollingAttempts,
+                fallbackMode: fallbackMode
+            };
+        };
+
+        console.log('✅ HTTP polling fallback system initialized for Firefox WebSocket compatibility');
 
         // Password authentication
         function checkPassword() { 
@@ -10932,7 +11147,7 @@
                 autosaveTicker = setInterval(() => {
                     try {
                         // Enhanced conflict prevention
-                        if (isSyncing || isPerformingUndoRedo) {
+                        if (isSyncing || isPerformingUndoRedo || isHttpPollingActive) {
                             lastShownCountdown = null;
                             return;
                         }

@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP Polling Fallback Demo - System Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-success { background-color: #10b981; }
+        .status-warning { background-color: #f59e0b; }
+        .status-error { background-color: #ef4444; }
+        .status-inactive { background-color: #6b7280; }
+        
+        .log-entry {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-left: 3px solid #e5e7eb;
+            margin: 2px 0;
+        }
+        .log-success { border-color: #10b981; background-color: #f0fdf4; }
+        .log-warning { border-color: #f59e0b; background-color: #fffbeb; }
+        .log-error { border-color: #ef4444; background-color: #fef2f2; }
+        .log-info { border-color: #3b82f6; background-color: #eff6ff; }
+
+        .demo-card {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .demo-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .demo-card.active {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto p-6 max-w-6xl">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">🔄 HTTP Polling Fallback Demo</h1>
+                    <p class="text-gray-600">Test the automatic fallback system for hospital network compatibility</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-500">System Status</div>
+                    <div class="flex items-center mt-1">
+                        <span class="status-indicator" id="main-status"></span>
+                        <span id="main-status-text" class="font-medium">Initializing...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <!-- WebSocket Controls -->
+            <div class="demo-card bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-semibold mb-4 text-blue-800">🌐 WebSocket Control</h3>
+                <div class="space-y-3">
+                    <button onclick="simulateWebSocketFailure()" class="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors">
+                        🚫 Simulate WebSocket Failure
+                    </button>
+                    <button onclick="enableWebSocketMode()" class="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors">
+                        ✅ Enable WebSocket Mode
+                    </button>
+                    <div class="mt-3 p-3 bg-gray-50 rounded">
+                        <div class="flex items-center">
+                            <span class="status-indicator" id="websocket-status"></span>
+                            <span id="websocket-status-text" class="text-sm">Checking...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HTTP Polling Controls -->
+            <div class="demo-card bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-semibold mb-4 text-orange-800">📡 HTTP Polling Control</h3>
+                <div class="space-y-3">
+                    <button onclick="enableHttpPollingMode()" class="w-full bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 transition-colors">
+                        🔄 Force HTTP Polling
+                    </button>
+                    <button onclick="stopAllSync()" class="w-full bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors">
+                        ⏹️ Stop All Sync
+                    </button>
+                    <div class="mt-3 p-3 bg-gray-50 rounded">
+                        <div class="flex items-center">
+                            <span class="status-indicator" id="polling-status"></span>
+                            <span id="polling-status-text" class="text-sm">Inactive</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Scenarios -->
+            <div class="demo-card bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-semibold mb-4 text-purple-800">🧪 Test Scenarios</h3>
+                <div class="space-y-3">
+                    <button onclick="simulateHospitalNetwork()" class="w-full bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition-colors">
+                        🏥 Hospital Network Test
+                    </button>
+                    <button onclick="simulateSlowNetwork()" class="w-full bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 transition-colors">
+                        🐌 Slow Network Test
+                    </button>
+                    <button onclick="resetToNormal()" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors">
+                        🔄 Reset to Normal
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Dashboard -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Current Status -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-semibold mb-4">📊 Current Sync Status</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Sync Mode:</span>
+                        <span id="current-sync-mode" class="font-medium">Unknown</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Retry Count:</span>
+                        <span id="retry-count" class="font-medium">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Polling Attempts:</span>
+                        <span id="polling-attempts" class="font-medium">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Last Update:</span>
+                        <span id="last-update" class="font-medium text-sm">Never</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Network Info -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-semibold mb-4">🌐 Network Information</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Connection Type:</span>
+                        <span id="connection-type" class="font-medium">Unknown</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Effective Type:</span>
+                        <span id="effective-type" class="font-medium">Unknown</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Downlink:</span>
+                        <span id="downlink" class="font-medium">Unknown</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">RTT:</span>
+                        <span id="rtt" class="font-medium">Unknown</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">📝 Activity Log</h3>
+                <button onclick="clearLog()" class="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600 transition-colors">
+                    🗑️ Clear Log
+                </button>
+            </div>
+            <div id="activity-log" class="max-h-96 overflow-y-auto bg-gray-50 rounded p-4 font-mono text-sm">
+                <div class="log-entry log-info">
+                    <span class="text-gray-500">[INIT]</span> Demo initialized - Ready for testing
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Section -->
+        <div class="bg-blue-50 border-l-4 border-blue-400 p-6 mt-6 rounded">
+            <h4 class="text-lg font-semibold text-blue-800 mb-2">💡 How to Use This Demo</h4>
+            <div class="text-blue-700 space-y-2">
+                <p><strong>1. Hospital Network Test:</strong> Simulates WebSocket blocking that occurs in hospital networks</p>
+                <p><strong>2. WebSocket Failure:</strong> Forces WebSocket connection failures to trigger fallback</p>
+                <p><strong>3. HTTP Polling:</strong> Manually enables HTTP polling mode to test compatibility</p>
+                <p><strong>4. Slow Network:</strong> Tests behavior under slow connection conditions</p>
+                <p class="text-sm mt-3">Monitor the Activity Log to see real-time system behavior and fallback transitions.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo state management
+        let demoState = {
+            websocketBlocked: false,
+            httpPollingActive: false,
+            networkSlow: false,
+            retryCount: 0,
+            pollingAttempts: 0,
+            lastUpdate: null
+        };
+
+        // Simulate the main application functions (stub implementations)
+        let mockRealtimeSubscription = null;
+        let mockHttpPollingInterval = null;
+        let mockIsHttpPollingActive = false;
+        let mockRealtimeRetryCount = 0;
+        let mockHttpPollingAttempts = 0;
+
+        // Log function
+        function logActivity(message, type = 'info') {
+            const log = document.getElementById('activity-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            
+            let icon = '📝';
+            switch(type) {
+                case 'success': icon = '✅'; break;
+                case 'warning': icon = '⚠️'; break;
+                case 'error': icon = '❌'; break;
+                case 'info': icon = '📡'; break;
+            }
+            
+            logEntry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> ${icon} ${message}`;
+            log.appendChild(logEntry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Update status indicators
+        function updateStatus() {
+            const mainStatus = document.getElementById('main-status');
+            const mainStatusText = document.getElementById('main-status-text');
+            const websocketStatus = document.getElementById('websocket-status');
+            const websocketStatusText = document.getElementById('websocket-status-text');
+            const pollingStatus = document.getElementById('polling-status');
+            const pollingStatusText = document.getElementById('polling-status-text');
+
+            // Main status
+            if (demoState.httpPollingActive) {
+                mainStatus.className = 'status-indicator status-warning';
+                mainStatusText.textContent = 'HTTP Polling Mode';
+            } else if (demoState.websocketBlocked) {
+                mainStatus.className = 'status-indicator status-error';
+                mainStatusText.textContent = 'WebSocket Blocked';
+            } else {
+                mainStatus.className = 'status-indicator status-success';
+                mainStatusText.textContent = 'WebSocket Active';
+            }
+
+            // WebSocket status
+            if (demoState.websocketBlocked) {
+                websocketStatus.className = 'status-indicator status-error';
+                websocketStatusText.textContent = 'Blocked/Failed';
+            } else {
+                websocketStatus.className = 'status-indicator status-success';
+                websocketStatusText.textContent = 'Connected';
+            }
+
+            // Polling status
+            if (demoState.httpPollingActive) {
+                pollingStatus.className = 'status-indicator status-warning';
+                pollingStatusText.textContent = 'Active';
+            } else {
+                pollingStatus.className = 'status-indicator status-inactive';
+                pollingStatusText.textContent = 'Inactive';
+            }
+
+            // Update dashboard
+            updateDashboard();
+        }
+
+        function updateDashboard() {
+            document.getElementById('current-sync-mode').textContent = 
+                demoState.httpPollingActive ? 'HTTP Polling' : 
+                demoState.websocketBlocked ? 'Blocked' : 'WebSocket';
+            
+            document.getElementById('retry-count').textContent = demoState.retryCount;
+            document.getElementById('polling-attempts').textContent = demoState.pollingAttempts;
+            document.getElementById('last-update').textContent = 
+                demoState.lastUpdate ? demoState.lastUpdate.toLocaleTimeString() : 'Never';
+
+            // Network info (if available)
+            if (navigator.connection) {
+                document.getElementById('connection-type').textContent = navigator.connection.type || 'Unknown';
+                document.getElementById('effective-type').textContent = navigator.connection.effectiveType || 'Unknown';
+                document.getElementById('downlink').textContent = navigator.connection.downlink ? navigator.connection.downlink + ' Mbps' : 'Unknown';
+                document.getElementById('rtt').textContent = navigator.connection.rtt ? navigator.connection.rtt + ' ms' : 'Unknown';
+            }
+        }
+
+        // Simulation functions
+        function simulateWebSocketFailure() {
+            logActivity('🚫 Simulating WebSocket connection failure...', 'warning');
+            demoState.websocketBlocked = true;
+            demoState.retryCount = 0;
+            
+            // Simulate retry attempts
+            let retryInterval = setInterval(() => {
+                demoState.retryCount++;
+                logActivity(`🔄 WebSocket retry attempt ${demoState.retryCount}/5`, 'warning');
+                
+                if (demoState.retryCount >= 5) {
+                    clearInterval(retryInterval);
+                    logActivity('⚠️ Max WebSocket retry attempts reached - switching to HTTP polling fallback', 'warning');
+                    enableHttpPollingMode(true); // true = automatic fallback
+                }
+                updateStatus();
+            }, 2000);
+        }
+
+        function enableWebSocketMode() {
+            logActivity('🔄 Enabling WebSocket mode...', 'info');
+            demoState.websocketBlocked = false;
+            demoState.httpPollingActive = false;
+            demoState.retryCount = 0;
+            
+            if (mockHttpPollingInterval) {
+                clearInterval(mockHttpPollingInterval);
+                mockHttpPollingInterval = null;
+            }
+            
+            logActivity('✅ WebSocket mode activated successfully', 'success');
+            updateStatus();
+        }
+
+        function enableHttpPollingMode(isAutomatic = false) {
+            const reason = isAutomatic ? 'automatic fallback' : 'manual activation';
+            logActivity(`🔄 Starting HTTP polling fallback (${reason})...`, 'warning');
+            
+            demoState.httpPollingActive = true;
+            demoState.pollingAttempts = 0;
+            
+            // Start mock HTTP polling
+            mockHttpPollingInterval = setInterval(() => {
+                demoState.pollingAttempts++;
+                demoState.lastUpdate = new Date();
+                
+                if (Math.random() > 0.8) { // 20% chance of detecting changes
+                    logActivity('📡 HTTP polling detected data changes - updating table', 'success');
+                } else {
+                    logActivity(`📡 HTTP polling check #${demoState.pollingAttempts} - no changes`, 'info');
+                }
+                updateStatus();
+            }, 3000); // 3 second polling interval
+            
+            logActivity('✅ HTTP polling fallback activated successfully', 'success');
+            updateStatus();
+        }
+
+        function stopAllSync() {
+            logActivity('⏹️ Stopping all synchronization...', 'info');
+            demoState.httpPollingActive = false;
+            demoState.websocketBlocked = true;
+            
+            if (mockHttpPollingInterval) {
+                clearInterval(mockHttpPollingInterval);
+                mockHttpPollingInterval = null;
+            }
+            
+            logActivity('🛑 All synchronization stopped', 'info');
+            updateStatus();
+        }
+
+        function simulateHospitalNetwork() {
+            logActivity('🏥 Simulating hospital network environment...', 'warning');
+            logActivity('🚫 Hospital firewall blocking WebSocket connections...', 'error');
+            logActivity('🔒 Deep packet inspection detecting WebSocket handshake...', 'error');
+            
+            // Immediate WebSocket block
+            demoState.websocketBlocked = true;
+            demoState.retryCount = 5; // Skip retries for hospital simulation
+            
+            setTimeout(() => {
+                logActivity('⚠️ WebSocket completely blocked by hospital network - initiating HTTP polling fallback', 'warning');
+                enableHttpPollingMode(true);
+            }, 1000);
+            
+            updateStatus();
+        }
+
+        function simulateSlowNetwork() {
+            logActivity('🐌 Simulating slow network conditions...', 'warning');
+            demoState.networkSlow = true;
+            
+            // Make polling slower
+            if (mockHttpPollingInterval) {
+                clearInterval(mockHttpPollingInterval);
+                mockHttpPollingInterval = setInterval(() => {
+                    demoState.pollingAttempts++;
+                    demoState.lastUpdate = new Date();
+                    logActivity(`📡 Slow HTTP polling check #${demoState.pollingAttempts} (extended interval)`, 'warning');
+                    updateStatus();
+                }, 10000); // 10 second polling for slow networks
+            }
+            
+            logActivity('⚠️ Polling interval extended for slow network compatibility', 'warning');
+            updateStatus();
+        }
+
+        function resetToNormal() {
+            logActivity('🔄 Resetting to normal network conditions...', 'info');
+            demoState = {
+                websocketBlocked: false,
+                httpPollingActive: false,
+                networkSlow: false,
+                retryCount: 0,
+                pollingAttempts: 0,
+                lastUpdate: null
+            };
+            
+            if (mockHttpPollingInterval) {
+                clearInterval(mockHttpPollingInterval);
+                mockHttpPollingInterval = null;
+            }
+            
+            logActivity('✅ System reset to normal WebSocket mode', 'success');
+            updateStatus();
+        }
+
+        function clearLog() {
+            document.getElementById('activity-log').innerHTML = '<div class="log-entry log-info"><span class="text-gray-500">[INIT]</span> 📝 Activity log cleared</div>';
+        }
+
+        // Initialize demo
+        document.addEventListener('DOMContentLoaded', function() {
+            logActivity('🚀 HTTP Polling Fallback Demo initialized', 'success');
+            logActivity('💡 Click "Hospital Network Test" to see automatic fallback in action', 'info');
+            updateStatus();
+            
+            // Show network info if available
+            if (navigator.connection) {
+                logActivity(`🌐 Network detected: ${navigator.connection.effectiveType} (${navigator.connection.downlink} Mbps)`, 'info');
+            }
+        });
+
+        // Make functions available globally for buttons
+        window.simulateWebSocketFailure = simulateWebSocketFailure;
+        window.enableWebSocketMode = enableWebSocketMode;
+        window.enableHttpPollingMode = enableHttpPollingMode;
+        window.stopAllSync = stopAllSync;
+        window.simulateHospitalNetwork = simulateHospitalNetwork;
+        window.simulateSlowNetwork = simulateSlowNetwork;
+        window.resetToNormal = resetToNormal;
+        window.clearLog = clearLog;
+    </script>
+</body>
+</html>
