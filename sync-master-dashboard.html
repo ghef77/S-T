@@ -1,4 +1,4 @@
-e<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -375,6 +375,12 @@ e<!DOCTYPE html>
             subscription: null,
             startTime: Date.now(),
             events: [],
+            maxEvents: 100,
+            maxTimelineItems: 50,
+            isInitializing: false,
+            isReconnecting: false,
+            lastHealthUpdate: 0,
+            healthUpdateThrottle: 1000,
             metrics: {
                 eventCount: 0,
                 errorCount: 0,
@@ -385,6 +391,12 @@ e<!DOCTYPE html>
         
         // Initialisation du dashboard
         async function initDashboard() {
+            if (window.dashboardData.isInitializing) {
+                console.warn('Initialisation déjà en cours');
+                return;
+            }
+            
+            window.dashboardData.isInitializing = true;
             try {
                 addTimelineEvent('info', 'Initialisation du dashboard...');
                 
@@ -395,16 +407,46 @@ e<!DOCTYPE html>
                 addTimelineEvent('success', 'Client Supabase initialisé');
                 
                 // Démarrer la surveillance
-                await startMonitoring();
+                try {
+                    await startMonitoring();
+                } catch (error) {
+                    console.error('Erreur démarrage surveillance:', error);
+                    addTimelineEvent('error', 'Échec démarrage surveillance: ' + error.message);
+                }
                 
                 // Première mise à jour des métriques
-                await updateSystemHealth();
-                await updateMetrics();
+                try {
+                    await updateSystemHealth();
+                    await updateMetrics();
+                } catch (error) {
+                    console.error('Erreur mise à jour initiale:', error);
+                    addTimelineEvent('error', 'Échec mise à jour initiale: ' + error.message);
+                }
                 
-                // Démarrer les mises à jour automatiques
-                setInterval(updateSystemHealth, 10000); // 10 secondes
-                setInterval(updateMetrics, 5000); // 5 secondes
-                setInterval(checkSystemHealth, 30000); // 30 secondes
+                // Démarrer les mises à jour automatiques avec gestion d'erreur
+                setInterval(async () => {
+                    try {
+                        await updateSystemHealth();
+                    } catch (error) {
+                        console.error('Erreur mise à jour santé:', error);
+                    }
+                }, 10000); // 10 secondes
+                
+                setInterval(() => {
+                    try {
+                        updateMetrics();
+                    } catch (error) {
+                        console.error('Erreur mise à jour métriques:', error);
+                    }
+                }, 5000); // 5 secondes
+                
+                setInterval(async () => {
+                    try {
+                        await checkSystemHealth();
+                    } catch (error) {
+                        console.error('Erreur vérification santé:', error);
+                    }
+                }, 30000); // 30 secondes
                 
                 addTimelineEvent('success', 'Dashboard complètement initialisé');
                 
@@ -412,6 +454,8 @@ e<!DOCTYPE html>
                 console.error('Erreur initialisation dashboard:', error);
                 addTimelineEvent('error', 'Erreur initialisation: ' + error.message);
                 updateSystemHealth('error', 0);
+            } finally {
+                window.dashboardData.isInitializing = false;
             }
         }
         
@@ -453,9 +497,9 @@ e<!DOCTYPE html>
                 payload: payload
             });
             
-            // Garder seulement les 100 derniers événements
-            if (window.dashboardData.events.length > 100) {
-                window.dashboardData.events.shift();
+            // Garder seulement les maxEvents derniers événements
+            if (window.dashboardData.events.length > window.dashboardData.maxEvents) {
+                window.dashboardData.events.splice(0, window.dashboardData.events.length - window.dashboardData.maxEvents);
             }
             
             const eventType = payload.event.toLowerCase();
@@ -464,6 +508,14 @@ e<!DOCTYPE html>
         
         // Mettre à jour la santé du système
         async function updateSystemHealth(forceStatus = null, forceScore = null) {
+            const now = Date.now();
+            if (forceStatus === null && forceScore === null && 
+                now - window.dashboardData.lastHealthUpdate < window.dashboardData.healthUpdateThrottle) {
+                return; // Throttle les mises à jour automatiques
+            }
+            
+            window.dashboardData.lastHealthUpdate = now;
+            
             try {
                 let healthScore = forceScore !== null ? forceScore : 95;
                 let healthStatus = forceStatus || 'healthy';
@@ -479,7 +531,9 @@ e<!DOCTYPE html>
                     }
                     
                     // Subscription (-15 si pas connectée)
-                    if (!window.dashboardData.subscription || window.dashboardData.subscription.state !== 'joined') {
+                    const subscriptionState = window.dashboardData.subscription?.state;
+                    if (!window.dashboardData.subscription || 
+                        (subscriptionState !== 'joined' && subscriptionState !== 'SUBSCRIBED')) {
                         score -= 15;
                         if (healthStatus !== 'error') healthStatus = 'warning';
                     }
@@ -548,8 +602,9 @@ e<!DOCTYPE html>
             // Subscription
             const subscriptionEl = document.getElementById('subscriptionStatus');
             if (subscriptionEl) {
+                const subscriptionState = window.dashboardData.subscription?.state;
                 const isSubscribed = window.dashboardData.subscription && 
-                                   window.dashboardData.subscription.state === 'joined';
+                                   (subscriptionState === 'joined' || subscriptionState === 'SUBSCRIBED');
                 subscriptionEl.className = `status-item ${isSubscribed ? 'healthy' : 'error'}`;
                 subscriptionEl.querySelector('.status-value').textContent = isSubscribed ? '📡' : '❌';
             }
@@ -589,6 +644,7 @@ e<!DOCTYPE html>
 📊 Latence moyenne: ${window.dashboardData.metrics.avgLatency}ms
 🔗 État connexion: ${window.dashboardData.supabase ? 'Connecté' : 'Déconnecté'}
 📡 État subscription: ${window.dashboardData.subscription?.state || 'N/A'}
+🔗 Canal subscription: ${window.dashboardData.subscription?.topic || 'N/A'}
 
 📈 STATISTIQUES
 ==============
@@ -626,8 +682,8 @@ e<!DOCTYPE html>
             
             timeline.insertBefore(timelineItem, timeline.firstChild);
             
-            // Garder seulement les 20 derniers événements visibles
-            while (timeline.children.length > 20) {
+            // Garder seulement les maxTimelineItems derniers événements visibles
+            while (timeline.children.length > window.dashboardData.maxTimelineItems) {
                 timeline.removeChild(timeline.lastChild);
             }
         }
@@ -650,7 +706,8 @@ e<!DOCTYPE html>
                 }
                 
                 // Vérifier les flags de blocage
-                const hasBlocks = window.isLocalSaveInProgress || window.isExcelSaveInProgress ||
+                const hasBlocks = (typeof window.isLocalSaveInProgress === 'boolean' && window.isLocalSaveInProgress) || 
+                                 (typeof window.isExcelSaveInProgress === 'boolean' && window.isExcelSaveInProgress) ||
                                  (typeof window.isRestoringCursor === 'function' && window.isRestoringCursor());
                 
                 if (hasBlocks) {
@@ -665,9 +722,15 @@ e<!DOCTYPE html>
         
         // Fonctions globales pour les boutons
         window.refreshStatus = async function() {
-            addTimelineEvent('info', 'Actualisation manuelle des statuts...');
-            await updateSystemHealth();
-            await updateMetrics();
+            try {
+                addTimelineEvent('info', 'Actualisation manuelle des statuts...');
+                await updateSystemHealth();
+                await updateMetrics();
+                addTimelineEvent('success', 'Statuts actualisés avec succès');
+            } catch (error) {
+                console.error('Erreur actualisation statuts:', error);
+                addTimelineEvent('error', 'Erreur actualisation: ' + error.message);
+            }
         };
         
         window.openMonitor = function() {
@@ -685,11 +748,14 @@ e<!DOCTYPE html>
                     issues.push('Client Supabase non initialisé');
                 }
                 
-                if (!window.dashboardData.subscription || window.dashboardData.subscription.state !== 'joined') {
+                const subscriptionState = window.dashboardData.subscription?.state;
+                if (!window.dashboardData.subscription || 
+                    (subscriptionState !== 'joined' && subscriptionState !== 'SUBSCRIBED')) {
                     issues.push('Subscription realtime non active');
                 }
                 
-                const hasBlocks = window.isLocalSaveInProgress || window.isExcelSaveInProgress;
+                const hasBlocks = (typeof window.isLocalSaveInProgress === 'boolean' && window.isLocalSaveInProgress) || 
+                                 (typeof window.isExcelSaveInProgress === 'boolean' && window.isExcelSaveInProgress);
                 if (hasBlocks) {
                     issues.push('Flags de blocage actifs');
                 }
@@ -714,18 +780,32 @@ e<!DOCTYPE html>
         };
         
         window.forceReconnect = async function() {
+            if (window.dashboardData.isReconnecting) {
+                addTimelineEvent('warning', 'Reconnexion déjà en cours...');
+                return;
+            }
+            
+            window.dashboardData.isReconnecting = true;
             addTimelineEvent('info', 'Reconnexion forcée...');
             
             try {
                 if (window.dashboardData.subscription) {
-                    await window.dashboardData.supabase.removeChannel(window.dashboardData.subscription);
+                    try {
+                        await window.dashboardData.supabase.removeChannel(window.dashboardData.subscription);
+                    } catch (removeError) {
+                        console.warn('Erreur suppression channel:', removeError);
+                        addTimelineEvent('warning', 'Problème suppression ancien channel');
+                    }
                     window.dashboardData.subscription = null;
                 }
                 
                 await startMonitoring();
                 addTimelineEvent('success', 'Reconnexion réussie');
             } catch (error) {
+                console.error('Erreur reconnexion:', error);
                 addTimelineEvent('error', 'Erreur reconnexion: ' + error.message);
+            } finally {
+                window.dashboardData.isReconnecting = false;
             }
         };
         
@@ -738,26 +818,36 @@ e<!DOCTYPE html>
         };
         
         window.exportAllLogs = function() {
-            const logs = {
-                timestamp: new Date().toISOString(),
-                dashboardData: window.dashboardData,
-                systemHealth: document.getElementById('systemScore')?.textContent,
-                timeline: Array.from(document.querySelectorAll('.timeline-item')).map(item => ({
-                    time: item.querySelector('.timeline-time')?.textContent,
-                    event: item.querySelector('.timeline-event')?.textContent,
-                    type: item.querySelector('.timeline-status')?.className
-                }))
-            };
+            try {
+                const logs = {
+                    timestamp: new Date().toISOString(),
+                    dashboardData: window.dashboardData || {},
+                    systemHealth: document.getElementById('systemScore')?.textContent || 'N/A',
+                    timeline: Array.from(document.querySelectorAll('.timeline-item') || []).map(item => ({
+                        time: item.querySelector('.timeline-time')?.textContent || '',
+                        event: item.querySelector('.timeline-event')?.textContent || '',
+                        type: item.querySelector('.timeline-status')?.className || ''
+                    })),
+                    windowVariables: {
+                        isLocalSaveInProgress: typeof window.isLocalSaveInProgress !== 'undefined' ? window.isLocalSaveInProgress : null,
+                        isExcelSaveInProgress: typeof window.isExcelSaveInProgress !== 'undefined' ? window.isExcelSaveInProgress : null,
+                        isRestoringCursor: typeof window.isRestoringCursor === 'function' ? 'function available' : 'not available'
+                    }
+                };
             
-            const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `sync-dashboard-logs-${Date.now()}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            
-            addTimelineEvent('success', 'Logs exportés');
+                const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `sync-dashboard-logs-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                addTimelineEvent('success', 'Logs exportés');
+            } catch (error) {
+                console.error('Erreur export logs:', error);
+                addTimelineEvent('error', 'Erreur export logs: ' + error.message);
+            }
         };
         
         window.autoFixAll = function() {
@@ -765,18 +855,36 @@ e<!DOCTYPE html>
         };
         
         window.clearBlockingFlags = function() {
-            window.isLocalSaveInProgress = false;
-            window.isExcelSaveInProgress = false;
+            if (typeof window.isLocalSaveInProgress !== 'undefined') {
+                window.isLocalSaveInProgress = false;
+            }
+            if (typeof window.isExcelSaveInProgress !== 'undefined') {
+                window.isExcelSaveInProgress = false;
+            }
             addTimelineEvent('success', 'Flags de blocage vidés');
         };
         
         window.reinitializeSupabase = async function() {
             addTimelineEvent('info', 'Réinitialisation Supabase...');
             try {
+                // Nettoyer l'ancienne connexion si elle existe
+                if (window.dashboardData.subscription) {
+                    try {
+                        await window.dashboardData.supabase.removeChannel(window.dashboardData.subscription);
+                    } catch (cleanupError) {
+                        console.warn('Erreur nettoyage:', cleanupError);
+                    }
+                    window.dashboardData.subscription = null;
+                }
+                
                 window.dashboardData.supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
                 window.supabase = window.dashboardData.supabase;
                 addTimelineEvent('success', 'Supabase réinitialisé');
+                
+                // Redémarrer la surveillance
+                await startMonitoring();
             } catch (error) {
+                console.error('Erreur réinitialisation:', error);
                 addTimelineEvent('error', 'Erreur réinitialisation: ' + error.message);
             }
         };
@@ -790,10 +898,14 @@ e<!DOCTYPE html>
         };
         
         window.generateHealthReport = async function() {
-            const healthReport = document.getElementById('healthReport');
-            if (!healthReport) return;
-            
-            addTimelineEvent('info', 'Génération rapport de santé...');
+            try {
+                const healthReport = document.getElementById('healthReport');
+                if (!healthReport) {
+                    addTimelineEvent('error', 'Élément rapport de santé introuvable');
+                    return;
+                }
+                
+                addTimelineEvent('info', 'Génération rapport de santé...');
             
             const report = `
 🏥 RAPPORT DE SANTÉ SYSTÈME
@@ -805,8 +917,8 @@ e<!DOCTYPE html>
 ===============
 ✅ Score de santé: ${document.getElementById('systemScore')?.textContent || 'N/A'}
 🔗 Connexion Supabase: ${window.dashboardData.supabase ? '✅ OK' : '❌ KO'}
-📡 Subscription: ${window.dashboardData.subscription?.state === 'joined' ? '✅ Connectée' : '❌ Déconnectée'}
-🏁 Flags de blocage: ${(window.isLocalSaveInProgress || window.isExcelSaveInProgress) ? '⚠️ Actifs' : '✅ Clairs'}
+📡 Subscription: ${(window.dashboardData.subscription?.state === 'joined' || window.dashboardData.subscription?.state === 'SUBSCRIBED') ? '✅ Connectée' : '❌ Déconnectée'}
+🏁 Flags de blocage: ${((typeof window.isLocalSaveInProgress === 'boolean' && window.isLocalSaveInProgress) || (typeof window.isExcelSaveInProgress === 'boolean' && window.isExcelSaveInProgress)) ? '⚠️ Actifs' : '✅ Clairs'}
 
 📊 MÉTRIQUES PERFORMANCE
 ========================
@@ -817,7 +929,7 @@ e<!DOCTYPE html>
 
 💡 RECOMMANDATIONS
 ==================
-${window.dashboardData.metrics.errorCount > 3 ? '⚠️ Taux d\'erreur élevé - Investigation requise\n' : ''}${window.dashboardData.metrics.avgLatency > 2000 ? '⚠️ Latence élevée - Optimisation réseau recommandée\n' : ''}${!window.dashboardData.subscription || window.dashboardData.subscription.state !== 'joined' ? '🔧 Recréer la subscription realtime\n' : ''}${window.dashboardData.metrics.errorCount === 0 && window.dashboardData.metrics.avgLatency < 1000 ? '🎉 Système en excellente santé - Aucune action requise\n' : ''}
+${window.dashboardData.metrics.errorCount > 3 ? '⚠️ Taux d\'erreur élevé - Investigation requise\n' : ''}${window.dashboardData.metrics.avgLatency > 2000 ? '⚠️ Latence élevée - Optimisation réseau recommandée\n' : ''}${(!window.dashboardData.subscription || (window.dashboardData.subscription.state !== 'joined' && window.dashboardData.subscription.state !== 'SUBSCRIBED')) ? '🔧 Recréer la subscription realtime\n' : ''}${window.dashboardData.metrics.errorCount === 0 && window.dashboardData.metrics.avgLatency < 1000 ? '🎉 Système en excellente santé - Aucune action requise\n' : ''}
 
 🔧 ACTIONS SUGGÉRÉES
 ====================
@@ -827,22 +939,31 @@ ${window.dashboardData.metrics.errorCount > 3 ? '⚠️ Taux d\'erreur élevé -
 4. Mise à jour des outils de diagnostic
             `;
             
-            healthReport.textContent = report;
-            addTimelineEvent('success', 'Rapport de santé généré');
+                healthReport.textContent = report;
+                addTimelineEvent('success', 'Rapport de santé généré');
+            } catch (error) {
+                console.error('Erreur génération rapport:', error);
+                addTimelineEvent('error', 'Erreur génération rapport: ' + error.message);
+            }
         };
         
         window.exportHealthReport = function() {
-            const healthReport = document.getElementById('healthReport')?.textContent || 'Rapport non généré';
-            
-            const blob = new Blob([healthReport], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `health-report-${Date.now()}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
-            
-            addTimelineEvent('success', 'Rapport de santé exporté');
+            try {
+                const healthReport = document.getElementById('healthReport')?.textContent || 'Rapport non généré';
+                
+                const blob = new Blob([healthReport], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `health-report-${Date.now()}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                addTimelineEvent('success', 'Rapport de santé exporté');
+            } catch (error) {
+                console.error('Erreur export rapport:', error);
+                addTimelineEvent('error', 'Erreur export rapport: ' + error.message);
+            }
         };
         
         window.clearTimeline = function() {
