@@ -10901,7 +10901,7 @@
             
             // Check for timer conflicts
             if (autosaveTicker && window._syncTimer) {
-                const autosaveInterval = 250; // 250ms from scheduleAutosaveCountdown
+                const autosaveInterval = 1000; // 1000ms from scheduleAutosaveCountdown
                 const syncInterval = 500; // 500ms from startPeriodicSync
                 
                 if (syncInterval % autosaveInterval === 0) {
@@ -10963,7 +10963,8 @@
                         const remaining = AUTOSAVE_DELAY_MS - (Date.now() - lastEditAt);
                         if (remaining > 0) {
                             const secs = Math.ceil(remaining / 1000);
-                            if (secs !== lastShownCountdown) {
+                            // Only show countdown for last 3 seconds to reduce flickering
+                            if (secs <= 3 && secs !== lastShownCountdown) {
                                 showMessage(`Sauvegarde dans ${secs} s`, 'info');
                                 lastShownCountdown = secs;
                             }
@@ -10976,7 +10977,7 @@
                     } catch (error) {
                         console.error('❌ Error in autosave ticker:', error);
                     }
-                }, 250);
+                }, 1000); // Reduced from 250ms to 1s to prevent flickering
                 
                 console.log('✅ Enhanced autosave scheduled successfully');
             } catch (error) {
