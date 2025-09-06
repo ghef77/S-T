@@ -6891,7 +6891,11 @@
         
         // Handle realtime updates for images from Supabase
         function handleImageRealtimeUpdate(payload) {
-            console.log('🖼️ [IMAGE REALTIME] Image update received:', payload);
+            console.log('🖼️ [IMAGE REALTIME] =================== IMAGE UPDATE RECEIVED ===================');
+            console.log('🖼️ [IMAGE REALTIME] Payload:', JSON.stringify(payload, null, 2));
+            console.log('🖼️ [IMAGE REALTIME] Event type:', payload?.event);
+            console.log('🖼️ [IMAGE REALTIME] Table:', payload?.table);
+            console.log('🖼️ [IMAGE REALTIME] Timestamp:', new Date().toISOString());
             
             // Skip if realtime is suppressed
             if (Date.now() < suppressRealtimeUntil) {
@@ -6899,16 +6903,96 @@
                 return;
             }
 
+            // Check if functions exist
+            console.log('🔍 [IMAGE REALTIME] Function availability check:');
+            console.log('  - loadImagesFromSupabase:', typeof loadImagesFromSupabase);
+            console.log('  - updateAllImageColumnIcons:', typeof updateAllImageColumnIcons);
+            console.log('  - displayPatientImages:', typeof displayPatientImages);
+
             // Reload images from Supabase to get latest data
             if (typeof loadImagesFromSupabase === 'function') {
-                console.log('🔄 [IMAGE REALTIME] Reloading images...');
+                console.log('🔄 [IMAGE REALTIME] Starting image reload process...');
+                const reloadStartTime = Date.now();
+                
                 loadImagesFromSupabase().then(() => {
+                    const reloadDuration = Date.now() - reloadStartTime;
+                    console.log(`⏱️ [IMAGE REALTIME] Image reload completed in ${reloadDuration}ms`);
+                    
+                    // Log current state of patientImages
+                    console.log('📊 [IMAGE REALTIME] Current patientImages state:', Object.keys(patientImages || {}).length, 'patients');
+                    if (payload?.record?.patient_name) {
+                        const patientImages_ = patientImages[payload.record.patient_name] || [];
+                        console.log(`📊 [IMAGE REALTIME] Images for ${payload.record.patient_name}:`, patientImages_.length);
+                    }
+                    
                     // Update image column icons after reload
                     if (typeof updateAllImageColumnIcons === 'function') {
+                        console.log('🔄 [IMAGE REALTIME] Updating column icons...');
+                        const iconUpdateStart = Date.now();
                         updateAllImageColumnIcons();
+                        console.log(`⏱️ [IMAGE REALTIME] Column icons updated in ${Date.now() - iconUpdateStart}ms`);
+                    } else {
+                        console.error('❌ [IMAGE REALTIME] updateAllImageColumnIcons function not available!');
                     }
-                    console.log('✅ [IMAGE REALTIME] Images reloaded successfully');
+                    
+                    // Check if gallery is currently open and update it
+                    const galleryModal = document.getElementById('image-modal');
+                    const isGalleryOpen = galleryModal && !galleryModal.classList.contains('hidden');
+                    console.log('🖼️ [IMAGE REALTIME] Gallery state - Open:', isGalleryOpen);
+                    
+                    if (isGalleryOpen) {
+                        console.log('🎯 [IMAGE REALTIME] Gallery is open, refreshing display...');
+                        const currentPatientElement = galleryModal.querySelector('.text-lg.font-medium');
+                        if (currentPatientElement && payload?.record?.patient_name) {
+                            // Extract patient name from the current display
+                            let displayedPatient = currentPatientElement.textContent.replace('Images de ', '').trim();
+                            console.log('👤 [IMAGE REALTIME] Current patient display:', displayedPatient);
+                            
+                            // If the updated patient is the currently displayed patient, refresh the gallery
+                            if (displayedPatient === payload.record.patient_name) {
+                                console.log('✅ [IMAGE REALTIME] Patient matches! Refreshing gallery display...');
+                                if (typeof displayPatientImages === 'function') {
+                                    displayPatientImages(payload.record.patient_name);
+                                    console.log('✅ [IMAGE REALTIME] Gallery display refreshed for:', payload.record.patient_name);
+                                } else {
+                                    console.error('❌ [IMAGE REALTIME] displayPatientImages function not available!');
+                                }
+                            } else {
+                                console.log('ℹ️ [IMAGE REALTIME] Different patient displayed, no gallery refresh needed');
+                                console.log(`   - Displayed: "${displayedPatient}"`);
+                                console.log(`   - Updated: "${payload.record.patient_name}"`);
+                            }
+                        } else if (currentPatientElement) {
+                            console.log('⚠️ [IMAGE REALTIME] Gallery open but no patient info in payload');
+                        }
+                    }
+                    
+                    // Also check for simple gallery window (if it exists)
+                    try {
+                        if (typeof window.opener !== 'undefined' && window.opener && !window.opener.closed) {
+                            console.log('🖼️ [IMAGE REALTIME] Main window detected, updating parent gallery...');
+                            // This will run on the main window
+                        } else {
+                            // Check if we're in the simple gallery window
+                            const galleryGrid = document.getElementById('image-gallery');
+                            if (galleryGrid && payload?.record?.patient_name) {
+                                console.log('🖼️ [IMAGE REALTIME] Simple gallery detected, refreshing...');
+                                if (typeof displayPatientImages === 'function') {
+                                    displayPatientImages(payload.record.patient_name);
+                                    console.log('✅ [IMAGE REALTIME] Simple gallery refreshed for:', payload.record.patient_name);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.log('ℹ️ [IMAGE REALTIME] Window communication check failed (normal for same-origin):', e.message);
+                    }
+                    
+                    console.log('✅ [IMAGE REALTIME] =============== IMAGE UPDATE PROCESS COMPLETE ===============');
+                }).catch(error => {
+                    console.error('❌ [IMAGE REALTIME] Error during image reload:', error);
                 });
+            } else {
+                console.error('❌ [IMAGE REALTIME] loadImagesFromSupabase function not available!');
             }
         }
 
@@ -10683,11 +10767,10 @@
                 imageDiv.innerHTML = `
                     <img src="${image.data}" alt="${image.name}" class="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" 
                          onclick="viewImage('${patientName}', ${index})"
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+ />
                     <div class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs cursor-pointer hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
                          onclick="deleteImage('${patientName}', ${index})">×</div>
                     <p class="text-xs text-gray-600 mt-1 truncate">${image.name}</p>
-                    <div class="hidden text-xs text-gray-400 text-center mt-2">Image corrompue</div>
                 `;
                 
                 gallery.appendChild(imageDiv);
@@ -10974,31 +11057,14 @@
         
         // Fonction pour charger les images depuis Supabase
         async function loadImagesFromSupabase() {
-            // Skip if cursor restoration is in progress to avoid conflicts
-            if (isRestoringFocus) {
-                log('🔄 loadImagesFromSupabase skipped - cursor restoration in progress');
-                return;
-            }
-            
             try {
                 const { data, error } = await supabase
-                    .from('gallery_images')
+                    .from('patientImages')
                     .select('*')
-                    .order('upload_date', { ascending: false });
+                    .order('uploadDate', { ascending: false });
                 
                 if (error) {
                     console.error('Erreur lors du chargement des images:', error);
-                    
-                    // Handle specific error types
-                    if (error.code === 'PGRST301' || error.message?.includes('401')) {
-                        console.warn('🔒 Gallery images: Authentication required or insufficient permissions');
-                        // Don't show error to user as this might be expected behavior
-                    } else if (error.code === 'PGRST116') {
-                        console.warn('🚫 Gallery images: Table not accessible or doesn\'t exist');
-                    } else {
-                        console.error('💥 Gallery images: Unexpected error:', error.message);
-                    }
-                    
                     return;
                 }
                 
@@ -11006,17 +11072,17 @@
                     // Réorganiser les images par patient
                     const newPatientImages = {};
                     data.forEach(image => {
-                        if (!newPatientImages[image.patient_name]) {
-                            newPatientImages[image.patient_name] = [];
+                        if (!newPatientImages[image.patientName]) {
+                            newPatientImages[image.patientName] = [];
                         }
-                        newPatientImages[image.patient_name].push({
+                        newPatientImages[image.patientName].push({
                             id: image.id,
-                            name: image.image_name,
-                            data: image.image_data,
-                            type: image.image_type,
-                            size: image.image_size,
-                            uploadDate: image.upload_date,
-                            patientName: image.patient_name
+                            name: image.imageName,
+                            data: image.imageData,
+                            type: image.imageType,
+                            size: image.imageSize,
+                            uploadDate: image.uploadDate,
+                            patientName: image.patientName
                         });
                     });
                     
@@ -11693,6 +11759,74 @@ ${capacityInfo.needsCleanup ?
         window.fetchInitialData = fetchInitialData;
         window.handleRealtimeUpdate = handleRealtimeUpdate;
         window.handleImageRealtimeUpdate = handleImageRealtimeUpdate;
+        
+        // Debug function for testing image sync
+        window.testImageSync = function() {
+            console.log('🧪 [DEBUG] Testing image synchronization...');
+            
+            // Check subscription status
+            console.log('📡 [DEBUG] Realtime subscription status:', !!realtimeSubscription);
+            if (realtimeSubscription) {
+                console.log('📡 [DEBUG] Subscription state:', realtimeSubscription.state);
+            }
+            
+            // Check if suppressRealtimeUntil is active
+            const isSupressed = Date.now() < suppressRealtimeUntil;
+            console.log('🚫 [DEBUG] Realtime suppressed:', isSupressed);
+            if (isSupressed) {
+                console.log('⏱️ [DEBUG] Suppressed until:', new Date(suppressRealtimeUntil));
+            }
+            
+            // Check function availability
+            console.log('🔍 [DEBUG] Function availability:');
+            console.log('  - loadImagesFromSupabase:', typeof loadImagesFromSupabase);
+            console.log('  - updateAllImageColumnIcons:', typeof updateAllImageColumnIcons);
+            console.log('  - displayPatientImages:', typeof displayPatientImages);
+            console.log('  - handleImageRealtimeUpdate:', typeof handleImageRealtimeUpdate);
+            
+            // Check current patientImages state
+            console.log('📊 [DEBUG] Current image state:');
+            console.log('  - Total patients with images:', Object.keys(patientImages || {}).length);
+            console.log('  - patientImages object:', patientImages);
+            
+            // Test manual sync
+            if (typeof loadImagesFromSupabase === 'function') {
+                console.log('🔄 [DEBUG] Testing manual image reload...');
+                loadImagesFromSupabase().then(() => {
+                    console.log('✅ [DEBUG] Manual reload completed');
+                    if (typeof updateAllImageColumnIcons === 'function') {
+                        updateAllImageColumnIcons();
+                        console.log('✅ [DEBUG] Icons updated');
+                    }
+                });
+            }
+            
+            return 'Debug info logged to console';
+        };
+        
+        // Debug function to simulate image realtime update
+        window.simulateImageUpdate = function(patientName = 'Test Patient', eventType = 'INSERT') {
+            console.log('🎭 [SIMULATE] Simulating image update...');
+            const mockPayload = {
+                event: eventType,
+                table: 'gallery_images',
+                record: {
+                    id: Date.now(),
+                    patient_name: patientName,
+                    image_data: 'mock_data',
+                    upload_date: new Date().toISOString()
+                },
+                timestamp: new Date().toISOString()
+            };
+            
+            if (typeof handleImageRealtimeUpdate === 'function') {
+                handleImageRealtimeUpdate(mockPayload);
+                return 'Simulation sent to handleImageRealtimeUpdate';
+            } else {
+                return 'handleImageRealtimeUpdate function not available';
+            }
+        };
+        
         window.markEdited = markEdited;
         window.updateGlobalFocusState = updateGlobalFocusState;
         window.saveModifiedCell = saveModifiedCell; // Excel-like save function
@@ -12321,15 +12455,21 @@ ${capacityInfo.needsCleanup ?
                                     schema: 'public', 
                                     table: 'gallery_images' 
                                 }, (payload) => {
-                                    console.log('🖼️ IMAGE INSERT:', payload);
-                                    if (typeof window.loadImagesFromSupabase === 'function') {
-                                        setTimeout(() => {
-                                            window.loadImagesFromSupabase().then(() => {
-                                                if (typeof window.updateAllImageColumnIcons === 'function') {
-                                                    window.updateAllImageColumnIcons();
-                                                }
-                                            });
-                                        }, 1000);
+                                    console.log('🖼️ [FALLBACK] IMAGE INSERT received:', payload);
+                                    if (typeof window.handleImageRealtimeUpdate === 'function') {
+                                        console.log('🖼️ [FALLBACK] Delegating to handleImageRealtimeUpdate');
+                                        window.handleImageRealtimeUpdate(payload);
+                                    } else {
+                                        console.log('🖼️ [FALLBACK] Using legacy handling');
+                                        if (typeof window.loadImagesFromSupabase === 'function') {
+                                            setTimeout(() => {
+                                                window.loadImagesFromSupabase().then(() => {
+                                                    if (typeof window.updateAllImageColumnIcons === 'function') {
+                                                        window.updateAllImageColumnIcons();
+                                                    }
+                                                });
+                                            }, 1000);
+                                        }
                                     }
                                 })
                                 .on('postgres_changes', { 
@@ -12337,15 +12477,21 @@ ${capacityInfo.needsCleanup ?
                                     schema: 'public', 
                                     table: 'gallery_images' 
                                 }, (payload) => {
-                                    console.log('🖼️ IMAGE UPDATE:', payload);
-                                    if (typeof window.loadImagesFromSupabase === 'function') {
-                                        setTimeout(() => {
-                                            window.loadImagesFromSupabase().then(() => {
-                                                if (typeof window.updateAllImageColumnIcons === 'function') {
-                                                    window.updateAllImageColumnIcons();
-                                                }
-                                            });
-                                        }, 1000);
+                                    console.log('🖼️ [FALLBACK] IMAGE UPDATE received:', payload);
+                                    if (typeof window.handleImageRealtimeUpdate === 'function') {
+                                        console.log('🖼️ [FALLBACK] Delegating to handleImageRealtimeUpdate');
+                                        window.handleImageRealtimeUpdate(payload);
+                                    } else {
+                                        console.log('🖼️ [FALLBACK] Using legacy handling');
+                                        if (typeof window.loadImagesFromSupabase === 'function') {
+                                            setTimeout(() => {
+                                                window.loadImagesFromSupabase().then(() => {
+                                                    if (typeof window.updateAllImageColumnIcons === 'function') {
+                                                        window.updateAllImageColumnIcons();
+                                                    }
+                                                });
+                                            }, 1000);
+                                        }
                                     }
                                 })
                                 .on('postgres_changes', { 
@@ -12353,15 +12499,21 @@ ${capacityInfo.needsCleanup ?
                                     schema: 'public', 
                                     table: 'gallery_images' 
                                 }, (payload) => {
-                                    console.log('🖼️ IMAGE DELETE:', payload);
-                                    if (typeof window.loadImagesFromSupabase === 'function') {
-                                        setTimeout(() => {
-                                            window.loadImagesFromSupabase().then(() => {
-                                                if (typeof window.updateAllImageColumnIcons === 'function') {
-                                                    window.updateAllImageColumnIcons();
-                                                }
-                                            });
-                                        }, 1000);
+                                    console.log('🖼️ [FALLBACK] IMAGE DELETE received:', payload);
+                                    if (typeof window.handleImageRealtimeUpdate === 'function') {
+                                        console.log('🖼️ [FALLBACK] Delegating to handleImageRealtimeUpdate');
+                                        window.handleImageRealtimeUpdate(payload);
+                                    } else {
+                                        console.log('🖼️ [FALLBACK] Using legacy handling');
+                                        if (typeof window.loadImagesFromSupabase === 'function') {
+                                            setTimeout(() => {
+                                                window.loadImagesFromSupabase().then(() => {
+                                                    if (typeof window.updateAllImageColumnIcons === 'function') {
+                                                        window.updateAllImageColumnIcons();
+                                                    }
+                                                });
+                                            }, 1000);
+                                        }
                                     }
                                 })
                                 .subscribe();

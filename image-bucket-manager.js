@@ -11,6 +11,7 @@ class ImageBucketManager {
         this.supabaseServiceKey = supabaseConfig.supabaseServiceKey;
         this.baseBucketName = 'patient-images';
         this.maxBucketSize = 1024 * 1024 * 1024; // 1GB per bucket
+        this.maxFileSize = 50 * 1024 * 1024; // 50MB per individual file
         this.cleanupThreshold = 0.85; // Trigger cleanup at 85% capacity
         this.overflowThreshold = 0.95; // Create new bucket at 95% capacity
         this.imageMaxAge = 30; // Days - images older than 30 days get cleaned
@@ -115,7 +116,7 @@ class ImageBucketManager {
 
             const { data, error } = await this.serviceSupabase.storage.createBucket(newBucketName, {
                 public: false,
-                fileSizeLimit: this.maxBucketSize,
+                fileSizeLimit: this.maxFileSize, // Use per-file limit, not bucket limit
                 allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
             });
 
@@ -159,9 +160,21 @@ ON CONFLICT (name, bucket_id) DO NOTHING;
     }
 
     /**
+     * Validate file size before upload
+     */
+    validateFileSize(fileSize, fileName) {
+        if (fileSize > this.maxFileSize) {
+            const maxSizeMB = Math.round(this.maxFileSize / (1024 * 1024));
+            const fileSizeMB = Math.round(fileSize / (1024 * 1024));
+            throw new Error(`File "${fileName}" is too large (${fileSizeMB}MB). Maximum file size is ${maxSizeMB}MB.`);
+        }
+        return true;
+    }
+
+    /**
      * Find the best bucket for uploading (least full, or create new)
      */
-    async findOptimalBucket() {
+    async findOptimalBucket(fileSize = 0) {
         try {
             const imageBuckets = await this.getImageBuckets();
             
