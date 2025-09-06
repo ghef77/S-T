@@ -5333,6 +5333,14 @@
             
             try { 
                 localStorage.setItem('staffTableDraft', document.getElementById('data-table').outerHTML); 
+                
+                // Trigger immediate synchronization to update all devices
+                if (typeof forceImmediateSync === 'function') {
+                    console.log('🔄 [SAVE] Triggering immediate sync after local draft save...');
+                    setTimeout(() => {
+                        forceImmediateSync();
+                    }, 100); // Small delay to ensure local save is complete
+                }
             } catch(e) {} 
         }
         
@@ -6728,6 +6736,14 @@
                 log('Erreur de sauvegarde : ' + e.message, 'error');
                 updateStatus('Erreur de sauvegarde', 'error');
             }
+            
+            // Trigger immediate synchronization to update all devices after successful save
+            if (typeof forceImmediateSync === 'function') {
+                console.log('🔄 [SYNC] Triggering immediate sync after master sync...');
+                setTimeout(() => {
+                    forceImmediateSync();
+                }, 200); // Small delay to ensure save is complete
+            }
         }
 
         async function pullFromMaster() { 
@@ -6943,6 +6959,59 @@
             }, 1000);
         }
 
+        // Immediate synchronization system for real-time updates across all devices
+        function forceImmediateSync() {
+            console.log('🚀 [IMMEDIATE SYNC] Forcing immediate synchronization across all devices...');
+            
+            // Force refresh data from server
+            if (typeof fetchInitialData === 'function') {
+                console.log('🔄 [IMMEDIATE SYNC] Fetching fresh data from server...');
+                fetchInitialData(true).then(() => {
+                    console.log('✅ [IMMEDIATE SYNC] Data fetch completed');
+                    
+                    // Force UI refresh
+                    if (typeof renderTable === 'function') {
+                        console.log('🔄 [IMMEDIATE SYNC] Force rendering table...');
+                        renderTable();
+                    }
+                    
+                    // Invalidate cache to ensure fresh data
+                    if (typeof dataCache !== 'undefined') {
+                        dataCache.lastFetch = 0;
+                    }
+                    
+                    // Dispatch update event for other components
+                    document.dispatchEvent(new CustomEvent('table:updated', { 
+                        detail: { 
+                            source: 'immediate-sync', 
+                            timestamp: new Date().toISOString() 
+                        } 
+                    }));
+                    
+                    console.log('✅ [IMMEDIATE SYNC] Immediate synchronization completed');
+                }).catch(error => {
+                    console.error('❌ [IMMEDIATE SYNC] Error during immediate sync:', error);
+                });
+            } else {
+                console.error('❌ [IMMEDIATE SYNC] fetchInitialData function not available');
+            }
+        }
+
+        // Enhanced realtime update handler that forces immediate sync
+        function handleRealtimeUpdateWithImmediateSync(payload) {
+            console.log('🔄 [ENHANCED REALTIME] Processing update with immediate sync...');
+            
+            // First, handle the normal realtime update
+            handleRealtimeUpdate(payload);
+            
+            // Then, force immediate synchronization on all devices
+            // This ensures that even if the normal update is blocked, 
+            // all devices will still get the latest data
+            setTimeout(() => {
+                forceImmediateSync();
+            }, 500); // Small delay to allow normal processing first
+        }
+
         // Realtime connection state management
         let realtimeRetryCount = 0;
         const MAX_RETRY_ATTEMPTS = 5;
@@ -6973,17 +7042,17 @@
                         event: 'INSERT', 
                         schema: 'public', 
                         table: 'staffTable' 
-                    }, handleRealtimeUpdate)
+                    }, handleRealtimeUpdateWithImmediateSync)
                     .on('postgres_changes', { 
                         event: 'UPDATE', 
                         schema: 'public', 
                         table: 'staffTable' 
-                    }, handleRealtimeUpdate)
+                    }, handleRealtimeUpdateWithImmediateSync)
                     .on('postgres_changes', { 
                         event: 'DELETE', 
                         schema: 'public', 
                         table: 'staffTable' 
-                    }, handleRealtimeUpdate)
+                    }, handleRealtimeUpdateWithImmediateSync)
                     .subscribe(status => {
                         console.log('📡 Realtime subscription status:', status);
                         if (status === 'SUBSCRIBED') {
@@ -11350,6 +11419,7 @@ ${capacityInfo.needsCleanup ?
         window.updateHistoryDateButton = updateHistoryDateButton;
         window.fetchInitialData = fetchInitialData;
         window.handleRealtimeUpdate = handleRealtimeUpdate;
+        window.forceImmediateSync = forceImmediateSync; // Force immediate sync across all devices
         window.markEdited = markEdited;
         window.updateGlobalFocusState = updateGlobalFocusState;
         window.saveModifiedCell = saveModifiedCell; // Excel-like save function
