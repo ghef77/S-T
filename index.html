@@ -7056,7 +7056,7 @@
         let isTimestampSyncActive = false;
         let lastKnownDataVersion = null;
         let userInactivityTimeout = null;
-        const USER_INACTIVITY_DELAY = 3000; // Wait 3 seconds after user stops editing
+        const USER_INACTIVITY_DELAY = 5000; // Wait 5 seconds after user stops editing
 
         // Fallback save system for when realtime sync fails
         let fallbackSaveTimeout = null;
@@ -7223,7 +7223,7 @@
                 }
             }, TIMESTAMP_SYNC_INTERVAL);
             
-            console.log('✅ [TIMESTAMP SYNC] Timestamp-based sync started (waits 3s after user stops editing)');
+            console.log('✅ [TIMESTAMP SYNC] Timestamp-based sync started (waits 5s after user stops editing)');
         }
         
         function stopTimestampSync() {
@@ -7299,9 +7299,9 @@
                     return;
                 }
                 
-                // User has stopped editing for 3+ seconds, check for changes
+                // User has stopped editing for 5+ seconds, check for changes
                 if (!userInactivityTimeout) {
-                    console.log('🔄 [TIMESTAMP SYNC] User inactive for 3+ seconds, checking for changes...');
+                    console.log('🔄 [TIMESTAMP SYNC] User inactive for 5+ seconds, checking for changes...');
                     await checkForDataChanges();
                 }
             } catch (error) {
