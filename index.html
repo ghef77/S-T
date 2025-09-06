@@ -5334,12 +5334,10 @@
             try { 
                 localStorage.setItem('staffTableDraft', document.getElementById('data-table').outerHTML); 
                 
-                // Trigger immediate synchronization to update all devices
-                if (typeof forceImmediateSync === 'function') {
-                    console.log('🔄 [SAVE] Triggering immediate sync after local draft save...');
-                    setTimeout(() => {
-                        forceImmediateSync();
-                    }, 100); // Small delay to ensure local save is complete
+                // Schedule delayed synchronization to update all devices
+                if (typeof scheduleDelayedSync === 'function') {
+                    console.log('🔄 [SAVE] Scheduling delayed sync after local draft save...');
+                    scheduleDelayedSync();
                 }
             } catch(e) {} 
         }
@@ -6737,12 +6735,10 @@
                 updateStatus('Erreur de sauvegarde', 'error');
             }
             
-            // Trigger immediate synchronization to update all devices after successful save
-            if (typeof forceImmediateSync === 'function') {
-                console.log('🔄 [SYNC] Triggering immediate sync after master sync...');
-                setTimeout(() => {
-                    forceImmediateSync();
-                }, 200); // Small delay to ensure save is complete
+            // Schedule delayed synchronization to update all devices after successful save
+            if (typeof scheduleDelayedSync === 'function') {
+                console.log('🔄 [SYNC] Scheduling delayed sync after master sync...');
+                scheduleDelayedSync();
             }
         }
 
@@ -6997,19 +6993,45 @@
             }
         }
 
-        // Enhanced realtime update handler that forces immediate sync
+        // Delayed synchronization system - waits 3 seconds after user stops editing
+        let delayedSyncTimeout = null;
+        const DELAYED_SYNC_DELAY = 3000; // 3 seconds after user stops editing
+        
+        function scheduleDelayedSync() {
+            // Clear any existing timeout
+            if (delayedSyncTimeout) {
+                clearTimeout(delayedSyncTimeout);
+                delayedSyncTimeout = null;
+            }
+            
+            console.log('⏰ [DELAYED SYNC] Scheduling delayed sync in 3 seconds...');
+            
+            // Schedule sync after 3 seconds of inactivity
+            delayedSyncTimeout = setTimeout(() => {
+                console.log('🔄 [DELAYED SYNC] 3 seconds passed, triggering sync...');
+                forceImmediateSync();
+                delayedSyncTimeout = null;
+            }, DELAYED_SYNC_DELAY);
+        }
+        
+        function cancelDelayedSync() {
+            if (delayedSyncTimeout) {
+                console.log('❌ [DELAYED SYNC] Cancelling delayed sync...');
+                clearTimeout(delayedSyncTimeout);
+                delayedSyncTimeout = null;
+            }
+        }
+
+        // Enhanced realtime update handler that schedules delayed sync
         function handleRealtimeUpdateWithImmediateSync(payload) {
-            console.log('🔄 [ENHANCED REALTIME] Processing update with immediate sync...');
+            console.log('🔄 [ENHANCED REALTIME] Processing update with delayed sync...');
             
             // First, handle the normal realtime update
             handleRealtimeUpdate(payload);
             
-            // Then, force immediate synchronization on all devices
-            // This ensures that even if the normal update is blocked, 
-            // all devices will still get the latest data
-            setTimeout(() => {
-                forceImmediateSync();
-            }, 500); // Small delay to allow normal processing first
+            // Then, schedule delayed synchronization on all devices
+            // This ensures that all devices get the latest data 3 seconds after the user stops editing
+            scheduleDelayedSync();
         }
 
         // Realtime connection state management
@@ -7140,6 +7162,11 @@
 
         function updateUserEditTime() {
             lastUserEditTime = Date.now();
+            
+            // Cancel any pending delayed sync when user starts editing again
+            if (typeof cancelDelayedSync === 'function') {
+                cancelDelayedSync();
+            }
         }
 
         // Handle realtime connection errors with exponential backoff retry and fallback save
@@ -11420,6 +11447,8 @@ ${capacityInfo.needsCleanup ?
         window.fetchInitialData = fetchInitialData;
         window.handleRealtimeUpdate = handleRealtimeUpdate;
         window.forceImmediateSync = forceImmediateSync; // Force immediate sync across all devices
+        window.scheduleDelayedSync = scheduleDelayedSync; // Schedule delayed sync (3 seconds)
+        window.cancelDelayedSync = cancelDelayedSync; // Cancel delayed sync
         window.markEdited = markEdited;
         window.updateGlobalFocusState = updateGlobalFocusState;
         window.saveModifiedCell = saveModifiedCell; // Excel-like save function
