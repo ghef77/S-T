@@ -7048,6 +7048,13 @@
         let isRealtimeEnabled = true;
         let fallbackMode = false;
         let retryTimeout = null;
+        
+        // Timestamp-based sync system for hospital networks that block WebSockets
+        let timestampSyncInterval = null;
+        const TIMESTAMP_SYNC_INTERVAL = 3000; // Check every 3 seconds
+        let lastSyncTimestamp = null;
+        let isTimestampSyncActive = false;
+        let lastKnownDataVersion = null;
 
         // Fallback save system for when realtime sync fails
         let fallbackSaveTimeout = null;
@@ -7098,6 +7105,7 @@
                             realtimeRetryCount = 0; // Reset retry count on successful connection
                             fallbackMode = false;
                             stopFallbackSave(); // Stop fallback save when realtime sync is restored
+                            stopTimestampSync(); // Stop timestamp sync when realtime sync is restored
                             const message = getAdaptiveMessage('Sync activée', 'Synchronisation temps réel activée');
                             updateStatus(message, 'success');
                         } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
@@ -7191,13 +7199,92 @@
             }
         }
 
+        // Timestamp-based sync system for hospital networks
+        function startTimestampSync() {
+            if (isTimestampSyncActive) return;
+            
+            console.log('🔄 [TIMESTAMP SYNC] Starting timestamp-based sync system...');
+            isTimestampSyncActive = true;
+            
+            // Get initial timestamp
+            getLastModificationTimestamp().then(timestamp => {
+                lastSyncTimestamp = timestamp;
+                console.log('🔄 [TIMESTAMP SYNC] Initial timestamp:', new Date(timestamp).toISOString());
+            });
+            
+            // Start periodic checking
+            timestampSyncInterval = setInterval(async () => {
+                try {
+                    await checkForDataChanges();
+                } catch (error) {
+                    console.log('⚠️ [TIMESTAMP SYNC] Error checking for changes:', error.message);
+                }
+            }, TIMESTAMP_SYNC_INTERVAL);
+            
+            console.log('✅ [TIMESTAMP SYNC] Timestamp-based sync started');
+        }
+        
+        function stopTimestampSync() {
+            if (timestampSyncInterval) {
+                clearInterval(timestampSyncInterval);
+                timestampSyncInterval = null;
+            }
+            isTimestampSyncActive = false;
+            console.log('🛑 [TIMESTAMP SYNC] Timestamp-based sync stopped');
+        }
+        
+        async function getLastModificationTimestamp() {
+            try {
+                const { data, error } = await supabase
+                    .from('staffTable')
+                    .select('updated_at')
+                    .order('updated_at', { ascending: false })
+                    .limit(1);
+                
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    return new Date(data[0].updated_at).getTime();
+                }
+                
+                return Date.now();
+            } catch (error) {
+                console.error('❌ [TIMESTAMP SYNC] Error getting timestamp:', error);
+                return Date.now();
+            }
+        }
+        
+        async function checkForDataChanges() {
+            try {
+                const currentTimestamp = await getLastModificationTimestamp();
+                
+                if (lastSyncTimestamp && currentTimestamp > lastSyncTimestamp) {
+                    console.log('🔄 [TIMESTAMP SYNC] Data changes detected, syncing...');
+                    console.log('🔄 [TIMESTAMP SYNC] Last sync:', new Date(lastSyncTimestamp).toISOString());
+                    console.log('🔄 [TIMESTAMP SYNC] Current:', new Date(currentTimestamp).toISOString());
+                    
+                    // Update timestamp
+                    lastSyncTimestamp = currentTimestamp;
+                    
+                    // Force data refresh
+                    if (typeof fetchInitialData === 'function') {
+                        await fetchInitialData(true);
+                        console.log('✅ [TIMESTAMP SYNC] Data synced successfully');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ [TIMESTAMP SYNC] Error checking for changes:', error);
+            }
+        }
+
         // Handle realtime connection errors with exponential backoff retry and fallback save
         function handleRealtimeConnectionError() {
             if (!isRealtimeEnabled) return;
 
             if (realtimeRetryCount >= MAX_RETRY_ATTEMPTS) {
-                console.log('⚠️ Max retry attempts reached - starting fallback save system');
+                console.log('⚠️ Max retry attempts reached - starting fallback systems');
                 startFallbackSave();
+                startTimestampSync(); // Start timestamp-based sync for hospital networks
                 return;
             }
 
@@ -11471,6 +11558,8 @@ ${capacityInfo.needsCleanup ?
         window.forceImmediateSync = forceImmediateSync; // Force immediate sync across all devices
         window.scheduleDelayedSync = scheduleDelayedSync; // Schedule delayed sync (3 seconds)
         window.cancelDelayedSync = cancelDelayedSync; // Cancel delayed sync
+        window.startTimestampSync = startTimestampSync; // Start timestamp-based sync
+        window.stopTimestampSync = stopTimestampSync; // Stop timestamp-based sync
         window.markEdited = markEdited;
         
         // Debug function to check realtime sync status
@@ -11482,6 +11571,8 @@ ${capacityInfo.needsCleanup ?
             console.log('  - MAX_RETRY_ATTEMPTS:', MAX_RETRY_ATTEMPTS);
             console.log('  - fallbackMode:', fallbackMode);
             console.log('  - isFallbackSaveActive:', isFallbackSaveActive);
+            console.log('  - isTimestampSyncActive:', isTimestampSyncActive);
+            console.log('  - lastSyncTimestamp:', lastSyncTimestamp ? new Date(lastSyncTimestamp).toISOString() : 'null');
             console.log('  - supabase client:', !!supabase);
             console.log('  - current URL:', window.location.href);
             console.log('  - user agent:', navigator.userAgent.substring(0, 100));
@@ -11497,6 +11588,8 @@ ${capacityInfo.needsCleanup ?
                 realtimeRetryCount,
                 fallbackMode,
                 isFallbackSaveActive,
+                isTimestampSyncActive,
+                lastSyncTimestamp: lastSyncTimestamp ? new Date(lastSyncTimestamp).toISOString() : null,
                 supabaseClient: !!supabase,
                 url: window.location.href
             };
