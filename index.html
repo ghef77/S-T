@@ -6928,8 +6928,6 @@
                         
                     }).catch(error => {
                         console.error('❌ [REALTIME] Data refresh failed:', error);
-                        const message = getAdaptiveMessage('Erreur sync', 'Erreur de synchronisation temps réel');
-                        updateStatus(message, 'error');
                         
                         // Performance monitoring
                         if (typeof eventManager !== 'undefined' && eventManager.monitor) {
@@ -7004,8 +7002,6 @@
 
             if (realtimeRetryCount >= MAX_RETRY_ATTEMPTS) {
                 console.log('⚠️ Max retry attempts reached - stopping retry attempts');
-                const message = getAdaptiveMessage('Erreur sync', 'Erreur de synchronisation temps réel');
-                updateStatus(message, 'error');
                 return;
             }
 
