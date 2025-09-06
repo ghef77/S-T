@@ -7027,33 +7027,6 @@
         }
 
 
-        // Original error handling for realtime connection
-        function handleRealtimeConnectionError() {
-            if (!isRealtimeEnabled) return;
-
-            if (realtimeRetryCount >= MAX_RETRY_ATTEMPTS) {
-                console.log('⚠️ Max retry attempts reached - disabling realtime sync');
-                const message = getAdaptiveMessage('Sync échouée', 'Synchronisation échouée - mode hors ligne');
-                updateStatus(message, 'error');
-                return;
-            }
-
-            realtimeRetryCount++;
-            const delay = BASE_RETRY_DELAY * Math.pow(2, realtimeRetryCount - 1);
-            
-            console.log(`🔄 Retrying realtime connection in ${delay/1000}s (attempt ${realtimeRetryCount}/${MAX_RETRY_ATTEMPTS})`);
-            
-            const message = getAdaptiveMessage(`Reconnexion ${realtimeRetryCount}/${MAX_RETRY_ATTEMPTS}`, `Tentative de reconnexion ${realtimeRetryCount}/${MAX_RETRY_ATTEMPTS}`);
-            updateStatus(message, 'warning');
-
-            if (retryTimeout) {
-                clearTimeout(retryTimeout);
-            }
-
-            retryTimeout = setTimeout(() => {
-                setupRealtimeSubscription();
-            }, delay);
-        }
 
 
         // Password authentication
