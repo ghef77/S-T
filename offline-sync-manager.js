@@ -12,18 +12,34 @@ window.addEventListener('online', async () => {
             // Vérifier s'il y a des données à sauvegarder
             const hasDraft = localStorage.getItem('staffTableDraft');
             const hasPendingImages = localStorage.getItem('pendingImageSync');
+            const hasPendingDeletions = localStorage.getItem('pendingDeletions');
             
-            if (hasDraft || hasPendingImages) {
+            if (hasDraft || hasPendingImages || hasPendingDeletions) {
                 console.log('💾 Données détectées, début de la sauvegarde...');
+                let syncNeeded = false;
                 
-                // Sauvegarder le tableau si brouillon existe
+                // ÉTAPE 1: Traiter les suppressions en attente AVANT tout autre chose
+                if (hasPendingDeletions && typeof window.processPendingDeletions === 'function') {
+                    console.log('🔄 Traitement des suppressions en attente...');
+                    try {
+                        const deletedCount = await window.processPendingDeletions();
+                        if (deletedCount) {
+                            console.log(`✅ ${deletedCount} suppression(s) traitée(s)`);
+                            syncNeeded = true;
+                        }
+                    } catch (error) {
+                        console.error('❌ Erreur lors du traitement des suppressions:', error);
+                    }
+                }
+                
+                // ÉTAPE 2: Sauvegarder le tableau si brouillon existe (sans rechargement)
                 if (hasDraft && typeof window.syncToMaster === 'function') {
                     console.log('🔄 Sauvegarde du tableau...');
-                    await window.syncToMaster(true); // true = manual save
+                    await window.syncToMaster(true, false); // true = manual save, false = pas de prune
                     console.log('✅ Tableau sauvegardé');
                 }
                 
-                // Sauvegarder les images en attente
+                // ÉTAPE 3: Sauvegarder les images en attente
                 if (hasPendingImages && typeof window.syncPendingImages === 'function') {
                     console.log('🔄 Sauvegarde des images...');
                     await window.syncPendingImages();

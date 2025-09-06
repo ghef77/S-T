@@ -5359,14 +5359,7 @@
             try { 
                 localStorage.setItem('staffTableDraft', document.getElementById('data-table').outerHTML);
                 
-                // Si hors ligne, stocker pour synchronisation ultérieure
-                if (window.offlineSyncManager && !navigator.onLine) {
-                    const tableData = extractTableData();
-                    if (tableData && tableData.length > 0) {
-                        window.offlineSyncManager.storeForLaterSync('table_update', tableData);
-                        console.log('📦 Données stockées pour synchronisation hors ligne');
-                    }
-                }
+                // Le système offline/online se charge automatiquement de la sauvegarde
             } catch(e) {} 
         }
         
@@ -6391,19 +6384,32 @@
             const keys = rows.map(r => r.dataset.key).filter(Boolean); 
             
             try { 
-                if (keys.length > 0) { 
-                    const { error } = await supabase
-                        .from(supabaseConfig.tableName)
-                        .delete()
-                        .in(supabaseConfig.primaryKeyColumn, keys); 
-                    
-                    if (error) throw error; 
-                    log(`Supprimé ${keys.length} ligne(s) côté serveur.`, 'success'); 
-                } 
+                // Vérifier la connectivité avant d'essayer la suppression côté serveur
+                const isOnline = navigator.onLine;
                 
+                if (isOnline && keys.length > 0) {
+                    try {
+                        const { error } = await supabase
+                            .from(supabaseConfig.tableName)
+                            .delete()
+                            .in(supabaseConfig.primaryKeyColumn, keys); 
+                        
+                        if (error) throw error; 
+                        log(`Supprimé ${keys.length} ligne(s) côté serveur.`, 'success'); 
+                    } catch (serverError) {
+                        // En cas d'erreur serveur, stocker les suppressions en attente
+                        log('Serveur indisponible, suppression sauvegardée pour synchronisation ultérieure', 'warning');
+                        storePendingDeletions(keys);
+                    }
+                } else if (keys.length > 0) {
+                    // Mode offline : stocker les suppressions en attente
+                    log('Mode hors ligne - Suppression sauvegardée pour synchronisation ultérieure', 'warning');
+                    storePendingDeletions(keys);
+                    showMessage('📵 Mode hors ligne : suppression sera synchronisée à la reconnexion', 'info');
+                }
 
                 
-                // Remove rows from DOM
+                // Remove rows from DOM (toujours effectuer la suppression locale)
                 rows.forEach(r => r.remove()); 
                 
                 // Renumber rows
@@ -6428,19 +6434,133 @@
                 
                 saveLocalDraft(); 
                 markEdited(); 
-                updateStatus('Ligne(s) supprimée(s)', 'success'); 
+                updateStatus(isOnline ? 'Ligne(s) supprimée(s)' : 'Ligne(s) supprimée(s) (sync en attente)', 'success'); 
                 
                 // Mettre à jour l'affichage du nombre de lignes
                 updateRowCount();
                 
-                // Immediately sync with prune to avoid server reintroducing deleted rows
-                await syncToMaster(true, true);
+                // Sync only if online
+                if (isOnline) {
+                    await syncToMaster(true, true);
+                }
             } catch(err) { 
                 // Cancel operation on error
                 cancelOperation();
                 log('Erreur lors de la suppression: ' + err.message, 'error'); 
                 updateStatus('Erreur de suppression', 'error'); 
             } 
+        }
+
+        // Fonction pour stocker les suppressions en attente
+        function storePendingDeletions(keys) {
+            if (!keys || keys.length === 0) return;
+            
+            let pendingDeletions = [];
+            try {
+                const existing = localStorage.getItem('pendingDeletions');
+                if (existing) {
+                    pendingDeletions = JSON.parse(existing);
+                }
+            } catch (e) {
+                console.warn('Erreur de lecture des suppressions en attente:', e);
+                pendingDeletions = [];
+            }
+            
+            // Ajouter les nouvelles clés à supprimer
+            keys.forEach(key => {
+                if (!pendingDeletions.includes(key)) {
+                    pendingDeletions.push(key);
+                }
+            });
+            
+            localStorage.setItem('pendingDeletions', JSON.stringify(pendingDeletions));
+            console.log(`📝 ${keys.length} suppression(s) stockée(s) pour synchronisation ultérieure`);
+        }
+
+        // Fonction pour traiter les suppressions en attente
+        async function processPendingDeletions() {
+            let originalRealtimeSubscription = null;
+            try {
+                const pendingDeletionsStr = localStorage.getItem('pendingDeletions');
+                if (!pendingDeletionsStr) return;
+
+                const pendingDeletions = JSON.parse(pendingDeletionsStr);
+                if (!pendingDeletions || pendingDeletions.length === 0) return;
+
+                console.log(`🔄 Traitement de ${pendingDeletions.length} suppression(s) en attente...`);
+
+                // ÉTAPE 1: Désactiver COMPLÈTEMENT la synchronisation en temps réel
+                console.log('🚫 Arrêt complet du realtime pour traiter les suppressions...');
+                suppressRealtimeUntil = Date.now() + 10000; // 10 secondes de suppression
+                
+                // Sauvegarder et couper la subscription realtime
+                originalRealtimeSubscription = realtimeSubscription;
+                if (realtimeSubscription) {
+                    console.log('🔌 Déconnexion du realtime subscription...');
+                    supabase.removeChannel(realtimeSubscription);
+                    realtimeSubscription = null;
+                }
+                
+                // ÉTAPE 2: Supprimer d'abord localement les lignes qui pourraient être présentes
+                pendingDeletions.forEach(key => {
+                    const rowsToRemove = document.querySelectorAll(`#table-body tr[data-key="${key}"]`);
+                    rowsToRemove.forEach(row => {
+                        console.log(`🗑️ Suppression locale préventive de la ligne: ${key}`);
+                        row.remove();
+                    });
+                });
+
+                // ÉTAPE 3: Supprimer côté serveur
+                const { error } = await supabase
+                    .from(supabaseConfig.tableName)
+                    .delete()
+                    .in(supabaseConfig.primaryKeyColumn, pendingDeletions);
+
+                if (error) {
+                    console.error('❌ Erreur lors du traitement des suppressions en attente:', error);
+                    throw error;
+                }
+
+                // ÉTAPE 4: Attendre un peu pour s'assurer que la suppression côté serveur est propagée
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // ÉTAPE 5: Renumber rows et update count
+                document.querySelectorAll('#table-body tr').forEach((tr, idx) => { 
+                    const noCell = tr.querySelector('td:first-child'); 
+                    if (noCell) noCell.textContent = idx + 1; 
+                });
+
+                if (typeof updateRowCount === 'function') {
+                    updateRowCount();
+                }
+
+                // ÉTAPE 6: Nettoyer le localStorage après succès
+                localStorage.removeItem('pendingDeletions');
+                console.log(`✅ ${pendingDeletions.length} suppression(s) synchronisée(s) avec succès`);
+                
+                // ÉTAPE 7: Reconnecter le realtime après délai
+                setTimeout(() => {
+                    console.log('🔄 Reconnexion du realtime...');
+                    if (typeof setupRealtimeSubscription === 'function') {
+                        setupRealtimeSubscription();
+                    }
+                    suppressRealtimeUntil = 0;
+                }, 3000);
+                
+                return pendingDeletions.length;
+            } catch (error) {
+                console.error('❌ Erreur lors du traitement des suppressions en attente:', error);
+                
+                // Restaurer le realtime en cas d'erreur
+                if (originalRealtimeSubscription && !realtimeSubscription) {
+                    console.log('🔄 Restauration du realtime après erreur...');
+                    if (typeof setupRealtimeSubscription === 'function') {
+                        setupRealtimeSubscription();
+                    }
+                }
+                suppressRealtimeUntil = 0;
+                throw error;
+            }
         }
 
         // Optimized Data synchronization with caching
@@ -10734,17 +10854,10 @@
         }
         
         function storeImageForLaterSync(imageData) {
-            // Utiliser le nouveau système de synchronisation hors ligne si disponible
-            if (window.offlineSyncManager) {
-                window.offlineSyncManager.storeForLaterSync('image_upload', imageData);
-                console.log('🖼️ Image stockée pour synchronisation hors ligne via OfflineSyncManager');
-            } else {
-                // Fallback vers l'ancien système
-                let pendingImages = JSON.parse(localStorage.getItem('pendingImageSync') || '[]');
-                pendingImages.push(imageData);
-                localStorage.setItem('pendingImageSync', JSON.stringify(pendingImages));
-                console.log('🖼️ Image stockée pour synchronisation hors ligne (ancien système)');
-            }
+            let pendingImages = JSON.parse(localStorage.getItem('pendingImageSync') || '[]');
+            pendingImages.push(imageData);
+            localStorage.setItem('pendingImageSync', JSON.stringify(pendingImages));
+            console.log('🖼️ Image stockée pour synchronisation hors ligne');
         }
         
         async function syncPendingImages() {
@@ -10994,6 +11107,7 @@
         window.addRow = addRow;
         window.saveManually = saveManually;
         window.undo = undo;
+        window.processPendingDeletions = processPendingDeletions;
         window.redo = redo;
         window.trackCellEdit = trackCellEdit;
         window.getColumnLabelForCell = getColumnLabelForCell;
@@ -12504,53 +12618,9 @@ ${capacityInfo.needsCleanup ?
             initializeViewportAdaptation();
         }
         
-        // Initialize offline sync functions globally
+        // Exposer les fonctions nécessaires pour la sauvegarde automatique
         function initializeOfflineSync() {
-            // Exposer les fonctions de sauvegarde nécessaires au gestionnaire hors ligne
-            window.saveToSupabase = async function() {
-                const tableData = extractTableData();
-                if (tableData && tableData.length > 0) {
-                    try {
-                        const { syncToSupabase } = await import('./supabase-connection.js');
-                        await syncToSupabase(tableData, true);
-                        console.log('✅ Données synchronisées avec Supabase');
-                        return true;
-                    } catch (error) {
-                        console.error('❌ Erreur lors de la synchronisation:', error);
-                        return false;
-                    }
-                }
-                return false;
-            };
-            
             window.syncPendingImages = syncPendingImages;
-            window.extractTableData = extractTableData;
-            
-            // Ajouter un bouton de synchronisation manuelle si nécessaire
-            addSyncButton();
-        }
-        
-        // Ajouter un bouton de synchronisation manuelle
-        function addSyncButton() {
-            const syncStatus = document.getElementById('sync-status');
-            if (syncStatus && !document.getElementById('manual-sync-btn')) {
-                const syncButton = document.createElement('button');
-                syncButton.id = 'manual-sync-btn';
-                syncButton.innerHTML = '<i class="fa-solid fa-sync-alt"></i>';
-                syncButton.title = 'Synchronisation manuelle';
-                syncButton.className = 'ml-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs';
-                syncButton.onclick = async () => {
-                    if (window.offlineSyncManager) {
-                        syncButton.innerHTML = '<i class="fa-solid fa-sync-alt fa-spin"></i>';
-                        const success = await window.offlineSyncManager.forcSync();
-                        syncButton.innerHTML = '<i class="fa-solid fa-sync-alt"></i>';
-                        if (success) {
-                            showMessage('✅ Synchronisation manuelle terminée', 'success');
-                        }
-                    }
-                };
-                syncStatus.appendChild(syncButton);
-            }
         }
 
         // Initialize manual snapshot button state
