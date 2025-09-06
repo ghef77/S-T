@@ -7025,6 +7025,13 @@
         // Enhanced realtime update handler that schedules delayed sync
         function handleRealtimeUpdateWithImmediateSync(payload) {
             console.log('🔄 [ENHANCED REALTIME] Processing update with delayed sync...');
+            console.log('🔍 [DEBUG] Update received:', {
+                event: payload.event,
+                table: payload.table,
+                timestamp: new Date().toISOString(),
+                url: window.location.href,
+                userAgent: navigator.userAgent.substring(0, 50) + '...'
+            });
             
             // First, handle the normal realtime update
             handleRealtimeUpdate(payload);
@@ -7058,6 +7065,8 @@
                 }
 
                 console.log('🔄 Setting up realtime subscription...');
+                console.log('🔍 [DEBUG] Supabase client status:', !!supabase);
+                console.log('🔍 [DEBUG] Current URL:', window.location.href);
                 
                 realtimeSubscription = supabase.channel('table-changes')
                     .on('postgres_changes', { 
@@ -7077,6 +7086,13 @@
                     }, handleRealtimeUpdateWithImmediateSync)
                     .subscribe(status => {
                         console.log('📡 Realtime subscription status:', status);
+                        console.log('🔍 [DEBUG] Subscription details:', {
+                            status: status,
+                            timestamp: new Date().toISOString(),
+                            url: window.location.href,
+                            userAgent: navigator.userAgent.substring(0, 50) + '...'
+                        });
+                        
                         if (status === 'SUBSCRIBED') {
                             console.log('✅ Realtime synchronization activated');
                             realtimeRetryCount = 0; // Reset retry count on successful connection
@@ -7086,6 +7102,12 @@
                             updateStatus(message, 'success');
                         } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
                             console.log('❌ Realtime synchronization error - status:', status);
+                            console.log('🔍 [DEBUG] Error details:', {
+                                status: status,
+                                retryCount: realtimeRetryCount,
+                                maxRetries: MAX_RETRY_ATTEMPTS,
+                                timestamp: new Date().toISOString()
+                            });
                             handleRealtimeConnectionError();
                         }
                     });
@@ -11450,6 +11472,66 @@ ${capacityInfo.needsCleanup ?
         window.scheduleDelayedSync = scheduleDelayedSync; // Schedule delayed sync (3 seconds)
         window.cancelDelayedSync = cancelDelayedSync; // Cancel delayed sync
         window.markEdited = markEdited;
+        
+        // Debug function to check realtime sync status
+        window.debugRealtimeSync = function() {
+            console.log('🔍 [DEBUG] Realtime Sync Status:');
+            console.log('  - realtimeSubscription:', !!realtimeSubscription);
+            console.log('  - isRealtimeEnabled:', isRealtimeEnabled);
+            console.log('  - realtimeRetryCount:', realtimeRetryCount);
+            console.log('  - MAX_RETRY_ATTEMPTS:', MAX_RETRY_ATTEMPTS);
+            console.log('  - fallbackMode:', fallbackMode);
+            console.log('  - isFallbackSaveActive:', isFallbackSaveActive);
+            console.log('  - supabase client:', !!supabase);
+            console.log('  - current URL:', window.location.href);
+            console.log('  - user agent:', navigator.userAgent.substring(0, 100));
+            
+            if (realtimeSubscription) {
+                console.log('  - subscription state:', realtimeSubscription.state);
+                console.log('  - subscription topic:', realtimeSubscription.topic);
+            }
+            
+            return {
+                realtimeSubscription: !!realtimeSubscription,
+                isRealtimeEnabled,
+                realtimeRetryCount,
+                fallbackMode,
+                isFallbackSaveActive,
+                supabaseClient: !!supabase,
+                url: window.location.href
+            };
+        };
+        
+        // Function to force reset realtime sync
+        window.resetRealtimeSync = function() {
+            console.log('🔄 [RESET] Forcing realtime sync reset...');
+            
+            // Clean up existing subscription
+            if (realtimeSubscription) {
+                console.log('🔄 [RESET] Removing existing subscription...');
+                supabase.removeChannel(realtimeSubscription);
+                realtimeSubscription = null;
+            }
+            
+            // Reset retry count
+            realtimeRetryCount = 0;
+            isRealtimeEnabled = true;
+            fallbackMode = false;
+            
+            // Stop fallback save
+            if (typeof stopFallbackSave === 'function') {
+                stopFallbackSave();
+            }
+            
+            // Wait a moment then setup new subscription
+            setTimeout(() => {
+                console.log('🔄 [RESET] Setting up new subscription...');
+                setupRealtimeSubscription();
+            }, 1000);
+            
+            console.log('✅ [RESET] Realtime sync reset completed');
+        };
+        
         window.updateGlobalFocusState = updateGlobalFocusState;
         window.saveModifiedCell = saveModifiedCell; // Excel-like save function
         window.isRestoringCursor = function() { return isRestoringCursor; }; // For debugging
