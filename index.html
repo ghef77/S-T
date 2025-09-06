@@ -7260,29 +7260,6 @@
             }
         }
         
-        async function checkForDataChanges() {
-            try {
-                const currentTimestamp = await getLastModificationTimestamp();
-                
-                if (lastSyncTimestamp && currentTimestamp > lastSyncTimestamp) {
-                    console.log('🔄 [TIMESTAMP SYNC] Data changes detected, syncing...');
-                    console.log('🔄 [TIMESTAMP SYNC] Last sync:', new Date(lastSyncTimestamp).toISOString());
-                    console.log('🔄 [TIMESTAMP SYNC] Current:', new Date(currentTimestamp).toISOString());
-                    
-                    // Update timestamp
-                    lastSyncTimestamp = currentTimestamp;
-                    
-                    // Force data refresh
-                    if (typeof fetchInitialData === 'function') {
-                        await fetchInitialData(true);
-                        console.log('✅ [TIMESTAMP SYNC] Data synced successfully');
-                    }
-                }
-            } catch (error) {
-                console.error('❌ [TIMESTAMP SYNC] Error checking for changes:', error);
-            }
-        }
-        
         async function checkUserActivityAndScheduleSync() {
             try {
                 // Check if user is currently editing
