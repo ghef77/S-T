@@ -823,6 +823,9 @@ class SimpleGallery {
             // Set timestamp for real-time sync
             this.lastChangeTimestamp = Date.now();
             
+            // Update image_patient_associations table for real-time sync
+            await this.updateImagePatientAssociation(fileName, this.currentPatientName, targetBucket);
+            
             // Immediately update the gallery to show the new image
             await this.loadImages();
             this.forceRefreshDisplay();
@@ -860,6 +863,9 @@ class SimpleGallery {
 
             // Set timestamp for real-time sync
             this.lastChangeTimestamp = Date.now();
+
+            // Remove from image_patient_associations table for real-time sync
+            await this.removeImagePatientAssociation(fileName);
 
             // Immediately update the gallery to reflect the deletion
             await this.loadImages();
@@ -2204,6 +2210,57 @@ ${bucketDetails}
             }
         } catch (error) {
             console.warn('⚠️ Could not show detailed stats UI:', error);
+        }
+    }
+
+    // Update image_patient_associations table for real-time sync
+    async updateImagePatientAssociation(fileName, patientName, bucketName) {
+        try {
+            if (!this.serviceSupabase || !patientName) {
+                console.log('⚠️ Cannot update association - missing Supabase or patient name');
+                return;
+            }
+
+            const { error } = await this.serviceSupabase
+                .from('image_patient_associations')
+                .insert({
+                    image_name: fileName,
+                    patient_name: patientName,
+                    bucket_name: bucketName || this.bucketName,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+
+            if (error) {
+                console.error('❌ Error updating image_patient_associations:', error);
+            } else {
+                console.log('✅ Image-patient association updated for real-time sync');
+            }
+        } catch (error) {
+            console.error('❌ Error in updateImagePatientAssociation:', error);
+        }
+    }
+
+    // Remove image_patient_associations table entry for real-time sync
+    async removeImagePatientAssociation(fileName) {
+        try {
+            if (!this.serviceSupabase) {
+                console.log('⚠️ Cannot remove association - missing Supabase');
+                return;
+            }
+
+            const { error } = await this.serviceSupabase
+                .from('image_patient_associations')
+                .delete()
+                .eq('image_name', fileName);
+
+            if (error) {
+                console.error('❌ Error removing image_patient_associations:', error);
+            } else {
+                console.log('✅ Image-patient association removed for real-time sync');
+            }
+        } catch (error) {
+            console.error('❌ Error in removeImagePatientAssociation:', error);
         }
     }
 }
