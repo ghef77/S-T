@@ -7051,10 +7051,12 @@
         
         // Timestamp-based sync system for hospital networks that block WebSockets
         let timestampSyncInterval = null;
-        const TIMESTAMP_SYNC_INTERVAL = 3000; // Check every 3 seconds
+        const TIMESTAMP_SYNC_INTERVAL = 1000; // Check every 1 second for user activity
         let lastSyncTimestamp = null;
         let isTimestampSyncActive = false;
         let lastKnownDataVersion = null;
+        let userInactivityTimeout = null;
+        const USER_INACTIVITY_DELAY = 3000; // Wait 3 seconds after user stops editing
 
         // Fallback save system for when realtime sync fails
         let fallbackSaveTimeout = null;
@@ -7212,22 +7214,26 @@
                 console.log('🔄 [TIMESTAMP SYNC] Initial timestamp:', new Date(timestamp).toISOString());
             });
             
-            // Start periodic checking with user activity detection
+            // Start periodic checking for user activity
             timestampSyncInterval = setInterval(async () => {
                 try {
-                    await checkForDataChangesWithUserActivity();
+                    await checkUserActivityAndScheduleSync();
                 } catch (error) {
-                    console.log('⚠️ [TIMESTAMP SYNC] Error checking for changes:', error.message);
+                    console.log('⚠️ [TIMESTAMP SYNC] Error checking user activity:', error.message);
                 }
             }, TIMESTAMP_SYNC_INTERVAL);
             
-            console.log('✅ [TIMESTAMP SYNC] Timestamp-based sync started');
+            console.log('✅ [TIMESTAMP SYNC] Timestamp-based sync started (waits 3s after user stops editing)');
         }
         
         function stopTimestampSync() {
             if (timestampSyncInterval) {
                 clearInterval(timestampSyncInterval);
                 timestampSyncInterval = null;
+            }
+            if (userInactivityTimeout) {
+                clearTimeout(userInactivityTimeout);
+                userInactivityTimeout = null;
             }
             isTimestampSyncActive = false;
             console.log('🛑 [TIMESTAMP SYNC] Timestamp-based sync stopped');
@@ -7277,24 +7283,40 @@
             }
         }
         
-        async function checkForDataChangesWithUserActivity() {
+        async function checkUserActivityAndScheduleSync() {
             try {
                 // Check if user is currently editing
                 const timeSinceLastEdit = Date.now() - lastUserEditTime;
-                const isUserCurrentlyEditing = timeSinceLastEdit < 3000; // 3 seconds
+                const isUserCurrentlyEditing = timeSinceLastEdit < USER_INACTIVITY_DELAY;
                 
                 if (isUserCurrentlyEditing) {
-                    console.log('⏸️ [TIMESTAMP SYNC] User is editing, skipping sync check...');
+                    // User is still editing, clear any existing timeout and wait
+                    if (userInactivityTimeout) {
+                        clearTimeout(userInactivityTimeout);
+                        userInactivityTimeout = null;
+                    }
+                    console.log('⏸️ [TIMESTAMP SYNC] User is editing, waiting for inactivity...');
                     return;
                 }
                 
+                // User has stopped editing for 3+ seconds, check for changes
+                if (!userInactivityTimeout) {
+                    console.log('🔄 [TIMESTAMP SYNC] User inactive for 3+ seconds, checking for changes...');
+                    await checkForDataChanges();
+                }
+            } catch (error) {
+                console.error('❌ [TIMESTAMP SYNC] Error checking user activity:', error);
+            }
+        }
+        
+        async function checkForDataChanges() {
+            try {
                 const currentTimestamp = await getLastModificationTimestamp();
                 
                 if (lastSyncTimestamp && currentTimestamp > lastSyncTimestamp) {
-                    console.log('🔄 [TIMESTAMP SYNC] Data changes detected, user not editing, syncing...');
+                    console.log('🔄 [TIMESTAMP SYNC] Data changes detected, syncing...');
                     console.log('🔄 [TIMESTAMP SYNC] Last sync:', new Date(lastSyncTimestamp).toISOString());
                     console.log('🔄 [TIMESTAMP SYNC] Current:', new Date(currentTimestamp).toISOString());
-                    console.log('🔄 [TIMESTAMP SYNC] Time since last edit:', Math.round(timeSinceLastEdit / 1000) + 's');
                     
                     // Update timestamp
                     lastSyncTimestamp = currentTimestamp;
@@ -7304,6 +7326,8 @@
                         await fetchInitialData(true);
                         console.log('✅ [TIMESTAMP SYNC] Data synced successfully');
                     }
+                } else {
+                    console.log('✅ [TIMESTAMP SYNC] No changes detected');
                 }
             } catch (error) {
                 console.error('❌ [TIMESTAMP SYNC] Error checking for changes:', error);
