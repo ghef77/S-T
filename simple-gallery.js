@@ -54,6 +54,9 @@ class SimpleGallery {
             // Setup real-time synchronization
             await this.setupRealtimeSync();
             
+            // Always start intelligent polling for automatic refresh every 3 seconds
+            this.startIntelligentPolling();
+            
             // Setup page unload cleanup
             window.addEventListener('beforeunload', () => {
                 this.cleanupRealtimeSync();
@@ -235,7 +238,7 @@ class SimpleGallery {
         }
     }
 
-    // Intelligent polling as backup for real-time sync
+    // Intelligent polling for automatic refresh every 3 seconds
     startIntelligentPolling() {
         // Always cleanup existing interval first
         if (this.pollingInterval) {
@@ -243,18 +246,18 @@ class SimpleGallery {
             this.pollingInterval = null;
         }
         
-        // Poll every 3 seconds as backup
+        // Poll every 3 seconds for automatic refresh
         this.pollingInterval = setInterval(async () => {
             try {
                 // Additional check to prevent execution if cleaned up
                 if (!this.pollingInterval) return;
                 await this.checkForChanges();
             } catch (error) {
-                console.log('⚠️ Polling error:', error.message);
+                console.log('⚠️ Gallery polling error:', error.message);
             }
         }, 3000);
         
-        console.log('🔄 Intelligent polling started as backup');
+        console.log('🔄 Gallery automatic refresh started (every 3 seconds)');
     }
 
     // Check for changes by comparing file lists
@@ -270,7 +273,7 @@ class SimpleGallery {
             const currentHash = this.createFileHash(currentFiles);
             
             if (this.lastFileHash && this.lastFileHash !== currentHash) {
-                console.log('🔄 Change detected via polling, updating gallery...');
+                console.log('🔄 Gallery change detected via automatic refresh, updating...');
                 this.lastFileHash = currentHash;
                 await this.loadImages();
                 this.forceRefreshDisplay();

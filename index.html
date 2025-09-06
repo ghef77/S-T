@@ -2404,6 +2404,7 @@
                         isDirty = true;
                         isTyping = true;
                         lastEditAt = Date.now();
+                        updateUserEditTime();
                     },
                     { debounceMs: 150 }
                 );
@@ -5480,6 +5481,7 @@
             isDirty = true;
             isTyping = true;
             lastEditAt = now;
+            updateUserEditTime();
             
             // Clear existing typing timer
             if (typingTimer) clearTimeout(typingTimer);
@@ -5754,6 +5756,7 @@
             isDirty = true;
             isTyping = true;
             lastEditAt = Date.now();
+            updateUserEditTime();
             console.log('📝 [EXCEL-SAVE] Cell input detected - marked dirty, save on blur only');
             
             // keep caret/position updated while typing
@@ -6948,6 +6951,12 @@
         let fallbackMode = false;
         let retryTimeout = null;
 
+        // Fallback save system for when realtime sync fails
+        let fallbackSaveTimeout = null;
+        const FALLBACK_SAVE_DELAY = 3000; // 3 seconds after user stops editing
+        let lastUserEditTime = 0;
+        let isFallbackSaveActive = false;
+
 
         // Setup realtime subscription for live data synchronization with resilient connection handling
         function setupRealtimeSubscription() {
@@ -6981,6 +6990,7 @@
                             console.log('✅ Realtime synchronization activated');
                             realtimeRetryCount = 0; // Reset retry count on successful connection
                             fallbackMode = false;
+                            stopFallbackSave(); // Stop fallback save when realtime sync is restored
                             const message = getAdaptiveMessage('Sync activée', 'Synchronisation temps réel activée');
                             updateStatus(message, 'success');
                         } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
@@ -6996,12 +7006,80 @@
             }
         }
 
-        // Handle realtime connection errors with exponential backoff retry
+
+        // Fallback save system for when realtime sync fails
+        function startFallbackSave() {
+            if (isFallbackSaveActive) return;
+            
+            console.log('🔄 Starting fallback save system...');
+            isFallbackSaveActive = true;
+            
+            // Clear existing timeout
+            if (fallbackSaveTimeout) {
+                clearTimeout(fallbackSaveTimeout);
+            }
+            
+            // Set up periodic check for user activity
+            const fallbackInterval = setInterval(() => {
+                const timeSinceLastEdit = Date.now() - lastUserEditTime;
+                
+                // If user has stopped editing for 3 seconds and realtime sync is not working
+                if (timeSinceLastEdit >= FALLBACK_SAVE_DELAY && !isRealtimeWorking()) {
+                    console.log('💾 Triggering fallback save - realtime sync not working');
+                    performFallbackSave();
+                }
+            }, 1000); // Check every second
+            
+            // Store interval ID for cleanup
+            fallbackSaveTimeout = fallbackInterval;
+        }
+
+        function stopFallbackSave() {
+            if (!isFallbackSaveActive) return;
+            
+            console.log('🛑 Stopping fallback save system...');
+            isFallbackSaveActive = false;
+            
+            if (fallbackSaveTimeout) {
+                clearTimeout(fallbackSaveTimeout);
+                fallbackSaveTimeout = null;
+            }
+        }
+
+        function isRealtimeWorking() {
+            // Check if realtime subscription is active and working
+            return realtimeSubscription && 
+                   realtimeRetryCount < MAX_RETRY_ATTEMPTS && 
+                   isRealtimeEnabled;
+        }
+
+        function performFallbackSave() {
+            try {
+                console.log('💾 Performing fallback save...');
+                
+                // Use the existing save function if available
+                if (typeof saveLocalDraft === 'function') {
+                    saveLocalDraft();
+                    console.log('✅ Fallback save completed');
+                } else {
+                    console.warn('⚠️ saveLocalDraft function not available for fallback save');
+                }
+            } catch (error) {
+                console.error('❌ Error in fallback save:', error);
+            }
+        }
+
+        function updateUserEditTime() {
+            lastUserEditTime = Date.now();
+        }
+
+        // Handle realtime connection errors with exponential backoff retry and fallback save
         function handleRealtimeConnectionError() {
             if (!isRealtimeEnabled) return;
 
             if (realtimeRetryCount >= MAX_RETRY_ATTEMPTS) {
-                console.log('⚠️ Max retry attempts reached - stopping retry attempts');
+                console.log('⚠️ Max retry attempts reached - starting fallback save system');
+                startFallbackSave();
                 return;
             }
 
