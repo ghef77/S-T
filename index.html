@@ -1854,6 +1854,9 @@
     <!-- Performance Optimizers -->
     <script src="performance-optimizer.js"></script>
     <script src="sync-optimizer.js"></script>
+    
+    <!-- Offline Sync Manager -->
+    <script src="offline-sync-manager.js"></script>
 
     <!-- App -->
     <script type="module">
@@ -5324,6 +5327,29 @@
             }, 500); 
         }
         
+        // Fonction pour extraire les données du tableau
+        function extractTableData() {
+            const table = document.getElementById('data-table');
+            if (!table) return null;
+            
+            const data = [];
+            const rows = table.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length > 0) {
+                    const rowData = {};
+                    cells.forEach((cell, index) => {
+                        const label = cell.getAttribute('data-label') || `col_${index}`;
+                        rowData[label] = cell.textContent.trim();
+                    });
+                    data.push(rowData);
+                }
+            });
+            
+            return data;
+        }
+
         function saveLocalDraft() { 
             // Protection renforcée : ne rien faire si on est en mode visualisation protégé
             if (isViewModeProtected || (isViewMode && isMobile())) {
@@ -5331,7 +5357,16 @@
             }
             
             try { 
-                localStorage.setItem('staffTableDraft', document.getElementById('data-table').outerHTML); 
+                localStorage.setItem('staffTableDraft', document.getElementById('data-table').outerHTML);
+                
+                // Si hors ligne, stocker pour synchronisation ultérieure
+                if (window.offlineSyncManager && !navigator.onLine) {
+                    const tableData = extractTableData();
+                    if (tableData && tableData.length > 0) {
+                        window.offlineSyncManager.storeForLaterSync('table_update', tableData);
+                        console.log('📦 Données stockées pour synchronisation hors ligne');
+                    }
+                }
             } catch(e) {} 
         }
         
@@ -10699,9 +10734,17 @@
         }
         
         function storeImageForLaterSync(imageData) {
-            let pendingImages = JSON.parse(localStorage.getItem('pendingImageSync') || '[]');
-            pendingImages.push(imageData);
-            localStorage.setItem('pendingImageSync', JSON.stringify(pendingImages));
+            // Utiliser le nouveau système de synchronisation hors ligne si disponible
+            if (window.offlineSyncManager) {
+                window.offlineSyncManager.storeForLaterSync('image_upload', imageData);
+                console.log('🖼️ Image stockée pour synchronisation hors ligne via OfflineSyncManager');
+            } else {
+                // Fallback vers l'ancien système
+                let pendingImages = JSON.parse(localStorage.getItem('pendingImageSync') || '[]');
+                pendingImages.push(imageData);
+                localStorage.setItem('pendingImageSync', JSON.stringify(pendingImages));
+                console.log('🖼️ Image stockée pour synchronisation hors ligne (ancien système)');
+            }
         }
         
         async function syncPendingImages() {
@@ -12461,10 +12504,60 @@ ${capacityInfo.needsCleanup ?
             initializeViewportAdaptation();
         }
         
+        // Initialize offline sync functions globally
+        function initializeOfflineSync() {
+            // Exposer les fonctions de sauvegarde nécessaires au gestionnaire hors ligne
+            window.saveToSupabase = async function() {
+                const tableData = extractTableData();
+                if (tableData && tableData.length > 0) {
+                    try {
+                        const { syncToSupabase } = await import('./supabase-connection.js');
+                        await syncToSupabase(tableData, true);
+                        console.log('✅ Données synchronisées avec Supabase');
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Erreur lors de la synchronisation:', error);
+                        return false;
+                    }
+                }
+                return false;
+            };
+            
+            window.syncPendingImages = syncPendingImages;
+            window.extractTableData = extractTableData;
+            
+            // Ajouter un bouton de synchronisation manuelle si nécessaire
+            addSyncButton();
+        }
+        
+        // Ajouter un bouton de synchronisation manuelle
+        function addSyncButton() {
+            const syncStatus = document.getElementById('sync-status');
+            if (syncStatus && !document.getElementById('manual-sync-btn')) {
+                const syncButton = document.createElement('button');
+                syncButton.id = 'manual-sync-btn';
+                syncButton.innerHTML = '<i class="fa-solid fa-sync-alt"></i>';
+                syncButton.title = 'Synchronisation manuelle';
+                syncButton.className = 'ml-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs';
+                syncButton.onclick = async () => {
+                    if (window.offlineSyncManager) {
+                        syncButton.innerHTML = '<i class="fa-solid fa-sync-alt fa-spin"></i>';
+                        const success = await window.offlineSyncManager.forcSync();
+                        syncButton.innerHTML = '<i class="fa-solid fa-sync-alt"></i>';
+                        if (success) {
+                            showMessage('✅ Synchronisation manuelle terminée', 'success');
+                        }
+                    }
+                };
+                syncStatus.appendChild(syncButton);
+            }
+        }
+
         // Initialize manual snapshot button state
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 updateManualSnapshotButtonState();
+                initializeOfflineSync();
                 // Also ensure touch support is properly initialized
                 TimerManager.setTimeout(() => {
                     addTouchSupport();
@@ -12472,6 +12565,7 @@ ${capacityInfo.needsCleanup ?
             });
         } else {
             updateManualSnapshotButtonState();
+            initializeOfflineSync();
             // Also ensure touch support is properly initialized
             TimerManager.setTimeout(() => {
                 addTouchSupport();
