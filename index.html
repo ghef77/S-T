@@ -6477,6 +6477,7 @@
             console.log(`📝 ${keys.length} suppression(s) stockée(s) pour synchronisation ultérieure`);
         }
 
+
         // Fonction pour traiter les suppressions en attente
         async function processPendingDeletions() {
             let originalRealtimeSubscription = null;
@@ -6491,7 +6492,7 @@
 
                 // ÉTAPE 1: Désactiver COMPLÈTEMENT la synchronisation en temps réel
                 console.log('🚫 Arrêt complet du realtime pour traiter les suppressions...');
-                suppressRealtimeUntil = Date.now() + 10000; // 10 secondes de suppression
+                suppressRealtimeUntil = Date.now() + 5000; // 5 secondes de suppression
                 
                 // Sauvegarder et couper la subscription realtime
                 originalRealtimeSubscription = realtimeSubscription;
@@ -6538,14 +6539,15 @@
                 localStorage.removeItem('pendingDeletions');
                 console.log(`✅ ${pendingDeletions.length} suppression(s) synchronisée(s) avec succès`);
                 
-                // ÉTAPE 7: Reconnecter le realtime après délai
+                // ÉTAPE 7: Réinitialiser suppressRealtimeUntil et reconnecter le realtime
+                console.log(`🔄 Reconnexion du realtime dans 2 secondes...`);
                 setTimeout(() => {
+                    suppressRealtimeUntil = 0; // Reset d'abord
                     console.log('🔄 Reconnexion du realtime...');
                     if (typeof setupRealtimeSubscription === 'function') {
                         setupRealtimeSubscription();
                     }
-                    suppressRealtimeUntil = 0;
-                }, 3000);
+                }, 2000);
                 
                 return pendingDeletions.length;
             } catch (error) {
@@ -6887,6 +6889,29 @@
             await fetchInitialData(); 
         }
         
+        // Handle realtime updates for images from Supabase
+        function handleImageRealtimeUpdate(payload) {
+            console.log('🖼️ [IMAGE REALTIME] Image update received:', payload);
+            
+            // Skip if realtime is suppressed
+            if (Date.now() < suppressRealtimeUntil) {
+                console.log('🚫 [IMAGE REALTIME] Update ignored - suppressed until', new Date(suppressRealtimeUntil));
+                return;
+            }
+
+            // Reload images from Supabase to get latest data
+            if (typeof loadImagesFromSupabase === 'function') {
+                console.log('🔄 [IMAGE REALTIME] Reloading images...');
+                loadImagesFromSupabase().then(() => {
+                    // Update image column icons after reload
+                    if (typeof updateAllImageColumnIcons === 'function') {
+                        updateAllImageColumnIcons();
+                    }
+                    console.log('✅ [IMAGE REALTIME] Images reloaded successfully');
+                });
+            }
+        }
+
         // Handle realtime updates from Supabase
         function handleRealtimeUpdate(payload) {
             console.log('🔄 [REALTIME] ========== REALTIME UPDATE START ==========');
@@ -7139,6 +7164,21 @@
                         schema: 'public', 
                         table: 'staffTable' 
                     }, handleRealtimeUpdate)
+                    .on('postgres_changes', { 
+                        event: 'INSERT', 
+                        schema: 'public', 
+                        table: 'gallery_images' 
+                    }, handleImageRealtimeUpdate)
+                    .on('postgres_changes', { 
+                        event: 'UPDATE', 
+                        schema: 'public', 
+                        table: 'gallery_images' 
+                    }, handleImageRealtimeUpdate)
+                    .on('postgres_changes', { 
+                        event: 'DELETE', 
+                        schema: 'public', 
+                        table: 'gallery_images' 
+                    }, handleImageRealtimeUpdate)
                     .subscribe(status => {
                         console.log('📡 Realtime subscription status:', status);
                         if (status === 'SUBSCRIBED') {
@@ -11108,6 +11148,9 @@
         window.saveManually = saveManually;
         window.undo = undo;
         window.processPendingDeletions = processPendingDeletions;
+        window.getSuppressRealtimeUntil = () => suppressRealtimeUntil;
+        window.setSuppressRealtimeUntil = (value) => { suppressRealtimeUntil = value; };
+        window.setupRealtimeSubscription = setupRealtimeSubscription;
         window.redo = redo;
         window.trackCellEdit = trackCellEdit;
         window.getColumnLabelForCell = getColumnLabelForCell;
@@ -11649,6 +11692,7 @@ ${capacityInfo.needsCleanup ?
         window.updateHistoryDateButton = updateHistoryDateButton;
         window.fetchInitialData = fetchInitialData;
         window.handleRealtimeUpdate = handleRealtimeUpdate;
+        window.handleImageRealtimeUpdate = handleImageRealtimeUpdate;
         window.markEdited = markEdited;
         window.updateGlobalFocusState = updateGlobalFocusState;
         window.saveModifiedCell = saveModifiedCell; // Excel-like save function
@@ -12270,6 +12314,54 @@ ${capacityInfo.needsCleanup ?
                                     console.log('🔄 DELETE:', payload);
                                     if (typeof window.fetchInitialData === 'function') {
                                         setTimeout(() => window.fetchInitialData(), 1000);
+                                    }
+                                })
+                                .on('postgres_changes', { 
+                                    event: 'INSERT', 
+                                    schema: 'public', 
+                                    table: 'gallery_images' 
+                                }, (payload) => {
+                                    console.log('🖼️ IMAGE INSERT:', payload);
+                                    if (typeof window.loadImagesFromSupabase === 'function') {
+                                        setTimeout(() => {
+                                            window.loadImagesFromSupabase().then(() => {
+                                                if (typeof window.updateAllImageColumnIcons === 'function') {
+                                                    window.updateAllImageColumnIcons();
+                                                }
+                                            });
+                                        }, 1000);
+                                    }
+                                })
+                                .on('postgres_changes', { 
+                                    event: 'UPDATE', 
+                                    schema: 'public', 
+                                    table: 'gallery_images' 
+                                }, (payload) => {
+                                    console.log('🖼️ IMAGE UPDATE:', payload);
+                                    if (typeof window.loadImagesFromSupabase === 'function') {
+                                        setTimeout(() => {
+                                            window.loadImagesFromSupabase().then(() => {
+                                                if (typeof window.updateAllImageColumnIcons === 'function') {
+                                                    window.updateAllImageColumnIcons();
+                                                }
+                                            });
+                                        }, 1000);
+                                    }
+                                })
+                                .on('postgres_changes', { 
+                                    event: 'DELETE', 
+                                    schema: 'public', 
+                                    table: 'gallery_images' 
+                                }, (payload) => {
+                                    console.log('🖼️ IMAGE DELETE:', payload);
+                                    if (typeof window.loadImagesFromSupabase === 'function') {
+                                        setTimeout(() => {
+                                            window.loadImagesFromSupabase().then(() => {
+                                                if (typeof window.updateAllImageColumnIcons === 'function') {
+                                                    window.updateAllImageColumnIcons();
+                                                }
+                                            });
+                                        }, 1000);
                                     }
                                 })
                                 .subscribe();

@@ -46,6 +46,19 @@ window.addEventListener('online', async () => {
                     console.log('✅ Images sauvegardées');
                 }
                 
+                // ÉTAPE 4: Forcer la réactivation du realtime après un délai
+                setTimeout(() => {
+                    if (typeof window.getSuppressRealtimeUntil === 'function' && window.getSuppressRealtimeUntil() > Date.now()) {
+                        console.log('🔄 Forçage de la réactivation du realtime (sécurité)');
+                        if (typeof window.setSuppressRealtimeUntil === 'function') {
+                            window.setSuppressRealtimeUntil(0);
+                        }
+                        if (typeof window.setupRealtimeSubscription === 'function') {
+                            window.setupRealtimeSubscription();
+                        }
+                    }
+                }, 8000); // Sécurité: réactiver après 8 secondes max
+                
                 // Notification à l'utilisateur
                 if (typeof showMessage === 'function') {
                     showMessage('✅ Sauvegarde automatique terminée', 'success');
