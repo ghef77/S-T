@@ -10767,10 +10767,11 @@
                 imageDiv.innerHTML = `
                     <img src="${image.data}" alt="${image.name}" class="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" 
                          onclick="viewImage('${patientName}', ${index})"
- />
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
                     <div class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs cursor-pointer hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
                          onclick="deleteImage('${patientName}', ${index})">×</div>
                     <p class="text-xs text-gray-600 mt-1 truncate">${image.name}</p>
+                    <div class="hidden text-xs text-gray-400 text-center mt-2">Image corrompue</div>
                 `;
                 
                 gallery.appendChild(imageDiv);
@@ -11055,36 +11056,123 @@
             updateAllImageColumnIcons();
         }
         
+        // Helper function to find the correct bucket for an image and generate public URL
+        async function findImagePublicUrl(imageName) {
+            if (!imageName || imageName.startsWith('http') || imageName.startsWith('data:')) {
+                return imageName; // Already a valid URL or data URL
+            }
+            
+            // Try main bucket first
+            try {
+                let { data: urlData } = supabase.storage
+                    .from('patient-images')
+                    .getPublicUrl(imageName);
+                
+                if (urlData?.publicUrl) {
+                    // Quick test if bucket exists by trying to access it
+                    try {
+                        const response = await fetch(urlData.publicUrl, { method: 'HEAD' });
+                        if (response.ok || response.status === 403) { // 403 might mean private but exists
+                            return urlData.publicUrl;
+                        }
+                    } catch (fetchError) {
+                        // URL test failed, try overflow buckets
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Error accessing main bucket:', error);
+            }
+            
+            // Try overflow buckets
+            let bucketsToTry = ['patient-images-1', 'patient-images-2', 'patient-images-3'];
+            
+            // Get dynamic bucket list if available
+            if (window.imageBucketManager && typeof window.imageBucketManager.getImageBuckets === 'function') {
+                try {
+                    const availableBuckets = await window.imageBucketManager.getImageBuckets();
+                    bucketsToTry = availableBuckets.map(b => b.name).filter(name => name !== 'patient-images');
+                } catch (bucketMgrError) {
+                    // Use fallback list
+                }
+            }
+            
+            for (const bucketName of bucketsToTry) {
+                try {
+                    const { data: urlData } = supabase.storage
+                        .from(bucketName)
+                        .getPublicUrl(imageName);
+                    
+                    if (urlData?.publicUrl) {
+                        // Test if this bucket actually exists
+                        const { error: testError } = await supabase.storage
+                            .from(bucketName)
+                            .list('', { limit: 1 });
+                        
+                        if (!testError) {
+                            console.log(`✅ Found image ${imageName} in bucket: ${bucketName}`);
+                            return urlData.publicUrl;
+                        }
+                    }
+                } catch (bucketError) {
+                    continue; // Try next bucket
+                }
+            }
+            
+            console.warn('⚠️ Could not find image in any bucket:', imageName);
+            return imageName; // Return original as fallback
+        }
+
         // Fonction pour charger les images depuis Supabase
         async function loadImagesFromSupabase() {
+            // Skip if cursor restoration is in progress to avoid conflicts
+            if (isRestoringFocus) {
+                log('🔄 loadImagesFromSupabase skipped - cursor restoration in progress');
+                return;
+            }
+            
             try {
                 const { data, error } = await supabase
-                    .from('patientImages')
+                    .from('gallery_images')
                     .select('*')
-                    .order('uploadDate', { ascending: false });
+                    .order('upload_date', { ascending: false });
                 
                 if (error) {
                     console.error('Erreur lors du chargement des images:', error);
+                    
+                    // Handle specific error types
+                    if (error.code === 'PGRST301' || error.message?.includes('401')) {
+                        console.warn('🔒 Gallery images: Authentication required or insufficient permissions');
+                        // Don't show error to user as this might be expected behavior
+                    } else if (error.code === 'PGRST116') {
+                        console.warn('🚫 Gallery images: Table not accessible or doesn\'t exist');
+                    } else {
+                        console.error('💥 Gallery images: Unexpected error:', error.message);
+                    }
+                    
                     return;
                 }
                 
                 if (data && data.length > 0) {
                     // Réorganiser les images par patient
                     const newPatientImages = {};
-                    data.forEach(image => {
-                        if (!newPatientImages[image.patientName]) {
-                            newPatientImages[image.patientName] = [];
+                    for (const image of data) {
+                        if (!newPatientImages[image.patient_name]) {
+                            newPatientImages[image.patient_name] = [];
                         }
-                        newPatientImages[image.patientName].push({
+                        
+                        // Generate public URL for the image using the helper function
+                        const imageUrl = await findImagePublicUrl(image.image_data);
+                        
+                        newPatientImages[image.patient_name].push({
                             id: image.id,
-                            name: image.imageName,
-                            data: image.imageData,
-                            type: image.imageType,
-                            size: image.imageSize,
-                            uploadDate: image.uploadDate,
-                            patientName: image.patientName
+                            name: image.image_name,
+                            data: imageUrl,
+                            type: image.image_type,
+                            size: image.image_size,
+                            uploadDate: image.upload_date,
+                            patientName: image.patient_name
                         });
-                    });
+                    }
                     
                     // Mettre à jour les images locales
                     patientImages = { ...patientImages, ...newPatientImages };
