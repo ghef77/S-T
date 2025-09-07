@@ -7219,7 +7219,7 @@
         
         // Timestamp-based sync system for hospital networks that block WebSockets
         let timestampSyncInterval = null;
-        const TIMESTAMP_SYNC_INTERVAL = 1000; // Check every 1 second for user activity
+        const TIMESTAMP_SYNC_INTERVAL = 3000; // Check every 3 seconds for user activity (optimized)
         let lastSyncTimestamp = null;
         let isTimestampSyncActive = false;
         let lastKnownDataVersion = null;
@@ -7319,7 +7319,7 @@
                     console.log('💾 Triggering fallback save - realtime sync not working');
                     performFallbackSave();
                 }
-            }, 1000); // Check every second
+            }, 5000); // Check every 5 seconds (reduced frequency)
             
             // Store interval ID for cleanup
             fallbackSaveTimeout = fallbackInterval;
@@ -12159,7 +12159,7 @@ ${capacityInfo.needsCleanup ?
             updateViewportHeight();
             
             // Mettre à jour périodiquement pour s'assurer de la synchronisation
-            setInterval(updateViewportHeight, 1000);
+            setInterval(updateViewportHeight, 10000); // Reduced from 1s to 10s
         }
         
         function ensureMobileButtonVisibility() {
