@@ -2568,10 +2568,10 @@
                     cursorState = null;
                 }
                 
-                // Additional check for mobile transition in progress
+                // Additional check for mobile transition in progress - ONLY affect cursor restoration, not save operation
                 if (isMobile() && typeof window.mobileTransitionInProgress === 'function' && window.mobileTransitionInProgress()) {
-                    console.log('📱 [EXCEL-SAVE] Mobile transition in progress - forcing cursor state to null');
-                    cursorState = null;
+                    console.log('📱 [EXCEL-SAVE] Mobile transition in progress - will skip cursor restoration but allow save');
+                    // Don't set cursorState to null here - let the save proceed but skip restoration later
                 }
             } else if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
                 // For cells that were just navigated to via Tab, ensure cursor stays at end
@@ -2607,14 +2607,27 @@
             try {
                 // Use sync optimizer queue to prevent race conditions
                 const saveOperation = async () => {
+                    console.log('🚀 [EXCEL-SAVE] Save operation started');
+                    
                     // Mark local save in progress to prevent realtime conflicts
                     window.isLocalSaveInProgress = true;
                     console.log('🔒 [EXCEL-SAVE] Local save in progress flag set');
                     
                     // Save to history and local draft first
                     console.log('💾 [EXCEL-SAVE] Saving to local history and draft...');
-                    saveStateToHistory();
-                    saveLocalDraft();
+                    try {
+                        saveStateToHistory();
+                        console.log('✅ [EXCEL-SAVE] History saved successfully');
+                    } catch (error) {
+                        console.error('❌ [EXCEL-SAVE] Error saving history:', error);
+                    }
+                    
+                    try {
+                        saveLocalDraft();
+                        console.log('✅ [EXCEL-SAVE] Local draft saved successfully');
+                    } catch (error) {
+                        console.error('❌ [EXCEL-SAVE] Error saving local draft:', error);
+                    }
                     
                     // Then sync to database (skip cursor restoration since we handle it ourselves)
                     console.log('💾 [EXCEL-SAVE] Syncing to database...');
@@ -2622,17 +2635,25 @@
                     const originalCapturedFocusState = capturedFocusState;
                     capturedFocusState = null; // Prevent syncToMaster cursor restoration
                     
-                    await syncToMaster(false); // false = not manual save
+                    try {
+                        await syncToMaster(false); // false = not manual save
+                        console.log('✅ [EXCEL-SAVE] Database sync completed successfully');
+                    } catch (error) {
+                        console.error('❌ [EXCEL-SAVE] Error syncing to database:', error);
+                        throw error;
+                    }
                     
                     // Restore the original state after sync
                     capturedFocusState = originalCapturedFocusState;
                     
-                    console.log('✅ [EXCEL-SAVE] Database sync completed successfully');
+                    console.log('🎉 [EXCEL-SAVE] Save operation completed successfully');
                     return true;
                 };
                 
                 // Queue the save operation with high priority for Excel saves
+                console.log('💾 [EXCEL-SAVE] About to queue save operation...');
                 const saveId = await syncOptimizer.queueSave(saveOperation, 'excel', 10);
+                console.log('💾 [EXCEL-SAVE] Save operation queued with ID:', saveId);
                 
                 updateStatus('Cellule sauvée (Excel-like)', 'success');
                 eventManager.monitor.mark('save-cell-end');
@@ -5165,7 +5186,7 @@
         // Initialize mobile cursor restoration
         enhanceMobileCursorRestoration();
         
-        // Global mobile cursor restoration control
+        // Global mobile cursor restoration control - ONLY affects cursor restoration, not save operations
         window.shouldSkipCursorRestoration = function() {
             if (!isMobile()) return false;
             
@@ -5187,6 +5208,12 @@
             }
             
             return false;
+        };
+        
+        // Separate function to check if save operations should be allowed (always true for mobile)
+        window.shouldAllowSaveOperation = function() {
+            // Always allow save operations, even on mobile
+            return true;
         };
 
         function getScrollContainer() {
