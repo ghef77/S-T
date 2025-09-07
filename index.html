@@ -1854,6 +1854,7 @@
     <!-- Performance Optimizers -->
     <script src="performance-optimizer.js"></script>
     <script src="sync-optimizer.js"></script>
+    <script src="hospital-pc-sync-conflict-detector.js"></script>
 
     <!-- App -->
     <script type="module">
@@ -6440,6 +6441,24 @@
         };
 
         async function fetchInitialData(forceRefresh = false) { 
+            // 🏥 HOSPITAL PC CONFLICT PREVENTION
+            const operationId = 'fetch-data-' + Date.now();
+            
+            // Register operation with hospital conflict detector
+            if (window.hospitalPCSyncDetector) {
+                // Check for existing fetch operations
+                const existingOps = Array.from(window.hospitalPCSyncDetector.activeOperations.entries())
+                    .filter(([id, op]) => op.type === 'fetch-data' && Date.now() - op.startTime < 2000);
+                
+                if (existingOps.length > 0) {
+                    console.log('🚨 HOSPITAL CONFLICT: Data fetch already in progress, skipping duplicate');
+                    return;
+                }
+                
+                // Register this operation
+                window.hospitalPCSyncDetector.registerOperation(operationId, 'fetch-data');
+            }
+            
             log('Chargement des données (full fetch)...'); 
             updateStatus('Connexion...'); 
             
@@ -6448,6 +6467,10 @@
                 log('Utilisation des données mises en cache');
                 if (loadTableData(dataCache.data)) {
                     updateStatus('Synchronisé (cache)', 'success');
+                }
+                // Complete operation
+                if (window.hospitalPCSyncDetector) {
+                    window.hospitalPCSyncDetector.completeOperation(operationId);
                 }
                 return;
             }
@@ -6479,9 +6502,19 @@
                     updateStatus('Synchronisé', 'success'); 
                     saveStateToHistory(); 
                 }
+                
+                // Complete operation successfully
+                if (window.hospitalPCSyncDetector) {
+                    window.hospitalPCSyncDetector.completeOperation(operationId);
+                }
             } catch(e) { 
                 log('Erreur lors du chargement des données : ' + e.message, 'error'); 
                 updateStatus('Erreur de connexion', 'error'); 
+                
+                // Complete operation with error
+                if (window.hospitalPCSyncDetector) {
+                    window.hospitalPCSyncDetector.completeOperation(operationId);
+                }
             }
         }
 
@@ -12940,11 +12973,34 @@ ${capacityInfo.needsCleanup ?
         
         // Function to handle manual snapshot button clicks
         function handleManualSnapshotClick() {
+            // 🏥 HOSPITAL PC CONFLICT PREVENTION
+            const operationId = 'manual-snapshot-' + Date.now();
+            
+            // Register operation with hospital conflict detector
+            if (window.hospitalPCSyncDetector) {
+                // Check for existing snapshot operations
+                const existingOps = Array.from(window.hospitalPCSyncDetector.activeOperations.entries())
+                    .filter(([id, op]) => op.type === 'manual-snapshot' && Date.now() - op.startTime < 5000);
+                
+                if (existingOps.length > 0) {
+                    console.log('🚨 HOSPITAL CONFLICT: Manual snapshot already in progress, preventing duplicate');
+                    showMessage('⚠️ Création de snapshot déjà en cours - Opération bloquée pour éviter les conflits', 'warning');
+                    return;
+                }
+                
+                // Register this operation
+                window.hospitalPCSyncDetector.registerOperation(operationId, 'manual-snapshot');
+            }
+            
             const historyBarContainer = document.getElementById('history-bar-container');
             const manualSnapshotBtn = document.getElementById('manual-snapshot-btn');
             
             if (!historyBarContainer || !manualSnapshotBtn) {
                 console.log('⚠️ Manual snapshot button or history container not found');
+                // Complete operation if registered
+                if (window.hospitalPCSyncDetector) {
+                    window.hospitalPCSyncDetector.completeOperation(operationId);
+                }
                 return;
             }
             
@@ -12956,12 +13012,32 @@ ${capacityInfo.needsCleanup ?
             if (!isHistoryBarVisible) {
                 console.log('❌ Manual snapshot creation blocked - History bar is not visible');
                 showMessage('❌ Création de snapshot désactivée - Barre d\'historique fermée', 'error');
+                // Complete operation if registered
+                if (window.hospitalPCSyncDetector) {
+                    window.hospitalPCSyncDetector.completeOperation(operationId);
+                }
                 return;
             }
             
-            // If enabled, proceed with manual snapshot creation
-            console.log('✅ Manual snapshot creation allowed - proceeding...');
-            createManualSnapshot();
+            try {
+                // If enabled, proceed with manual snapshot creation
+                console.log('✅ Manual snapshot creation allowed - proceeding...');
+                createManualSnapshot();
+                
+                // Complete operation successfully
+                if (window.hospitalPCSyncDetector) {
+                    setTimeout(() => {
+                        window.hospitalPCSyncDetector.completeOperation(operationId);
+                    }, 1000); // Complete after snapshot creation
+                }
+            } catch (error) {
+                console.error('❌ Error during manual snapshot creation:', error);
+                // Complete operation with error
+                if (window.hospitalPCSyncDetector) {
+                    window.hospitalPCSyncDetector.completeOperation(operationId);
+                }
+                throw error;
+            }
         }
         
         // Mobile toggle button debugging function
