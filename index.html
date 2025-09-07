@@ -2608,6 +2608,7 @@
                 // Use sync optimizer queue to prevent race conditions
                 const saveOperation = async () => {
                     console.log('🚀 [EXCEL-SAVE] Save operation started');
+                    window.mobileLog('Save operation started', 'info');
                     
                     // Mark local save in progress to prevent realtime conflicts
                     window.isLocalSaveInProgress = true;
@@ -2638,6 +2639,7 @@
                     try {
                         await syncToMaster(false); // false = not manual save
                         console.log('✅ [EXCEL-SAVE] Database sync completed successfully');
+                        window.mobileLog('Database sync completed successfully', 'info');
                     } catch (error) {
                         console.error('❌ [EXCEL-SAVE] Error syncing to database:', error);
                         throw error;
@@ -2647,6 +2649,7 @@
                     capturedFocusState = originalCapturedFocusState;
                     
                     console.log('🎉 [EXCEL-SAVE] Save operation completed successfully');
+                    window.mobileLog('Save operation completed successfully', 'info');
                     return true;
                 };
                 
@@ -2993,6 +2996,85 @@
         // Add logging function
         window.log = function(message, level = 'info') {
             console.log(`[${level.toUpperCase()}] ${message}`);
+        };
+        
+        // Mobile-friendly visual logging
+        function createMobileLogPanel() {
+            if (!isMobile()) return;
+            
+            const logPanel = document.createElement('div');
+            logPanel.id = 'mobile-log-panel';
+            logPanel.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                width: 300px;
+                max-height: 200px;
+                background: rgba(0,0,0,0.8);
+                color: white;
+                font-size: 12px;
+                padding: 10px;
+                border-radius: 5px;
+                z-index: 10000;
+                overflow-y: auto;
+                font-family: monospace;
+                display: none;
+            `;
+            document.body.appendChild(logPanel);
+            
+            // Toggle button
+            const toggleBtn = document.createElement('button');
+            toggleBtn.textContent = '📱 LOGS';
+            toggleBtn.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                background: #007bff;
+                color: white;
+                border: none;
+                padding: 5px 10px;
+                border-radius: 3px;
+                font-size: 12px;
+                z-index: 10001;
+            `;
+            document.body.appendChild(toggleBtn);
+            
+            let isVisible = false;
+            toggleBtn.addEventListener('click', () => {
+                isVisible = !isVisible;
+                logPanel.style.display = isVisible ? 'block' : 'none';
+                toggleBtn.textContent = isVisible ? '📱 HIDE' : '📱 LOGS';
+            });
+            
+            return logPanel;
+        }
+        
+        // Enhanced mobile logging
+        window.mobileLog = function(message, level = 'info') {
+            console.log(`[${level.toUpperCase()}] ${message}`);
+            
+            if (isMobile()) {
+                const logPanel = document.getElementById('mobile-log-panel') || createMobileLogPanel();
+                if (logPanel) {
+                    const timestamp = new Date().toLocaleTimeString();
+                    const logEntry = document.createElement('div');
+                    logEntry.style.cssText = `
+                        margin: 2px 0;
+                        padding: 2px;
+                        border-left: 3px solid ${level === 'error' ? 'red' : level === 'warn' ? 'orange' : 'green'};
+                    `;
+                    logEntry.textContent = `[${timestamp}] ${level.toUpperCase()}: ${message}`;
+                    logPanel.appendChild(logEntry);
+                    
+                    // Keep only last 20 entries
+                    while (logPanel.children.length > 20) {
+                        logPanel.removeChild(logPanel.firstChild);
+                    }
+                    
+                    // Auto-scroll to bottom
+                    logPanel.scrollTop = logPanel.scrollHeight;
+                }
+            }
         };
 
         
@@ -5092,6 +5174,7 @@
                     lastFocusTime = currentTime;
                     
                     console.log('📱 [MOBILE CURSOR] New cell focus detected:', cell.getAttribute('data-label'));
+                    window.mobileLog(`New cell focus: ${cell.getAttribute('data-label')}`, 'info');
                     
                     // Record cell change time for global detection
                     window.lastCellChangeTime = currentTime;
