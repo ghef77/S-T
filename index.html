@@ -2560,6 +2560,13 @@
                 console.log('📝 [EXCEL-SAVE] Cell transition detected - clearing focus capture to preserve natural flow');
                 updateGlobalFocusState(null); // Clear any existing capture state to let natural focus work
                 console.log('📝 [EXCEL-SAVE] Natural focus flow preserved for transition to:', activeElement.getAttribute('data-label'));
+                
+                // On mobile, skip cursor restoration entirely during cell transitions
+                if (isMobile()) {
+                    console.log('📱 [EXCEL-SAVE] Mobile cell transition detected - skipping cursor restoration');
+                    // Clear cursor state to prevent restoration
+                    cursorState = null;
+                }
             } else if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
                 // For cells that were just navigated to via Tab, ensure cursor stays at end
                 const currentPosition = getCaretOffsetWithin(activeElement);
@@ -2626,6 +2633,7 @@
                 
                 // Schedule cursor restoration after save with enhanced protection
                 console.log('🔍 [EXCEL-SAVE] Checking cursor state for restoration:', !!cursorState);
+                console.log('🔍 [EXCEL-SAVE] Is mobile device:', isMobile());
                 if (cursorState) {
                     console.log('✅ [EXCEL-SAVE] Valid cursor state found, proceeding with restoration');
                     console.log('🔍 [EXCEL-SAVE] Restoration details:', {
@@ -2651,7 +2659,11 @@
                         }
                     }, 200);
                 } else {
-                    console.log('❌ [EXCEL-SAVE] No cursor state available for restoration!');
+                    if (isMobile()) {
+                        console.log('📱 [EXCEL-SAVE] Mobile cell transition - cursor restoration skipped to preserve natural flow');
+                    } else {
+                        console.log('❌ [EXCEL-SAVE] No cursor state available for restoration!');
+                    }
                 }
                 
                 return true;
