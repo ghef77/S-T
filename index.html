@@ -7222,7 +7222,7 @@
         
         // Timestamp-based sync system for hospital networks that block WebSockets
         let timestampSyncInterval = null;
-        const TIMESTAMP_SYNC_INTERVAL = 3000; // Check every 3 seconds for user activity (optimized)
+        const TIMESTAMP_SYNC_INTERVAL = 5000; // Check every 5 seconds for user activity (hospital PC optimized)
         let lastSyncTimestamp = null;
         let isTimestampSyncActive = false;
         let lastKnownDataVersion = null;
