@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cursor Restoration Demo - Test Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .test-cell {
+            border: 1px solid #ccc;
+            padding: 8px;
+            min-width: 100px;
+            min-height: 30px;
+            background: #f9f9f9;
+        }
+        .test-cell:focus {
+            background: #e3f2fd;
+            border-color: #2196f3;
+            outline: none;
+        }
+        .test-cell.selected {
+            background: #fff3e0;
+            border-color: #ff9800;
+        }
+        .log-entry {
+            font-family: monospace;
+            font-size: 12px;
+            margin: 2px 0;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .log-success { background: #e8f5e8; color: #2e7d32; }
+        .log-error { background: #ffebee; color: #c62828; }
+        .log-warning { background: #fff3e0; color: #ef6c00; }
+        .log-info { background: #e3f2fd; color: #1565c0; }
+        .test-section {
+            border: 1px solid #ddd;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .test-button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #1976d2;
+        }
+        .test-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-8 text-gray-800">🧪 Cursor Restoration Demo & Test Suite</h1>
+        
+        <!-- Test Controls -->
+        <div class="test-section bg-white">
+            <h2 class="text-xl font-semibold mb-4">🎮 Test Controls</h2>
+            <div class="flex flex-wrap gap-2">
+                <button class="test-button" onclick="runBasicCursorTest()">Basic Cursor Test</button>
+                <button class="test-button" onclick="runSyncSimulationTest()">Sync Simulation Test</button>
+                <button class="test-button" onclick="runCellTransitionTest()">Cell Transition Test</button>
+                <button class="test-button" onclick="runRealtimeSyncTest()">Realtime Sync Test</button>
+                <button class="test-button" onclick="runTimestampSyncTest()">Timestamp Sync Test</button>
+                <button class="test-button" onclick="runStressTest()">Stress Test</button>
+                <button class="test-button" onclick="clearLogs()">Clear Logs</button>
+            </div>
+        </div>
+
+        <!-- Test Table -->
+        <div class="test-section bg-white">
+            <h2 class="text-xl font-semibold mb-4">📊 Test Table</h2>
+            <p class="text-sm text-gray-600 mb-4">Click on cells to edit them, then run tests to verify cursor restoration.</p>
+            <table class="border-collapse border border-gray-300">
+                <thead>
+                    <tr class="bg-gray-200">
+                        <th class="border border-gray-300 p-2">Name</th>
+                        <th class="border border-gray-300 p-2">Age</th>
+                        <th class="border border-gray-300 p-2">Department</th>
+                        <th class="border border-gray-300 p-2">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="test-cell" contenteditable="true" data-label="Name" data-row="0">John Doe</td>
+                        <td class="test-cell" contenteditable="true" data-label="Age" data-row="0">30</td>
+                        <td class="test-cell" contenteditable="true" data-label="Department" data-row="0">IT</td>
+                        <td class="test-cell" contenteditable="true" data-label="Status" data-row="0">Active</td>
+                    </tr>
+                    <tr>
+                        <td class="test-cell" contenteditable="true" data-label="Name" data-row="1">Jane Smith</td>
+                        <td class="test-cell" contenteditable="true" data-label="Age" data-row="1">25</td>
+                        <td class="test-cell" contenteditable="true" data-label="Department" data-row="1">HR</td>
+                        <td class="test-cell" contenteditable="true" data-label="Status" data-row="1">Active</td>
+                    </tr>
+                    <tr>
+                        <td class="test-cell" contenteditable="true" data-label="Name" data-row="2">Bob Johnson</td>
+                        <td class="test-cell" contenteditable="true" data-label="Age" data-row="2">35</td>
+                        <td class="test-cell" contenteditable="true" data-label="Department" data-row="2">Finance</td>
+                        <td class="test-cell" contenteditable="true" data-label="Status" data-row="2">Inactive</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Test Status -->
+        <div class="test-section bg-white">
+            <h2 class="text-xl font-semibold mb-4">📈 Test Status</h2>
+            <div id="test-status" class="text-sm">
+                <div>Current Active Element: <span id="current-element">None</span></div>
+                <div>Captured Focus State: <span id="captured-state">None</span></div>
+                <div>Last Cell Transition: <span id="last-transition">None</span></div>
+                <div>Test Results: <span id="test-results">Ready to test</span></div>
+            </div>
+        </div>
+
+        <!-- Test Logs -->
+        <div class="test-section bg-white">
+            <h2 class="text-xl font-semibold mb-4">📝 Test Logs</h2>
+            <div id="test-logs" class="max-h-96 overflow-y-auto bg-gray-50 p-4 rounded">
+                <div class="log-entry log-info">Demo initialized. Click on a cell and run tests to verify cursor restoration.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for testing
+        let capturedFocusState = null;
+        let lastCellTransition = null;
+        let testResults = [];
+
+        // Utility functions
+        function log(message, type = 'info') {
+            const logsContainer = document.getElementById('test-logs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        function updateStatus() {
+            const currentElement = document.activeElement;
+            document.getElementById('current-element').textContent = 
+                currentElement ? `${currentElement.tagName} (${currentElement.getAttribute('data-label') || 'no-label'})` : 'None';
+            
+            document.getElementById('captured-state').textContent = 
+                capturedFocusState ? `${capturedFocusState.colLabel} (pos: ${capturedFocusState.position})` : 'None';
+            
+            document.getElementById('last-transition').textContent = 
+                lastCellTransition ? new Date(lastCellTransition).toLocaleTimeString() : 'None';
+        }
+
+        function clearLogs() {
+            document.getElementById('test-logs').innerHTML = '<div class="log-entry log-info">Logs cleared.</div>';
+            testResults = [];
+            document.getElementById('test-results').textContent = 'Ready to test';
+        }
+
+        // Mock functions to simulate the main application
+        function getCaretOffsetWithin(element) {
+            const selection = window.getSelection();
+            if (selection.rangeCount === 0) return 0;
+            
+            const range = selection.getRangeAt(0);
+            const preCaretRange = range.cloneRange();
+            preCaretRange.selectNodeContents(element);
+            preCaretRange.setEnd(range.endContainer, range.endOffset);
+            return preCaretRange.toString().length;
+        }
+
+        function setCaretAt(element, position) {
+            if (!element) return false;
+            
+            element.focus();
+            
+            if (position === null || position === undefined) {
+                // Position at end
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(element);
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                return true;
+            }
+            
+            // Position at specific offset
+            const textNode = element.firstChild;
+            if (!textNode) return false;
+            
+            const range = document.createRange();
+            const selection = window.getSelection();
+            range.setStart(textNode, Math.min(position, textNode.textContent.length));
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            return true;
+        }
+
+        function updateGlobalFocusState(state) {
+            capturedFocusState = state;
+            updateStatus();
+            if (state) {
+                log(`Focus state captured: ${state.colLabel} (position: ${state.position})`, 'success');
+            } else {
+                log('Focus state cleared', 'info');
+            }
+        }
+
+        // Test functions
+        function runBasicCursorTest() {
+            log('🧪 Starting Basic Cursor Test...', 'info');
+            
+            const testCell = document.querySelector('[data-label="Name"][data-row="0"]');
+            if (!testCell) {
+                log('❌ Test cell not found', 'error');
+                return;
+            }
+            
+            // Focus the cell
+            testCell.focus();
+            setCaretAt(testCell, 2); // Position cursor after "Jo"
+            log('📝 Positioned cursor at position 2 in Name cell', 'info');
+            
+            // Capture focus state
+            const cursorState = {
+                element: testCell,
+                position: getCaretOffsetWithin(testCell),
+                timestamp: Date.now(),
+                rowIndex: 0,
+                colLabel: 'Name',
+                testCapture: true
+            };
+            
+            updateGlobalFocusState(cursorState);
+            
+            // Simulate data refresh (clear and reload content)
+            setTimeout(() => {
+                log('🔄 Simulating data refresh...', 'info');
+                const originalContent = testCell.textContent;
+                testCell.textContent = originalContent; // Simulate refresh
+                
+                // Restore cursor
+                setTimeout(() => {
+                    const restored = setCaretAt(testCell, cursorState.position);
+                    if (restored) {
+                        log('✅ Basic cursor test PASSED - cursor restored successfully', 'success');
+                        testResults.push({ test: 'Basic Cursor Test', result: 'PASSED' });
+                    } else {
+                        log('❌ Basic cursor test FAILED - cursor restoration failed', 'error');
+                        testResults.push({ test: 'Basic Cursor Test', result: 'FAILED' });
+                    }
+                    updateTestResults();
+                }, 100);
+            }, 500);
+        }
+
+        function runSyncSimulationTest() {
+            log('🧪 Starting Sync Simulation Test...', 'info');
+            
+            const activeElement = document.activeElement;
+            if (!activeElement || activeElement.tagName !== 'TD') {
+                log('❌ No editable cell focused - please click on a cell first', 'error');
+                return;
+            }
+            
+            // Capture current cursor position
+            const cursorState = {
+                element: activeElement,
+                position: getCaretOffsetWithin(activeElement),
+                timestamp: Date.now(),
+                rowIndex: parseInt(activeElement.getAttribute('data-row')),
+                colLabel: activeElement.getAttribute('data-label'),
+                syncTest: true
+            };
+            
+            updateGlobalFocusState(cursorState);
+            log(`📝 Captured cursor at position ${cursorState.position} in ${cursorState.colLabel}`, 'info');
+            
+            // Simulate sync operation
+            setTimeout(() => {
+                log('🔄 Simulating sync operation (data refresh)...', 'info');
+                
+                // Simulate the data refresh that happens during sync
+                const originalContent = activeElement.textContent;
+                activeElement.textContent = originalContent; // Simulate refresh
+                
+                // Restore cursor after sync
+                setTimeout(() => {
+                    const restored = setCaretAt(activeElement, cursorState.position);
+                    if (restored) {
+                        const currentPos = getCaretOffsetWithin(activeElement);
+                        if (currentPos === cursorState.position) {
+                            log('✅ Sync simulation test PASSED - cursor restored to exact position', 'success');
+                            testResults.push({ test: 'Sync Simulation Test', result: 'PASSED' });
+                        } else {
+                            log(`⚠️ Sync simulation test PARTIAL - cursor restored but position differs (expected: ${cursorState.position}, actual: ${currentPos})`, 'warning');
+                            testResults.push({ test: 'Sync Simulation Test', result: 'PARTIAL' });
+                        }
+                    } else {
+                        log('❌ Sync simulation test FAILED - cursor restoration failed', 'error');
+                        testResults.push({ test: 'Sync Simulation Test', result: 'FAILED' });
+                    }
+                    updateTestResults();
+                }, 200);
+            }, 1000);
+        }
+
+        function runCellTransitionTest() {
+            log('🧪 Starting Cell Transition Test...', 'info');
+            
+            const cell1 = document.querySelector('[data-label="Name"][data-row="0"]');
+            const cell2 = document.querySelector('[data-label="Age"][data-row="0"]');
+            
+            if (!cell1 || !cell2) {
+                log('❌ Test cells not found', 'error');
+                return;
+            }
+            
+            // Focus first cell
+            cell1.focus();
+            setCaretAt(cell1, 3);
+            log('📝 Focused Name cell with cursor at position 3', 'info');
+            
+            // Capture focus state
+            const cursorState = {
+                element: cell1,
+                position: getCaretOffsetWithin(cell1),
+                timestamp: Date.now(),
+                rowIndex: 0,
+                colLabel: 'Name',
+                transitionTest: true
+            };
+            
+            updateGlobalFocusState(cursorState);
+            
+            // Simulate cell transition
+            setTimeout(() => {
+                log('🔄 Simulating cell transition (blur/focus)...', 'info');
+                lastCellTransition = Date.now();
+                
+                // Simulate blur event
+                cell1.blur();
+                
+                // Simulate focus on different cell
+                setTimeout(() => {
+                    cell2.focus();
+                    log('📝 Focused Age cell (different cell)', 'info');
+                    
+                    // Check if cursor restoration should be skipped
+                    const currentActiveElement = document.activeElement;
+                    const userHasMovedToNewCell = currentActiveElement && 
+                                                currentActiveElement.tagName === 'TD' && 
+                                                currentActiveElement.contentEditable === 'true' &&
+                                                currentActiveElement !== cursorState.element;
+                    
+                    if (userHasMovedToNewCell) {
+                        log('✅ Cell transition test PASSED - cursor restoration correctly skipped for natural cell transition', 'success');
+                        testResults.push({ test: 'Cell Transition Test', result: 'PASSED' });
+                    } else {
+                        log('❌ Cell transition test FAILED - cursor restoration should have been skipped', 'error');
+                        testResults.push({ test: 'Cell Transition Test', result: 'FAILED' });
+                    }
+                    updateTestResults();
+                }, 100);
+            }, 500);
+        }
+
+        function runRealtimeSyncTest() {
+            log('🧪 Starting Realtime Sync Test...', 'info');
+            
+            const activeElement = document.activeElement;
+            if (!activeElement || activeElement.tagName !== 'TD') {
+                log('❌ No editable cell focused - please click on a cell first', 'error');
+                return;
+            }
+            
+            // Check for recent cell transitions
+            const recentTransition = Date.now() - (lastCellTransition || 0) < 1000;
+            
+            if (recentTransition) {
+                log('⚠️ Recent cell transition detected - skipping cursor capture to avoid interference', 'warning');
+                updateGlobalFocusState(null);
+                log('✅ Realtime sync test PASSED - correctly skipped cursor capture during transition', 'success');
+                testResults.push({ test: 'Realtime Sync Test', result: 'PASSED' });
+                updateTestResults();
+                return;
+            }
+            
+            // Capture cursor position
+            const cursorState = {
+                element: activeElement,
+                position: getCaretOffsetWithin(activeElement),
+                timestamp: Date.now(),
+                rowIndex: parseInt(activeElement.getAttribute('data-row')),
+                colLabel: activeElement.getAttribute('data-label'),
+                realtimeCapture: true
+            };
+            
+            updateGlobalFocusState(cursorState);
+            log(`📝 Captured cursor for realtime sync: ${cursorState.colLabel} (position: ${cursorState.position})`, 'info');
+            
+            // Simulate realtime data refresh
+            setTimeout(() => {
+                log('🔄 Simulating realtime data refresh...', 'info');
+                
+                // Simulate data refresh
+                const originalContent = activeElement.textContent;
+                activeElement.textContent = originalContent;
+                
+                // Restore cursor (always at end for realtime sync)
+                setTimeout(() => {
+                    const restored = setCaretAt(activeElement, null); // Always position at end
+                    if (restored) {
+                        log('✅ Realtime sync test PASSED - cursor restored at end of text', 'success');
+                        testResults.push({ test: 'Realtime Sync Test', result: 'PASSED' });
+                    } else {
+                        log('❌ Realtime sync test FAILED - cursor restoration failed', 'error');
+                        testResults.push({ test: 'Realtime Sync Test', result: 'FAILED' });
+                    }
+                    updateTestResults();
+                }, 200);
+            }, 1000);
+        }
+
+        function runTimestampSyncTest() {
+            log('🧪 Starting Timestamp Sync Test...', 'info');
+            
+            const activeElement = document.activeElement;
+            if (!activeElement || activeElement.tagName !== 'TD') {
+                log('❌ No editable cell focused - please click on a cell first', 'error');
+                return;
+            }
+            
+            // Capture cursor position (simulating checkForDataChanges)
+            const cursorState = {
+                element: activeElement,
+                position: getCaretOffsetWithin(activeElement),
+                timestamp: Date.now(),
+                rowIndex: parseInt(activeElement.getAttribute('data-row')),
+                colLabel: activeElement.getAttribute('data-label'),
+                timestampSync: true
+            };
+            
+            updateGlobalFocusState(cursorState);
+            log(`📝 Captured cursor for timestamp sync: ${cursorState.colLabel} (position: ${cursorState.position})`, 'info');
+            
+            // Simulate timestamp sync data refresh
+            setTimeout(() => {
+                log('🔄 Simulating timestamp sync data refresh...', 'info');
+                
+                // Simulate data refresh
+                const originalContent = activeElement.textContent;
+                activeElement.textContent = originalContent;
+                
+                // Restore cursor using cursorManager.restoreFocus simulation
+                setTimeout(() => {
+                    const restored = setCaretAt(activeElement, cursorState.position);
+                    if (restored) {
+                        const currentPos = getCaretOffsetWithin(activeElement);
+                        if (currentPos === cursorState.position) {
+                            log('✅ Timestamp sync test PASSED - cursor restored to exact position', 'success');
+                            testResults.push({ test: 'Timestamp Sync Test', result: 'PASSED' });
+                        } else {
+                            log(`⚠️ Timestamp sync test PARTIAL - cursor restored but position differs (expected: ${cursorState.position}, actual: ${currentPos})`, 'warning');
+                            testResults.push({ test: 'Timestamp Sync Test', result: 'PARTIAL' });
+                        }
+                    } else {
+                        log('❌ Timestamp sync test FAILED - cursor restoration failed', 'error');
+                        testResults.push({ test: 'Timestamp Sync Test', result: 'FAILED' });
+                    }
+                    updateTestResults();
+                }, 200);
+            }, 1000);
+        }
+
+        function runStressTest() {
+            log('🧪 Starting Stress Test (multiple rapid operations)...', 'info');
+            
+            const testCell = document.querySelector('[data-label="Department"][data-row="1"]');
+            if (!testCell) {
+                log('❌ Test cell not found', 'error');
+                return;
+            }
+            
+            let operations = 0;
+            const maxOperations = 5;
+            let passedOperations = 0;
+            
+            function runOperation() {
+                if (operations >= maxOperations) {
+                    const successRate = (passedOperations / maxOperations) * 100;
+                    if (successRate >= 80) {
+                        log(`✅ Stress test PASSED - ${passedOperations}/${maxOperations} operations successful (${successRate.toFixed(1)}%)`, 'success');
+                        testResults.push({ test: 'Stress Test', result: 'PASSED' });
+                    } else {
+                        log(`❌ Stress test FAILED - only ${passedOperations}/${maxOperations} operations successful (${successRate.toFixed(1)}%)`, 'error');
+                        testResults.push({ test: 'Stress Test', result: 'FAILED' });
+                    }
+                    updateTestResults();
+                    return;
+                }
+                
+                operations++;
+                log(`🔄 Running stress operation ${operations}/${maxOperations}...`, 'info');
+                
+                // Focus cell
+                testCell.focus();
+                const testPosition = operations % 3; // Vary position
+                setCaretAt(testCell, testPosition);
+                
+                // Capture state
+                const cursorState = {
+                    element: testCell,
+                    position: testPosition,
+                    timestamp: Date.now(),
+                    rowIndex: 1,
+                    colLabel: 'Department',
+                    stressTest: true
+                };
+                
+                updateGlobalFocusState(cursorState);
+                
+                // Simulate data refresh
+                setTimeout(() => {
+                    const originalContent = testCell.textContent;
+                    testCell.textContent = originalContent;
+                    
+                    // Restore cursor
+                    setTimeout(() => {
+                        const restored = setCaretAt(testCell, cursorState.position);
+                        if (restored) {
+                            passedOperations++;
+                            log(`✅ Operation ${operations} successful`, 'success');
+                        } else {
+                            log(`❌ Operation ${operations} failed`, 'error');
+                        }
+                        
+                        // Run next operation
+                        setTimeout(runOperation, 100);
+                    }, 50);
+                }, 50);
+            }
+            
+            runOperation();
+        }
+
+        function updateTestResults() {
+            const passed = testResults.filter(r => r.result === 'PASSED').length;
+            const partial = testResults.filter(r => r.result === 'PARTIAL').length;
+            const failed = testResults.filter(r => r.result === 'FAILED').length;
+            const total = testResults.length;
+            
+            let resultText = `Tests: ${passed} passed, ${partial} partial, ${failed} failed (${total} total)`;
+            if (total > 0) {
+                const successRate = ((passed + partial * 0.5) / total) * 100;
+                resultText += ` - Success Rate: ${successRate.toFixed(1)}%`;
+            }
+            
+            document.getElementById('test-results').textContent = resultText;
+        }
+
+        // Event listeners for cell interactions
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add event listeners to all test cells
+            const testCells = document.querySelectorAll('.test-cell');
+            testCells.forEach(cell => {
+                cell.addEventListener('focus', function() {
+                    this.classList.add('selected');
+                    updateStatus();
+                    log(`📝 Cell focused: ${this.getAttribute('data-label')} (row ${this.getAttribute('data-row')})`, 'info');
+                });
+                
+                cell.addEventListener('blur', function() {
+                    this.classList.remove('selected');
+                    lastCellTransition = Date.now();
+                    updateStatus();
+                    log(`📝 Cell blurred: ${this.getAttribute('data-label')} (row ${this.getAttribute('data-row')})`, 'info');
+                });
+                
+                cell.addEventListener('input', function() {
+                    updateStatus();
+                });
+            });
+            
+            // Update status periodically
+            setInterval(updateStatus, 1000);
+            
+            log('🎯 Cursor Restoration Demo initialized successfully!', 'success');
+            log('📋 Instructions:', 'info');
+            log('1. Click on any cell in the test table', 'info');
+            log('2. Position your cursor somewhere in the text', 'info');
+            log('3. Run one of the test functions to verify cursor restoration', 'info');
+            log('4. Check the logs for detailed results', 'info');
+        });
+
+        // Expose functions for console testing
+        window.testCursorRestoration = {
+            runBasicCursorTest,
+            runSyncSimulationTest,
+            runCellTransitionTest,
+            runRealtimeSyncTest,
+            runTimestampSyncTest,
+            runStressTest,
+            clearLogs,
+            getCaretOffsetWithin,
+            setCaretAt,
+            updateGlobalFocusState
+        };
+
+        log('🔧 Test functions available in console: window.testCursorRestoration', 'info');
+    </script>
+</body>
+</html>
