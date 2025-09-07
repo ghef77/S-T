@@ -2519,8 +2519,10 @@
                 column: cell.getAttribute('data-label'),
                 oldValue: oldValue?.substring(0, 50) + (oldValue?.length > 50 ? '...' : ''),
                 newValue: newValue?.substring(0, 50) + (newValue?.length > 50 ? '...' : ''),
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                isMobile: isMobile()
             });
+            window.mobileLog(`Excel save started for: ${cell.getAttribute('data-label')}`, 'info');
             
             // Capture cursor state before save
             console.log('🔍 [EXCEL-SAVE] About to capture cursor state...');
@@ -2563,9 +2565,8 @@
                 
                 // On mobile, skip cursor restoration entirely during cell transitions
                 if (isMobile()) {
-                    console.log('📱 [EXCEL-SAVE] Mobile cell transition detected - skipping cursor restoration');
-                    // Clear cursor state to prevent restoration
-                    cursorState = null;
+                    console.log('📱 [EXCEL-SAVE] Mobile cell transition detected - will skip cursor restoration but allow save');
+                    // Don't clear cursorState here - let the save proceed but skip restoration later
                 }
                 
                 // Additional check for mobile transition in progress - ONLY affect cursor restoration, not save operation
@@ -2660,6 +2661,7 @@
                 
                 updateStatus('Cellule sauvée (Excel-like)', 'success');
                 eventManager.monitor.mark('save-cell-end');
+                window.mobileLog(`Excel save completed successfully for: ${cell.getAttribute('data-label')}`, 'info');
                 
                 // Schedule cursor restoration after save with enhanced protection
                 console.log('🔍 [EXCEL-SAVE] Checking cursor state for restoration:', !!cursorState);
