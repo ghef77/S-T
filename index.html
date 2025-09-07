@@ -1854,7 +1854,6 @@
     <!-- Performance Optimizers -->
     <script src="performance-optimizer.js"></script>
     <script src="sync-optimizer.js"></script>
-    <script src="hospital-pc-sync-conflict-detector.js"></script>
     <script src="emergency-hospital-conflict-detector.js"></script>
     <script src="timestamp-sync-conflict-fix.js"></script>
     <script src="immediate-emergency-fix.js"></script>
@@ -2241,9 +2240,11 @@
                 this.preventRestore = false;
             }
             
-            captureFocus() {
-                const active = document.activeElement;
-                if (!(active && active.tagName === 'TD' && active.isContentEditable)) {
+            captureFocus(targetCell = null, options = {}) {
+                // Use provided cell or current active element
+                const active = targetCell || document.activeElement;
+                if (!(active && active.tagName === 'TD' && active.contentEditable === 'true')) {
+                    console.log('⚠️ CursorManager: No valid editable cell to capture focus from');
                     return null;
                 }
                 
@@ -2253,6 +2254,7 @@
                     return null;
                 }
                 
+                
                 const row = active.closest('tr');
                 const tbody = document.getElementById('table-body');
                 const rowIndex = Array.from(tbody.querySelectorAll('tr')).indexOf(row);
@@ -2260,15 +2262,21 @@
                 const colLabel = active.getAttribute('data-label') || '';
                 const rowKey = row ? row.dataset.key || null : null;
                 
-                // Get caret position within the cell
+                // Get caret position within the cell using robust method
                 let caretOffset = 0;
                 try {
-                    const selection = window.getSelection();
-                    if (selection.rangeCount > 0) {
-                        const range = selection.getRangeAt(0);
-                        caretOffset = range.startOffset;
+                    if (typeof getCaretOffsetWithin === 'function') {
+                        caretOffset = getCaretOffsetWithin(active);
+                    } else {
+                        const selection = window.getSelection();
+                        if (selection.rangeCount > 0) {
+                            const range = selection.getRangeAt(0);
+                            caretOffset = range.startOffset;
+                        }
                     }
-                } catch (_) {}
+                } catch (_) {
+                    console.log('⚠️ CursorManager: Could not get caret position');
+                }
                 
                 const focusState = {
                     rowIndex,
@@ -2276,7 +2284,9 @@
                     colLabel,
                     rowKey,
                     caretOffset,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    element: active,
+                    position: caretOffset
                 };
                 
                 this.lastFocusInfo = focusState;
@@ -2284,7 +2294,11 @@
             }
             
             restoreFocus(focusState, maxAttempts = 3) {
-                if (!focusState) return false;
+                
+                if (!focusState) {
+                    console.log('❌ CursorManager: No focus state provided');
+                    return false;
+                }
                 
                 // Check if restoration is currently prevented
                 if (this.preventRestore) {
@@ -2346,13 +2360,12 @@
                                 }
                                 
                                 this.restoreAttempts.delete(attemptKey);
-                                console.log(`✅ CursorManager: Successfully restored focus to ${attemptKey}`);
                                 return true;
                             }
                         }
                     }
                     
-                    console.log(`⚠️ CursorManager: Could not find target cell for ${attemptKey}, attempt ${attempts}`);
+                    console.log(`⚠️ CursorManager: Could not restore to ${focusState.colLabel}`);
                     return false;
                     
                 } catch (error) {
@@ -2462,6 +2475,18 @@
         let history = [];
         let historyDebounceTimeout = null;
         
+        // Patient images storage - initialize from localStorage if available
+        let patientImages = {};
+        try {
+            const savedImages = localStorage.getItem('patientImages');
+            if (savedImages) {
+                patientImages = JSON.parse(savedImages);
+            }
+        } catch (e) {
+            console.warn('Could not load patient images from localStorage:', e);
+            patientImages = {};
+        }
+        
         // ✅ GLOBAL: Variables pour la capture et restauration du focus
         let capturedFocusState = null;
         let focusRestorationEnabled = true;
@@ -2491,19 +2516,52 @@
             });
             
             // Capture cursor state before save
+            console.log('🔍 [EXCEL-SAVE] About to capture cursor state...');
+            console.log('🔍 [EXCEL-SAVE] Cell to capture:', cell);
+            console.log('🔍 [EXCEL-SAVE] Cell tagName:', cell?.tagName);
+            console.log('🔍 [EXCEL-SAVE] Cell contentEditable:', cell?.contentEditable);
+            console.log('🔍 [EXCEL-SAVE] Cell data-label:', cell?.getAttribute('data-label'));
+            console.log('🔍 [EXCEL-SAVE] Current active element:', document.activeElement);
+            
             const cursorState = cursorManager.captureFocus(cell, { saveType: 'excel', timestamp: Date.now() });
+            
+            console.log('🔍 [EXCEL-SAVE] Cursor capture result:', cursorState);
+            if (!cursorState) {
+                console.log('❌ [EXCEL-SAVE] CRITICAL: Cursor capture failed - no state to restore!');
+            } else {
+                console.log('✅ [EXCEL-SAVE] Cursor capture successful:', {
+                    colLabel: cursorState.colLabel,
+                    position: cursorState.position || cursorState.caretOffset,
+                    element: !!cursorState.element
+                });
+            }
             
             // Show Excel-mode status
             updateStatus('Sauvegarde Excel-like en cours...', 'saving');
             
-            // Capture focus state with enhanced protection
+            // Capture focus state with enhanced protection - but only if we're not transitioning between cells
             const activeElement = document.activeElement;
             const protectionTimestamp = Date.now();
             
-            if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+            // Check if user is transitioning to a different cell
+            const isTransitioningToDifferentCell = activeElement && activeElement !== cell && 
+                                                 activeElement.tagName === 'TD' && 
+                                                 activeElement.contentEditable === 'true';
+            
+            if (isTransitioningToDifferentCell) {
+                // User is moving to a different cell - don't capture focus to avoid interfering with natural flow
+                console.log('📝 [EXCEL-SAVE] Cell transition detected - clearing focus capture to preserve natural flow');
+                updateGlobalFocusState(null); // Clear any existing capture state to let natural focus work
+                console.log('📝 [EXCEL-SAVE] Natural focus flow preserved for transition to:', activeElement.getAttribute('data-label'));
+            } else if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+                // For cells that were just navigated to via Tab, ensure cursor stays at end
+                const currentPosition = getCaretOffsetWithin(activeElement);
+                const textLength = (activeElement.textContent || '').length;
+                const positionToUse = (currentPosition === 0 && textLength > 0) ? textLength : currentPosition;
+                
                 updateGlobalFocusState({
                     element: activeElement,
-                    position: getCaretOffsetWithin(activeElement),
+                    position: positionToUse,
                     timestamp: protectionTimestamp,
                     rowIndex: Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr')),
                     colLabel: activeElement.getAttribute('data-label') || '',
@@ -2538,9 +2596,16 @@
                     saveStateToHistory();
                     saveLocalDraft();
                     
-                    // Then sync to database
+                    // Then sync to database (skip cursor restoration since we handle it ourselves)
                     console.log('💾 [EXCEL-SAVE] Syncing to database...');
+                    // Temporarily set a flag to prevent syncToMaster from doing cursor restoration
+                    const originalCapturedFocusState = capturedFocusState;
+                    capturedFocusState = null; // Prevent syncToMaster cursor restoration
+                    
                     await syncToMaster(false); // false = not manual save
+                    
+                    // Restore the original state after sync
+                    capturedFocusState = originalCapturedFocusState;
                     
                     console.log('✅ [EXCEL-SAVE] Database sync completed successfully');
                     return true;
@@ -2552,11 +2617,34 @@
                 updateStatus('Cellule sauvée (Excel-like)', 'success');
                 eventManager.monitor.mark('save-cell-end');
                 
-                // Schedule cursor restoration after save
+                // Schedule cursor restoration after save with enhanced protection
+                console.log('🔍 [EXCEL-SAVE] Checking cursor state for restoration:', !!cursorState);
                 if (cursorState) {
+                    console.log('✅ [EXCEL-SAVE] Valid cursor state found, proceeding with restoration');
+                    console.log('🔍 [EXCEL-SAVE] Restoration details:', {
+                        colLabel: cursorState.colLabel,
+                        position: cursorState.position || cursorState.caretOffset,
+                        hasElement: !!cursorState.element
+                    });
+                    
+                    // Set restoration flag to block all interfering operations
+                    isRestoringCursor = true;
+                    console.log('🔒 [EXCEL-SAVE] Starting cursor restoration - blocking interfering operations');
+                    
                     TimerManager.setTimeout(() => {
-                        cursorManager.restoreFocus(cursorState, 50);
+                        try {
+                            const restoreResult = cursorManager.restoreFocus(cursorState, 50);
+                            console.log('🔄 [EXCEL-SAVE] Restore focus result:', restoreResult);
+                        } finally {
+                            // Clear restoration flag after completion
+                            TimerManager.setTimeout(() => {
+                                isRestoringCursor = false;
+                                console.log('🔓 [EXCEL-SAVE] Cursor restoration completed - operations re-enabled');
+                            }, 300); // Extended time to ensure restoration completes
+                        }
                     }, 200);
+                } else {
+                    console.log('❌ [EXCEL-SAVE] No cursor state available for restoration!');
                 }
                 
                 return true;
@@ -2565,9 +2653,19 @@
                 updateStatus('Erreur sauvegarde cellule', 'error');
                 eventManager.monitor.mark('save-cell-error');
                 
-                // Still try to restore cursor on error
+                // Still try to restore cursor on error with protection
                 if (cursorState) {
-                    cursorManager.restoreFocus(cursorState, 100);
+                    isRestoringCursor = true;
+                    console.log('🔒 [EXCEL-SAVE] Starting error cursor restoration - blocking interfering operations');
+                    
+                    try {
+                        cursorManager.restoreFocus(cursorState, 100);
+                    } finally {
+                        TimerManager.setTimeout(() => {
+                            isRestoringCursor = false;
+                            console.log('🔓 [EXCEL-SAVE] Error cursor restoration completed - operations re-enabled');
+                        }, 300);
+                    }
                 }
                 
                 return false;
@@ -5632,6 +5730,10 @@
             
             // Format when the user leaves the cell (Excel-like behavior)
             cell.addEventListener('blur', async () => {
+              // Track cell transition timing
+              window.lastCellTransition = Date.now();
+              console.log('📝 [CELL-TRANSITION] Cell blur detected - transition timestamp recorded');
+              
               // Remove selection styling
               cell.classList.remove('selected');
               
@@ -5642,10 +5744,14 @@
               // Excel-like save: save immediately when moving to another cell
               if (hasBeenModified || formattedValue !== initialValue) {
                 console.log('📝 [EXCEL-SAVE] Cell blur detected - saving modified cell');
-                await saveModifiedCell(cell, initialValue, formattedValue);
-                // Mettre à jour la valeur initiale pour les prochaines comparaisons
-                initialValue = formattedValue;
-                hasBeenModified = false;
+                
+                // Add small delay to let focus settle on new cell before saving
+                TimerManager.setTimeout(async () => {
+                  await saveModifiedCell(cell, initialValue, formattedValue);
+                  // Mettre à jour la valeur initiale pour les prochaines comparaisons
+                  initialValue = formattedValue;
+                  hasBeenModified = false;
+                }, 50); // 50ms delay to let focus settle
               }
             });
             
@@ -5669,6 +5775,10 @@
           } else {
             // Pour les autres colonnes, Excel-like behavior
             cell.addEventListener('blur', async () => {
+              // Track cell transition timing
+              window.lastCellTransition = Date.now();
+              console.log('📝 [CELL-TRANSITION] Cell blur detected - transition timestamp recorded');
+              
               // Remove selection styling
               cell.classList.remove('selected');
               
@@ -5676,9 +5786,13 @@
               // Excel-like save: save immediately when moving to another cell
               if (hasBeenModified || currentValue !== initialValue) {
                 console.log('📝 [EXCEL-SAVE] Cell blur detected - saving modified cell');
-                await saveModifiedCell(cell, initialValue, currentValue);
-                initialValue = currentValue;
-                hasBeenModified = false;
+                
+                // Add small delay to let focus settle on new cell before saving
+                TimerManager.setTimeout(async () => {
+                  await saveModifiedCell(cell, initialValue, currentValue);
+                  initialValue = currentValue;
+                  hasBeenModified = false;
+                }, 50); // 50ms delay to let focus settle
               }
             });
             
@@ -6643,8 +6757,25 @@
                 lastSaveTime = Date.now();
                 log(`✅ Sauvegarde réussie à ${new Date(lastSaveTime).toLocaleTimeString()} - Cooldown temps réel activé pour ${REALTIME_COOLDOWN_MS}ms`);
                 
-                // ✅ RESTAURER LA CELLULE SÉLECTIONNÉE APRÈS LA SAUVEGARDE
+                // ✅ RESTAURER LA CELLULE SÉLECTIONNÉE APRÈS LA SAUVEGARDE (only if not transitioning between cells)
                 if (capturedFocusState && (capturedFocusState.element || (capturedFocusState.rowIndex >= 0 && capturedFocusState.colLabel))) {
+                    // Check if user has naturally moved to a different cell
+                    const currentActiveElement = document.activeElement;
+                    const userHasMovedToNewCell = currentActiveElement && 
+                                                currentActiveElement.tagName === 'TD' && 
+                                                currentActiveElement.contentEditable === 'true' &&
+                                                currentActiveElement !== capturedFocusState.element;
+                    
+                    if (userHasMovedToNewCell && !capturedFocusState.isNewCellTransition) {
+                        // Only skip restoration if this wasn't a planned transition
+                        log(`🔄 User has moved to unplanned new cell, skipping restoration to preserve natural focus flow`, 'info');
+                        updateGlobalFocusState(null); // Clear the capture state
+                        return; // Exit early
+                    } else if (capturedFocusState.isNewCellTransition) {
+                        // This was a planned transition - restore to the new cell they moved to
+                        log(`🔄 Planned cell transition - restoring to new cell: ${capturedFocusState.colLabel}`, 'info');
+                    }
+                    
                     log(`🔄 Restauration de la cellule sélectionnée après sauvegarde: ${capturedFocusState.colLabel}`, 'info');
                     
                     TimerManager.setTimeout(() => {
@@ -6680,30 +6811,12 @@
                                 targetElement.focus();
                                 log(`✅ Focus restauré sur la cellule: ${capturedFocusState.colLabel}`, 'success');
                                 
-                                // Restaurer la position du curseur
-                                if (capturedFocusState.position !== null && capturedFocusState.position !== undefined) {
-                                    try {
-                                        setCaretAt(targetElement, capturedFocusState.position);
-                                        log(`✅ Curseur restauré à la position ${capturedFocusState.position} dans ${capturedFocusState.colLabel}`, 'success');
-                                    } catch (caretError) {
-                                        log(`⚠️ Erreur lors de la restauration du curseur: ${caretError.message}`, 'warning');
-                                        // Fallback: placer le curseur à la fin
-                                        try {
-                                            setCaretAt(targetElement, null);
-                                            log(`✅ Curseur placé à la fin (fallback) dans ${capturedFocusState.colLabel}`, 'success');
-                                        } catch (fallbackError) {
-                                            log(`❌ Erreur fallback: ${fallbackError.message}`, 'error');
-                                        }
-                                    }
-                                } else {
-                                    log(`⚠️ Position du curseur non disponible dans ${capturedFocusState.colLabel}, placement à la fin`, 'warning');
-                                    // Placer le curseur à la fin
-                                    try {
-                                        setCaretAt(targetElement, null);
-                                        log(`✅ Curseur placé à la fin dans ${capturedFocusState.colLabel}`, 'success');
-                                    } catch (fallbackError) {
-                                        log(`❌ Erreur fallback: ${fallbackError.message}`, 'error');
-                                    }
+                                // Always position cursor at the end of the text
+                                try {
+                                    setCaretAt(targetElement, null);
+                                    log(`✅ Curseur placé à la fin dans ${capturedFocusState.colLabel}`, 'success');
+                                } catch (caretError) {
+                                    log(`❌ Erreur lors du placement du curseur à la fin: ${caretError.message}`, 'error');
                                 }
                                 
                                 // Faire défiler vers la cellule restaurée (sans effet visuel)
@@ -6861,22 +6974,40 @@
             
             console.log('✅ [REALTIME] Proceeding with data refresh...');
             
-            // ALWAYS capture current cursor position before realtime refresh
+            // Only capture cursor position if user is not in the middle of a cell transition
             const activeElement = document.activeElement;
             let wasCursorCaptured = false;
             
+            // Check if there's any pending blur/focus events or recent cell transitions
+            const recentTransition = Date.now() - (window.lastCellTransition || 0) < 500; // Shorter 500ms window
+            
             if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
-                // Force fresh capture of current cursor position
-                updateGlobalFocusState({
-                    element: activeElement,
-                    position: getCaretOffsetWithin(activeElement),
-                    timestamp: Date.now(),
-                    rowIndex: Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr')),
-                    colLabel: activeElement.getAttribute('data-label') || '',
-                    realtimeCapture: true // Flag to indicate this was captured during realtime sync
-                });
+                // Force fresh capture of current cursor position only if stable
+                if (recentTransition) {
+                    // During recent transitions, capture but mark as transition
+                    updateGlobalFocusState({
+                        element: activeElement,
+                        position: getCaretOffsetWithin(activeElement),
+                        timestamp: Date.now(),
+                        rowIndex: Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr')),
+                        colLabel: activeElement.getAttribute('data-label') || '',
+                        realtimeCapture: true,
+                        isRecentTransition: true // Flag for recent transition
+                    });
+                    console.log('📝 [REALTIME] Cursor captured during recent transition:', capturedFocusState.colLabel);
+                } else {
+                    // Normal capture
+                    updateGlobalFocusState({
+                        element: activeElement,
+                        position: getCaretOffsetWithin(activeElement),
+                        timestamp: Date.now(),
+                        rowIndex: Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr')),
+                        colLabel: activeElement.getAttribute('data-label') || '',
+                        realtimeCapture: true // Flag to indicate this was captured during realtime sync
+                    });
+                    console.log('📝 [REALTIME] Fresh cursor captured before realtime refresh:', capturedFocusState.colLabel, 'position:', capturedFocusState.position);
+                }
                 wasCursorCaptured = true;
-                console.log('📝 [REALTIME] Fresh cursor captured before realtime refresh:', capturedFocusState.colLabel, 'position:', capturedFocusState.position);
             } else {
                 console.log('⚠️ [REALTIME] No editable cell focused - cursor restoration not possible');
             }
@@ -6913,7 +7044,60 @@
                         console.log('🔍 [REALTIME DEBUG] capturedFocusState.position:', capturedFocusState?.position);
                         console.log('🔍 [REALTIME DEBUG] capturedFocusState.rowIndex:', capturedFocusState?.rowIndex);
                         
-                        if (capturedFocusState && capturedFocusState.colLabel) {
+                        // If no captured focus state exists, try to capture current active element
+                        if (!capturedFocusState) {
+                            console.log('🔍 [REALTIME DEBUG] No capturedFocusState found, checking for emergency capture...');
+                            const currentActiveElement = document.activeElement;
+                            console.log('🔍 [REALTIME DEBUG] currentActiveElement:', currentActiveElement);
+                            console.log('🔍 [REALTIME DEBUG] tagName:', currentActiveElement?.tagName);
+                            console.log('🔍 [REALTIME DEBUG] contentEditable:', currentActiveElement?.contentEditable);
+                            
+                            if (currentActiveElement && currentActiveElement.tagName === 'TD' && currentActiveElement.contentEditable === 'true') {
+                                console.log('🔄 [REALTIME] No captured state found, capturing current active element...');
+                                updateGlobalFocusState({
+                                    element: currentActiveElement,
+                                    position: getCaretOffsetWithin(currentActiveElement),
+                                    timestamp: Date.now(),
+                                    rowIndex: Array.from(currentActiveElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(currentActiveElement.closest('tr')),
+                                    colLabel: currentActiveElement.getAttribute('data-label') || '',
+                                    realtimeEmergencyCapture: true // Flag for emergency capture
+                                });
+                                console.log('✅ [REALTIME] Emergency cursor capture successful:', capturedFocusState?.colLabel);
+                            } else {
+                                console.log('❌ [REALTIME] Emergency capture failed - no valid active element found');
+                                console.log('🔍 [REALTIME DEBUG] Available cells in table:');
+                                const editableCells = document.querySelectorAll('td[contenteditable="true"]');
+                                console.log('   - Total editable cells found:', editableCells.length);
+                                if (editableCells.length > 0) {
+                                    console.log('   - First cell label:', editableCells[0].getAttribute('data-label'));
+                                }
+                            }
+                        } else {
+                            console.log('🔍 [REALTIME DEBUG] Existing capturedFocusState found:', capturedFocusState?.colLabel);
+                        }
+                        
+                        if (capturedFocusState && (capturedFocusState.colLabel || capturedFocusState.element)) {
+                            // If we have element but no colLabel, try to get colLabel from element
+                            if (!capturedFocusState.colLabel && capturedFocusState.element && document.contains(capturedFocusState.element)) {
+                                capturedFocusState.colLabel = capturedFocusState.element.getAttribute('data-label') || '';
+                                console.log('🔄 [REALTIME] Recovered colLabel from element:', capturedFocusState.colLabel);
+                            }
+                            
+                            // Double-check if user has moved to a different cell during the refresh
+                            const currentActiveElement = document.activeElement;
+                            const userMovedToNewCell = currentActiveElement && 
+                                                     currentActiveElement.tagName === 'TD' && 
+                                                     currentActiveElement.contentEditable === 'true' &&
+                                                     currentActiveElement.getAttribute('data-label') !== capturedFocusState.colLabel;
+                            
+                            if (userMovedToNewCell && !capturedFocusState.isRecentTransition && !capturedFocusState.isNewCellTransition) {
+                                console.log('🔄 [REALTIME] User moved to unplanned new cell during refresh - skipping restoration');
+                                updateGlobalFocusState(null);
+                                return;
+                            } else if (capturedFocusState.isRecentTransition || capturedFocusState.isNewCellTransition) {
+                                console.log('🔄 [REALTIME] Planned transition detected - proceeding with restoration to current cell');
+                            }
+                            
                             console.log('🔄 [REALTIME] Starting enhanced cursor restoration after realtime refresh...');
                             
                             // Use retry logic with progressive delays to ensure DOM is ready
@@ -6982,63 +7166,49 @@
                                             // Give focus time to settle, then restore caret
                                             TimerManager.setTimeout(() => {
                                                 try {
-                                                    // Restore caret position with validation
-                                                    if (capturedFocusState.position !== null && capturedFocusState.position !== undefined) {
-                                                        const textLength = targetElement.textContent.length;
-                                                        const safePosition = Math.min(capturedFocusState.position, textLength);
-                                                        setCaretAt(targetElement, safePosition);
-                                                        console.log(`🔄 [REALTIME] Caret set to position ${safePosition} (original: ${capturedFocusState.position})`);
-                                                        
-                                                        // Verify the caret was actually set correctly
-                                                        TimerManager.setTimeout(() => {
-                                                            try {
-                                                                const currentCaretPos = getCaretOffsetWithin(targetElement);
-                                                                const isElementFocused = document.activeElement === targetElement;
-                                                                console.log(`🔍 [REALTIME] Post-restoration verification (attempt ${attemptNum}):`);
-                                                                console.log(`    - Element focused: ${isElementFocused}`);
-                                                                console.log(`    - Current caret position: ${currentCaretPos}`);
-                                                                console.log(`    - Expected caret position: ${safePosition}`);
+                                                    // Always position cursor at the end of the text
+                                                    setCaretAt(targetElement, null);
+                                                    console.log(`🔄 [REALTIME] Cursor positioned at end of text in ${capturedFocusState.colLabel}`);
+                                                    
+                                                    // Verify the caret was set and element is focused
+                                                    TimerManager.setTimeout(() => {
+                                                        try {
+                                                            const isElementFocused = document.activeElement === targetElement;
+                                                            console.log(`🔍 [REALTIME] Post-restoration verification (attempt ${attemptNum}):`);
+                                                            console.log(`    - Element focused: ${isElementFocused}`);
+                                                            console.log(`    - Cursor positioned at end: true`);
+                                                            
+                                                            if (!isElementFocused && attemptNum < maxAttempts) {
+                                                                console.log(`⚠️ [REALTIME] Element not focused (attempt ${attemptNum}), retrying...`);
+                                                                isRestoringCursor = false;
+                                                                RaceConditionGuard.clearFlag('isExcelSaveInProgress');
+                                                                attemptCursorRestoration(attemptNum + 1, maxAttempts);
+                                                                return;
+                                                            } else if (isElementFocused || attemptNum >= maxAttempts) {
+                                                                console.log(`✅ [REALTIME] Cursor restoration successful (attempt ${attemptNum}):`, capturedFocusState.colLabel);
                                                                 
-                                                                if ((!isElementFocused || currentCaretPos !== safePosition) && attemptNum < maxAttempts) {
-                                                                    console.log(`⚠️ [REALTIME] Cursor not properly restored (attempt ${attemptNum}), retrying...`);
+                                                                // Clear restoration flags on success
+                                                                TimerManager.setTimeout(() => {
                                                                     isRestoringCursor = false;
+                                                                    console.log('✅ [REALTIME] Cursor restoration flag cleared');
+                                                                }, 500);
+                                                                
+                                                                TimerManager.setTimeout(() => {
                                                                     RaceConditionGuard.clearFlag('isExcelSaveInProgress');
-                                                                    attemptCursorRestoration(attemptNum + 1, maxAttempts);
-                                                                    return;
-                                                                } else if (isElementFocused && (currentCaretPos === safePosition || attemptNum >= maxAttempts)) {
-                                                                    console.log(`✅ [REALTIME] Cursor restoration successful (attempt ${attemptNum}):`, capturedFocusState.colLabel);
-                                                                    
-                                                                    // Clear restoration flags on success
-                                                                    TimerManager.setTimeout(() => {
-                                                                        isRestoringCursor = false;
-                                                                        console.log('✅ [REALTIME] Cursor restoration flag cleared');
-                                                                    }, 500);
-                                                                    
-                                                                    TimerManager.setTimeout(() => {
-                                                                        RaceConditionGuard.clearFlag('isExcelSaveInProgress');
-                                                                        console.log('✅ [REALTIME] Excel save protection flag cleared');
-                                                                    }, 1500);
-                                                                    
-                                                                    TimerManager.setTimeout(() => {
-                                                                        if (wasCursorCaptured) {
-                                                                            updateGlobalFocusState(null);
-                                                                            console.log('✅ [REALTIME] Focus state cleared (was captured during realtime)');
-                                                                        } else {
-                                                                            console.log('🔄 [REALTIME] Focus state preserved (was pre-existing)');
-                                                                        }
-                                                                    }, 2500);
-                                                                }
-                                                            } catch (verifyError) {
-                                                                console.error('❌ [REALTIME] Error during cursor verification:', verifyError);
+                                                                    console.log('✅ [REALTIME] Excel save protection flag cleared');
+                                                                }, 1500);
+                                                                
+                                                                TimerManager.setTimeout(() => {
+                                                                    // Always preserve focus state after successful restoration
+                                                                    // Don't clear it immediately as it may be needed for subsequent operations
+                                                                    console.log('🔄 [REALTIME] Focus state preserved after successful restoration');
+                                                                }, 2500);
                                                             }
-                                                        }, 50); // Give caret setting time to take effect
-                                                        
-                                                    } else {
-                                                        // Position at end if no specific position
-                                                        setCaretAt(targetElement, null);
-                                                        console.log(`🔄 [REALTIME] Caret positioned at end (no specific position stored)`);
-                                                        console.log(`✅ [REALTIME] Cursor restoration completed (attempt ${attemptNum}):`, capturedFocusState.colLabel);
-                                                    }
+                                                        } catch (verifyError) {
+                                                            console.error('❌ [REALTIME] Error during cursor verification:', verifyError);
+                                                        }
+                                                    }, 50); // Give caret setting time to take effect
+                                                    
                                                 } catch (caretError) {
                                                     console.error(`❌ [REALTIME] Error setting caret (attempt ${attemptNum}):`, caretError);
                                                     if (attemptNum < maxAttempts) {
@@ -7089,12 +7259,9 @@
                                             }, 2000);
                                             
                                             TimerManager.setTimeout(() => {
-                                                if (wasCursorCaptured) {
-                                                    updateGlobalFocusState(null);
-                                                    console.log('✅ [REALTIME] Focus state cleared (was captured during realtime)');
-                                                } else {
-                                                    console.log('🔄 [REALTIME] Focus state preserved (was pre-existing)');
-                                                }
+                                                // Always preserve focus state after cursor restoration
+                                                // Let the normal focus management handle cleanup later
+                                                console.log('🔄 [REALTIME] Focus state preserved after restoration');
                                             }, 5000);
                                         }
                                     }
@@ -7105,6 +7272,14 @@
                             attemptCursorRestoration();
                         } else {
                             console.log('🔄 [REALTIME] No focus state to restore');
+                            console.log('🔍 [REALTIME DEBUG] Reason for no restoration:');
+                            console.log('   - capturedFocusState exists:', !!capturedFocusState);
+                            if (capturedFocusState) {
+                                console.log('   - has colLabel:', !!capturedFocusState.colLabel);
+                                console.log('   - has element:', !!capturedFocusState.element);
+                                console.log('   - colLabel value:', capturedFocusState.colLabel);
+                                console.log('   - element value:', capturedFocusState.element);
+                            }
                         }
                         
                         // Performance monitoring
@@ -7130,11 +7305,36 @@
         function forceImmediateSync() {
             console.log('🚀 [IMMEDIATE SYNC] Forcing immediate synchronization across all devices...');
             
+            // ✅ CAPTURE CURSOR POSITION BEFORE REALTIME SYNC
+            const activeElement = document.activeElement;
+            let cursorState = null;
+            
+            if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+                cursorState = cursorManager.captureFocus(activeElement, { saveType: 'realtimeSync', timestamp: Date.now() });
+            } else {
+                console.log('⚠️ [IMMEDIATE SYNC] No editable cell focused - cursor restoration not possible');
+            }
+            
             // Force refresh data from server
             if (typeof fetchInitialData === 'function') {
                 console.log('🔄 [IMMEDIATE SYNC] Fetching fresh data from server...');
                 fetchInitialData(true).then(() => {
                     console.log('✅ [IMMEDIATE SYNC] Data fetch completed');
+                    
+                    // ✅ RESTORE CURSOR POSITION AFTER REALTIME SYNC
+                    if (cursorState && typeof cursorManager !== 'undefined' && cursorManager.restoreFocus) {
+                        isRestoringCursor = true;
+                        
+                        TimerManager.setTimeout(() => {
+                            try {
+                                cursorManager.restoreFocus(cursorState, 100);
+                            } finally {
+                                TimerManager.setTimeout(() => {
+                                    isRestoringCursor = false;
+                                }, 300);
+                            }
+                        }, 200);
+                    }
                     
                     // Force UI refresh
                     if (typeof renderTable === 'function') {
@@ -7466,20 +7666,19 @@
                     console.log('🔄 [TIMESTAMP SYNC] Last sync:', new Date(lastSyncTimestamp).toISOString());
                     console.log('🔄 [TIMESTAMP SYNC] Current:', new Date(currentTimestamp).toISOString());
                     
-                    // ✅ CAPTURE CURSOR POSITION BEFORE SYNC
+                    // ✅ CAPTURE CURSOR POSITION BEFORE SYNC using cursorManager
                     const activeElement = document.activeElement;
                     let cursorState = null;
                     
                     if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
-                        cursorState = {
-                            element: activeElement,
-                            position: getCaretOffsetWithin(activeElement),
-                            timestamp: Date.now(),
-                            rowIndex: Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr')),
-                            colLabel: activeElement.getAttribute('data-label') || '',
-                            timestampSync: true // Flag to indicate this was captured during timestamp sync
-                        };
-                        console.log('📝 [TIMESTAMP SYNC] Cursor captured before sync:', cursorState.colLabel, 'position:', cursorState.position);
+                        console.log('📝 [TIMESTAMP SYNC] Capturing cursor state from cell:', activeElement.getAttribute('data-label'));
+                        cursorState = cursorManager.captureFocus(activeElement, { saveType: 'timestampSync', timestamp: Date.now() });
+                        
+                        if (cursorState) {
+                            console.log('✅ [TIMESTAMP SYNC] Cursor captured successfully:', cursorState.colLabel, 'position:', cursorState.position || cursorState.caretOffset);
+                        } else {
+                            console.log('❌ [TIMESTAMP SYNC] Cursor capture failed');
+                        }
                     } else {
                         console.log('⚠️ [TIMESTAMP SYNC] No editable cell focused - cursor restoration not possible');
                     }
@@ -7492,17 +7691,44 @@
                         await fetchInitialData(true);
                         console.log('✅ [TIMESTAMP SYNC] Data synced successfully');
                         
-                        // ✅ RESTORE CURSOR POSITION AFTER SYNC
+                        // ✅ RESTORE CURSOR POSITION AFTER SYNC with enhanced protection
+                        console.log('🔍 [TIMESTAMP SYNC] Checking for cursor restoration...');
+                        console.log('🔍 [TIMESTAMP SYNC] cursorState exists:', !!cursorState);
+                        console.log('🔍 [TIMESTAMP SYNC] cursorManager exists:', typeof cursorManager !== 'undefined');
+                        
                         if (cursorState && typeof cursorManager !== 'undefined' && cursorManager.restoreFocus) {
                             console.log('🔄 [TIMESTAMP SYNC] Restoring cursor position...');
+                            console.log('🔍 [TIMESTAMP SYNC] Restoration target:', {
+                                colLabel: cursorState.colLabel,
+                                rowIndex: cursorState.rowIndex,
+                                position: cursorState.position || cursorState.caretOffset,
+                                hasElement: !!cursorState.element
+                            });
+                            
+                            isRestoringCursor = true;
+                            console.log('🔒 [TIMESTAMP SYNC] Starting cursor restoration - blocking interfering operations');
+                            
                             TimerManager.setTimeout(() => {
-                                const restored = cursorManager.restoreFocus(cursorState, 100);
-                                if (restored) {
-                                    console.log('✅ [TIMESTAMP SYNC] Cursor restored successfully');
-                                } else {
-                                    console.log('⚠️ [TIMESTAMP SYNC] Cursor restoration failed');
+                                try {
+                                    const restored = cursorManager.restoreFocus(cursorState, 100);
+                                    console.log('🔄 [TIMESTAMP SYNC] Restore focus result:', restored);
+                                    if (restored) {
+                                        console.log('✅ [TIMESTAMP SYNC] Cursor restored successfully to:', cursorState.colLabel);
+                                    } else {
+                                        console.log('❌ [TIMESTAMP SYNC] Cursor restoration failed for:', cursorState.colLabel);
+                                    }
+                                } finally {
+                                    TimerManager.setTimeout(() => {
+                                        isRestoringCursor = false;
+                                        console.log('🔓 [TIMESTAMP SYNC] Cursor restoration completed - operations re-enabled');
+                                    }, 300);
                                 }
                             }, 200);
+                        } else {
+                            console.log('❌ [TIMESTAMP SYNC] Cannot restore cursor - missing requirements');
+                            if (!cursorState) console.log('   - No cursor state captured');
+                            if (typeof cursorManager === 'undefined') console.log('   - cursorManager not available');
+                            if (typeof cursorManager !== 'undefined' && !cursorManager.restoreFocus) console.log('   - restoreFocus method not available');
                         }
                     }
                 } else {
@@ -11403,14 +11629,27 @@
                 conflicts.push('AUTOSAVE_UNDO_REDO_CONFLICT');
             }
             
+            // Check for cursor restoration conflicts
+            if (autosaveTicker && isRestoringCursor) {
+                conflicts.push('AUTOSAVE_CURSOR_RESTORATION_CONFLICT');
+            }
+            
             // Check for realtime conflicts
             if (realtimeSubscription && isPerformingUndoRedo) {
                 conflicts.push('REALTIME_UNDO_REDO_CONFLICT');
             }
             
+            if (realtimeSubscription && isRestoringCursor) {
+                conflicts.push('REALTIME_CURSOR_RESTORATION_CONFLICT');
+            }
+            
             // Check for sync conflicts
             if (window._syncTimer && isPerformingUndoRedo) {
                 conflicts.push('SYNC_UNDO_REDO_CONFLICT');
+            }
+            
+            if (window._syncTimer && isRestoringCursor) {
+                conflicts.push('SYNC_CURSOR_RESTORATION_CONFLICT');
             }
             
             // Check for timer conflicts
@@ -11445,8 +11684,8 @@
                 lastShownCountdown = null;
                 autosaveTicker = setInterval(() => {
                     try {
-                        // Enhanced conflict prevention
-                        if (isSyncing || isPerformingUndoRedo) {
+                        // Enhanced conflict prevention - including cursor restoration
+                        if (isSyncing || isPerformingUndoRedo || isRestoringCursor) {
                             lastShownCountdown = null;
                             return;
                         }
@@ -11517,12 +11756,31 @@
                 
                 window._syncTimer = setInterval(async () => {
                     try {
-                        // Enhanced conflict prevention
-                        if (isTyping || isPerformingUndoRedo) {
+                        console.log('🔍 [PERIODIC SYNC] ========== PERIODIC SYNC TRIGGERED ==========');
+                        console.log('🔍 [PERIODIC SYNC] Current active element:', document.activeElement);
+                        console.log('🔍 [PERIODIC SYNC] Active element details:', {
+                            tagName: document.activeElement?.tagName,
+                            contentEditable: document.activeElement?.contentEditable,
+                            dataLabel: document.activeElement?.getAttribute('data-label')
+                        });
+                        
+                        // Enhanced conflict prevention - including cursor restoration
+                        if (isTyping || isPerformingUndoRedo || isRestoringCursor) {
+                            console.log('🚫 [PERIODIC SYNC] Blocked - conflict detected:', {
+                                isTyping,
+                                isPerformingUndoRedo, 
+                                isRestoringCursor
+                            });
                             return;
                         }
                         
-                        if (Date.now() - lastEditAt < AUTOSAVE_DELAY_MS) {
+                        const timeSinceLastEdit = Date.now() - lastEditAt;
+                        console.log('🔍 [PERIODIC SYNC] Time since last edit:', timeSinceLastEdit + 'ms');
+                        console.log('🔍 [PERIODIC SYNC] AUTOSAVE_DELAY_MS:', AUTOSAVE_DELAY_MS);
+                        console.log('🔍 [PERIODIC SYNC] Delay requirement met:', timeSinceLastEdit >= AUTOSAVE_DELAY_MS);
+                        
+                        if (timeSinceLastEdit < AUTOSAVE_DELAY_MS) {
+                            console.log('🚫 [PERIODIC SYNC] Too soon since last edit, skipping sync');
                             return;
                         }
                         
@@ -11546,8 +11804,71 @@
                         }
                         
                         isSyncing = true;
+                        console.log('🔄 [PERIODIC SYNC] ========== CALLING syncToMaster ==========');
+                        console.log('🔄 [PERIODIC SYNC] Before sync - active element:', document.activeElement?.getAttribute('data-label'));
+                        
+                        // ✅ CAPTURE CURSOR POSITION BEFORE PERIODIC SYNC
+                        const activeElement = document.activeElement;
+                        let cursorState = null;
+                        
+                        if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+                            console.log('📝 [PERIODIC SYNC] Capturing cursor state from cell:', activeElement.getAttribute('data-label'));
+                            cursorState = cursorManager.captureFocus(activeElement, { saveType: 'periodicSync', timestamp: Date.now() });
+                            
+                            if (cursorState) {
+                                console.log('✅ [PERIODIC SYNC] Cursor captured successfully:', cursorState.colLabel, 'position:', cursorState.position || cursorState.caretOffset);
+                            } else {
+                                console.log('❌ [PERIODIC SYNC] Cursor capture failed');
+                            }
+                        } else {
+                            console.log('⚠️ [PERIODIC SYNC] No editable cell focused - cursor restoration not possible');
+                        }
+                        
+                        // Prevent syncToMaster from doing its own cursor restoration
+                        const originalCapturedFocusState = capturedFocusState;
+                        capturedFocusState = null; // Prevent syncToMaster cursor restoration
+                        
                         log('Auto-sync (500ms poll, 3s idle) vers Supabase…');
                         await syncToMaster(false);
+                        
+                        // Restore the original state after sync
+                        capturedFocusState = originalCapturedFocusState;
+                        
+                        console.log('✅ [PERIODIC SYNC] syncToMaster completed');
+                        console.log('🔍 [PERIODIC SYNC] After sync - active element:', document.activeElement?.getAttribute('data-label'));
+                        
+                        // ✅ RESTORE CURSOR POSITION AFTER PERIODIC SYNC
+                        if (cursorState && typeof cursorManager !== 'undefined' && cursorManager.restoreFocus) {
+                            console.log('🔄 [PERIODIC SYNC] Restoring cursor position...');
+                            console.log('🔍 [PERIODIC SYNC] Restoration target:', {
+                                colLabel: cursorState.colLabel,
+                                rowIndex: cursorState.rowIndex,
+                                position: cursorState.position || cursorState.caretOffset,
+                                hasElement: !!cursorState.element
+                            });
+                            
+                            isRestoringCursor = true;
+                            console.log('🔒 [PERIODIC SYNC] Starting cursor restoration - blocking interfering operations');
+                            
+                            TimerManager.setTimeout(() => {
+                                try {
+                                    const restored = cursorManager.restoreFocus(cursorState, 100);
+                                    console.log('🔄 [PERIODIC SYNC] Restore focus result:', restored);
+                                    if (restored) {
+                                        console.log('✅ [PERIODIC SYNC] Cursor restored successfully to:', cursorState.colLabel);
+                                    } else {
+                                        console.log('❌ [PERIODIC SYNC] Cursor restoration failed for:', cursorState.colLabel);
+                                    }
+                                } finally {
+                                    TimerManager.setTimeout(() => {
+                                        isRestoringCursor = false;
+                                        console.log('🔓 [PERIODIC SYNC] Cursor restoration completed - operations re-enabled');
+                                    }, 300);
+                                }
+                            }, 200);
+                        } else {
+                            console.log('⚠️ [PERIODIC SYNC] Cannot restore cursor - no state captured or cursorManager unavailable');
+                        }
                     } catch (error) {
                         console.error('❌ Error in periodic sync:', error);
                     } finally {
@@ -11922,6 +12243,18 @@ ${capacityInfo.needsCleanup ?
             if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
                 console.log('🧪 Testing realtime sync with cursor preservation...');
                 
+                // Capture cursor state before simulation (like the normal flow does)
+                updateGlobalFocusState({
+                    element: activeElement,
+                    position: getCaretOffsetWithin(activeElement),
+                    timestamp: Date.now(),
+                    rowIndex: Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr')),
+                    colLabel: activeElement.getAttribute('data-label') || '',
+                    testCapture: true // Flag to indicate this was captured during testing
+                });
+                
+                console.log('📝 [TEST] Cursor captured before realtime test:', capturedFocusState?.colLabel, 'position:', capturedFocusState?.position);
+                
                 // Simulate a realtime update by calling the handler directly
                 TimerManager.setTimeout(() => {
                     console.log('🔄 Simulating realtime update...');
@@ -12108,7 +12441,7 @@ ${capacityInfo.needsCleanup ?
                             const targetElement = row.querySelector(`td[data-label="${window.capturedFocusState.colLabel}"]`);
                             if (targetElement) {
                                 targetElement.focus();
-                                setCaretAt(targetElement, window.capturedFocusState.position);
+                                setCaretAt(targetElement, null); // Always position at end
                                 console.log('✅ Cursor restoration test completed');
                                 
                                 // Clear flag after test

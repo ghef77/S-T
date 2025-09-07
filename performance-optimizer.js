@@ -35,22 +35,28 @@ class PerformanceOptimizer {
      * Enhanced debounce with cancellation support
      */
     debounce(func, delay, immediate = false, key = null) {
-        if (key && this.pendingOperations.has(key)) {
-            clearTimeout(this.pendingOperations.get(key));
-        }
-
-        const timeoutId = setTimeout(() => {
-            if (key) this.pendingOperations.delete(key);
-            if (!immediate) func.apply(this, arguments);
-        }, delay);
-
-        if (key) this.pendingOperations.set(key, timeoutId);
+        const self = this; // Capture the performance optimizer context
+        let timeoutId;
         
-        if (immediate && (!key || !this.pendingOperations.has(key))) {
-            func.apply(this, arguments);
-        }
-        
-        return timeoutId;
+        return function debouncedFunction(...args) {
+            const context = this; // The context when the debounced function is called
+            
+            if (key && self.pendingOperations.has(key)) {
+                clearTimeout(self.pendingOperations.get(key));
+            }
+
+            const later = () => {
+                if (key) self.pendingOperations.delete(key);
+                if (!immediate) func.apply(context, args);
+            };
+
+            const callNow = immediate && (!key || !self.pendingOperations.has(key));
+            
+            timeoutId = setTimeout(later, delay);
+            if (key) self.pendingOperations.set(key, timeoutId);
+            
+            if (callNow) func.apply(context, args);
+        };
     }
 
     /**
@@ -156,6 +162,10 @@ class PerformanceOptimizer {
         }
 
         const delegatedHandler = (event) => {
+            // Ensure event.target is an Element before calling closest
+            if (!event.target || typeof event.target.closest !== 'function') {
+                return;
+            }
             const target = event.target.closest(selector);
             if (target && container.contains(target)) {
                 processedHandler.call(target, event);

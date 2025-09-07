@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cursor Restoration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .test-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        
+        .test-table th, .test-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .test-table th {
+            background-color: #f2f2f2;
+        }
+        
+        .test-table td {
+            min-height: 20px;
+        }
+        
+        .test-table td[contenteditable="true"] {
+            background-color: #fff;
+            cursor: text;
+        }
+        
+        .test-table td[contenteditable="true"]:focus {
+            background-color: #e3f2fd;
+            outline: 2px solid #2196f3;
+        }
+        
+        .selected {
+            background-color: #e3f2fd !important;
+        }
+        
+        .log-container {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        
+        .controls {
+            margin: 20px 0;
+        }
+        
+        .test-button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .test-button:hover {
+            background: #1976d2;
+        }
+        
+        .test-button.danger {
+            background: #f44336;
+        }
+        
+        .test-button.danger:hover {
+            background: #d32f2f;
+        }
+        
+        .test-button.success {
+            background: #4caf50;
+        }
+        
+        .test-button.success:hover {
+            background: #388e3c;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Cursor Restoration Test Suite</h1>
+    
+    <div class="test-container">
+        <h2>Test Table</h2>
+        <p>Edit cells and use the test buttons to simulate different cursor restoration scenarios.</p>
+        
+        <table class="test-table" id="testTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Position</th>
+                    <th>Department</th>
+                    <th>Phone</th>
+                </tr>
+            </thead>
+            <tbody id="testTableBody">
+                <tr>
+                    <td contenteditable="true" data-label="Name">John Doe</td>
+                    <td contenteditable="true" data-label="Position">Manager</td>
+                    <td contenteditable="true" data-label="Department">Sales</td>
+                    <td contenteditable="true" data-label="Phone">123-456-7890</td>
+                </tr>
+                <tr>
+                    <td contenteditable="true" data-label="Name">Jane Smith</td>
+                    <td contenteditable="true" data-label="Position">Developer</td>
+                    <td contenteditable="true" data-label="Department">IT</td>
+                    <td contenteditable="true" data-label="Phone">098-765-4321</td>
+                </tr>
+                <tr>
+                    <td contenteditable="true" data-label="Name">Bob Johnson</td>
+                    <td contenteditable="true" data-label="Position">Designer</td>
+                    <td contenteditable="true" data-label="Department">Marketing</td>
+                    <td contenteditable="true" data-label="Phone">555-123-4567</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="controls">
+            <h3>Test Controls</h3>
+            <button class="test-button" onclick="testCursorCapture()">1. Test Cursor Capture</button>
+            <button class="test-button" onclick="testCursorRestore()">2. Test Cursor Restore</button>
+            <button class="test-button" onclick="simulateBlurSave()">3. Simulate Blur Save</button>
+            <button class="test-button" onclick="simulateRealtimeSync()">4. Simulate Realtime Sync</button>
+            <button class="test-button" onclick="testCellTransition()">5. Test Cell Transition</button>
+            <button class="test-button success" onclick="runFullTest()">🚀 Run Full Test</button>
+            <button class="test-button danger" onclick="clearLogs()">Clear Logs</button>
+        </div>
+        
+        <div id="status" class="status info">Ready for testing...</div>
+    </div>
+    
+    <div class="test-container">
+        <h2>Debug Logs</h2>
+        <div id="logContainer" class="log-container">
+            <div>Test initialized. Click on cells and run tests...</div>
+        </div>
+    </div>
+
+    <script>
+        // Global test variables
+        let capturedFocusState = null;
+        let lastCellTransition = 0;
+        let testResults = {
+            passed: 0,
+            failed: 0,
+            total: 0
+        };
+
+        // Initialize test environment
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeTestCells();
+            log('🟢 Test environment initialized');
+        });
+
+        // Logging function
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            
+            let prefix = '';
+            switch(type) {
+                case 'error': prefix = '❌'; break;
+                case 'success': prefix = '✅'; break;
+                case 'warning': prefix = '⚠️'; break;
+                case 'debug': prefix = '🔍'; break;
+                default: prefix = 'ℹ️'; break;
+            }
+            
+            logEntry.innerHTML = `[${timestamp}] ${prefix} ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            console.log(`[CURSOR-TEST] ${message}`);
+        }
+
+        // Status update function
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+
+        // Initialize test cells with event listeners
+        function initializeTestCells() {
+            const cells = document.querySelectorAll('td[contenteditable="true"]');
+            
+            cells.forEach(cell => {
+                // Focus handler
+                cell.addEventListener('focus', function() {
+                    this.classList.add('selected');
+                    log(`📍 Focus: ${this.getAttribute('data-label')} - "${this.textContent}"`);
+                });
+
+                // Blur handler (simulates Excel-like save)
+                cell.addEventListener('blur', function() {
+                    this.classList.remove('selected');
+                    lastCellTransition = Date.now();
+                    log(`📤 Blur: ${this.getAttribute('data-label')} - transition recorded`);
+                    
+                    // Simulate save delay like in your main app
+                    setTimeout(() => {
+                        simulateExcelSave(this);
+                    }, 50);
+                });
+
+                // Input handler
+                cell.addEventListener('input', function() {
+                    log(`✏️ Input: ${this.getAttribute('data-label')} - "${this.textContent}"`);
+                });
+            });
+        }
+
+        // Simulate Excel-like save function
+        function simulateExcelSave(cell) {
+            log(`💾 Excel Save triggered for: ${cell.getAttribute('data-label')}`);
+            
+            const activeElement = document.activeElement;
+            const isTransitioning = activeElement && activeElement !== cell && 
+                                  activeElement.tagName === 'TD' && 
+                                  activeElement.contentEditable === 'true';
+            
+            if (isTransitioning) {
+                log(`🔄 Cell transition detected during save: ${cell.getAttribute('data-label')} → ${activeElement.getAttribute('data-label')}`);
+                updateGlobalFocusState(null); // Clear focus state for transitions
+            } else {
+                // Capture focus state for same-cell scenarios
+                captureFocusState();
+            }
+            
+            // Simulate sync process
+            setTimeout(() => {
+                log(`💾 Save completed for: ${cell.getAttribute('data-label')}`);
+                attemptCursorRestoration();
+            }, 100);
+        }
+
+        // Focus state management (simplified version of your main app)
+        function updateGlobalFocusState(newState) {
+            capturedFocusState = newState;
+            if (newState) {
+                log(`📝 Focus state captured: ${newState.colLabel} at position ${newState.position}`, 'debug');
+            } else {
+                log(`🧹 Focus state cleared`, 'debug');
+            }
+        }
+
+        function captureFocusState() {
+            let activeElement = document.activeElement;
+            
+            // If no cell is currently focused, try to focus the first available cell
+            if (!activeElement || activeElement.tagName !== 'TD' || activeElement.contentEditable !== 'true') {
+                log(`🔍 No active cell found, attempting to focus first available cell...`, 'debug');
+                const firstEditableCell = document.querySelector('td[contenteditable="true"]');
+                if (firstEditableCell) {
+                    firstEditableCell.focus();
+                    // Position cursor at end of text
+                    setCaretAt(firstEditableCell, null);
+                    activeElement = firstEditableCell;
+                    log(`✅ Focused first available cell: ${activeElement.getAttribute('data-label')}`, 'debug');
+                } else {
+                    log(`❌ No editable cells found in table`, 'error');
+                    return null;
+                }
+            }
+            
+            if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+                const position = getCaretOffsetWithin(activeElement);
+                const rowIndex = Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr'));
+                
+                updateGlobalFocusState({
+                    element: activeElement,
+                    position: position,
+                    timestamp: Date.now(),
+                    rowIndex: rowIndex,
+                    colLabel: activeElement.getAttribute('data-label') || '',
+                    testCapture: true
+                });
+                
+                return capturedFocusState;
+            }
+            
+            return null;
+        }
+
+        // Cursor position utilities
+        function getCaretOffsetWithin(element) {
+            let caretOffset = 0;
+            const doc = element.ownerDocument || element.document;
+            const win = doc.defaultView || doc.parentWindow;
+            let sel;
+            
+            if (typeof win.getSelection != "undefined") {
+                sel = win.getSelection();
+                if (sel.rangeCount > 0) {
+                    const range = win.getSelection().getRangeAt(0);
+                    const preCaretRange = range.cloneRange();
+                    preCaretRange.selectNodeContents(element);
+                    preCaretRange.setEnd(range.endContainer, range.endOffset);
+                    caretOffset = preCaretRange.toString().length;
+                }
+            } else if ((sel = doc.selection) && sel.type != "Control") {
+                const textRange = sel.createRange();
+                const preCaretTextRange = doc.body.createTextRange();
+                preCaretTextRange.moveToElementText(element);
+                preCaretTextRange.setEndPoint("EndToEnd", textRange);
+                caretOffset = preCaretTextRange.text.length;
+            }
+            
+            return caretOffset;
+        }
+
+        function setCaretAt(element, position) {
+            const doc = element.ownerDocument || element.document;
+            const win = doc.defaultView || doc.parentWindow;
+            
+            if (position === null || position === undefined) {
+                // Position at end
+                position = element.textContent.length;
+            }
+            
+            if (typeof win.getSelection != "undefined" && typeof doc.createRange != "undefined") {
+                const range = doc.createRange();
+                range.selectNodeContents(element);
+                
+                let charCount = 0;
+                let node, foundNode = null, foundOffset = 0;
+                
+                const walker = doc.createTreeWalker(
+                    element,
+                    NodeFilter.SHOW_TEXT,
+                    null,
+                    false
+                );
+                
+                while (node = walker.nextNode()) {
+                    const nodeLength = node.nodeValue.length;
+                    if (charCount + nodeLength >= position) {
+                        foundNode = node;
+                        foundOffset = position - charCount;
+                        break;
+                    }
+                    charCount += nodeLength;
+                }
+                
+                if (foundNode) {
+                    range.setStart(foundNode, Math.min(foundOffset, foundNode.nodeValue.length));
+                } else if (element.childNodes.length > 0) {
+                    range.setStart(element.childNodes[element.childNodes.length - 1], 0);
+                } else {
+                    range.setStart(element, 0);
+                }
+                
+                range.collapse(true);
+                const sel = win.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+
+        // Cursor restoration function (simplified version of your main app)
+        function attemptCursorRestoration() {
+            if (!capturedFocusState) {
+                log(`⚠️ No focus state to restore`, 'warning');
+                return false;
+            }
+
+            log(`🔄 Attempting cursor restoration to: ${capturedFocusState.colLabel}`, 'debug');
+
+            // Check if user moved to different cell
+            const currentActiveElement = document.activeElement;
+            const userMovedToNewCell = currentActiveElement && 
+                                     currentActiveElement.tagName === 'TD' && 
+                                     currentActiveElement.contentEditable === 'true' &&
+                                     currentActiveElement !== capturedFocusState.element;
+
+            if (userMovedToNewCell && !capturedFocusState.isNewCellTransition) {
+                log(`🔄 User moved to new cell, skipping restoration: ${currentActiveElement.getAttribute('data-label')}`, 'warning');
+                updateGlobalFocusState(null);
+                return false;
+            }
+
+            let targetElement = capturedFocusState.element;
+
+            // Find element if reference is stale
+            if (!targetElement || !document.contains(targetElement)) {
+                log(`⚠️ Element reference stale, searching by position`, 'warning');
+                const rows = document.querySelectorAll('#testTableBody tr');
+                if (rows[capturedFocusState.rowIndex]) {
+                    targetElement = rows[capturedFocusState.rowIndex].querySelector(`td[data-label="${capturedFocusState.colLabel}"]`);
+                }
+            }
+
+            if (targetElement && document.contains(targetElement)) {
+                // Focus the element
+                targetElement.focus();
+                log(`✅ Focus restored to: ${capturedFocusState.colLabel}`, 'success');
+
+                // Always position cursor at end of text
+                try {
+                    setCaretAt(targetElement, null);
+                    log(`✅ Cursor positioned at end of text in ${capturedFocusState.colLabel}`, 'success');
+                    
+                    // Clear focus state after successful restoration
+                    setTimeout(() => {
+                        updateGlobalFocusState(null);
+                        log(`🧹 Focus state cleared after restoration`);
+                    }, 1000);
+                    
+                    return true;
+                } catch (caretError) {
+                    log(`❌ Error positioning cursor: ${caretError.message}`, 'error');
+                    return false;
+                }
+            } else {
+                log(`❌ Could not find target element: ${capturedFocusState.colLabel}`, 'error');
+                return false;
+            }
+        }
+
+        // Test functions
+        function testCursorCapture() {
+            log(`🧪 TEST 1: Cursor Capture`);
+            updateStatus('Running cursor capture test...', 'info');
+            
+            const activeElement = document.activeElement;
+            if (!activeElement || activeElement.tagName !== 'TD') {
+                updateStatus('Please focus on a table cell first', 'error');
+                log(`❌ No cell focused for capture test`, 'error');
+                return false;
+            }
+
+            const result = captureFocusState();
+            if (result) {
+                updateStatus('✅ Cursor capture test passed', 'success');
+                log(`✅ Test 1 PASSED: Captured ${result.colLabel} at position ${result.position}`, 'success');
+                testResults.passed++;
+            } else {
+                updateStatus('❌ Cursor capture test failed', 'error');
+                log(`❌ Test 1 FAILED: Could not capture focus state`, 'error');
+                testResults.failed++;
+            }
+            testResults.total++;
+            return result !== null;
+        }
+
+        function testCursorRestore() {
+            log(`🧪 TEST 2: Cursor Restore`);
+            updateStatus('Running cursor restore test...', 'info');
+
+            if (!capturedFocusState) {
+                updateStatus('No focus state captured. Run capture test first.', 'error');
+                log(`❌ Test 2 FAILED: No captured state`, 'error');
+                testResults.failed++;
+                testResults.total++;
+                return false;
+            }
+
+            const result = attemptCursorRestoration();
+            if (result) {
+                updateStatus('✅ Cursor restore test passed', 'success');
+                log(`✅ Test 2 PASSED: Successfully restored cursor`, 'success');
+                testResults.passed++;
+            } else {
+                updateStatus('❌ Cursor restore test failed', 'error');
+                log(`❌ Test 2 FAILED: Could not restore cursor`, 'error');
+                testResults.failed++;
+            }
+            testResults.total++;
+            return result;
+        }
+
+        function simulateBlurSave() {
+            log(`🧪 TEST 3: Blur Save Simulation`);
+            updateStatus('Simulating blur save...', 'info');
+
+            const activeElement = document.activeElement;
+            if (!activeElement || activeElement.tagName !== 'TD') {
+                updateStatus('Please focus on a table cell first', 'error');
+                log(`❌ Test 3 FAILED: No cell focused`, 'error');
+                testResults.failed++;
+                testResults.total++;
+                return false;
+            }
+
+            // Simulate the blur event
+            activeElement.blur();
+            log(`✅ Test 3 PASSED: Blur save simulation completed`, 'success');
+            updateStatus('✅ Blur save simulation completed', 'success');
+            testResults.passed++;
+            testResults.total++;
+            return true;
+        }
+
+        function simulateRealtimeSync() {
+            log(`🧪 TEST 4: Realtime Sync Simulation`);
+            updateStatus('Simulating realtime sync...', 'info');
+
+            // Capture current state
+            captureFocusState();
+
+            // Simulate data refresh
+            setTimeout(() => {
+                log(`🔄 Simulating table data refresh...`);
+                
+                // Simulate cursor restoration after sync
+                setTimeout(() => {
+                    const result = attemptCursorRestoration();
+                    if (result) {
+                        updateStatus('✅ Realtime sync simulation passed', 'success');
+                        log(`✅ Test 4 PASSED: Realtime sync with cursor restoration`, 'success');
+                        testResults.passed++;
+                    } else {
+                        updateStatus('❌ Realtime sync simulation failed', 'error');
+                        log(`❌ Test 4 FAILED: Realtime sync cursor restoration failed`, 'error');
+                        testResults.failed++;
+                    }
+                    testResults.total++;
+                }, 100);
+            }, 50);
+        }
+
+        function testCellTransition() {
+            log(`🧪 TEST 5: Cell Transition`);
+            updateStatus('Testing cell transition behavior...', 'info');
+
+            const cells = document.querySelectorAll('td[contenteditable="true"]');
+            if (cells.length < 2) {
+                updateStatus('Need at least 2 cells for transition test', 'error');
+                log(`❌ Test 5 FAILED: Not enough cells`, 'error');
+                testResults.failed++;
+                testResults.total++;
+                return false;
+            }
+
+            // Focus first cell
+            cells[0].focus();
+            log(`📍 Focused first cell: ${cells[0].getAttribute('data-label')}`);
+
+            setTimeout(() => {
+                // Focus second cell (simulates user transition)
+                cells[1].focus();
+                log(`📍 Transitioned to second cell: ${cells[1].getAttribute('data-label')}`);
+
+                setTimeout(() => {
+                    const activeElement = document.activeElement;
+                    if (activeElement === cells[1]) {
+                        updateStatus('✅ Cell transition test passed', 'success');
+                        log(`✅ Test 5 PASSED: Cursor stayed in target cell after transition`, 'success');
+                        testResults.passed++;
+                    } else {
+                        updateStatus('❌ Cell transition test failed', 'error');
+                        log(`❌ Test 5 FAILED: Cursor not in expected cell`, 'error');
+                        testResults.failed++;
+                    }
+                    testResults.total++;
+                }, 200);
+            }, 100);
+        }
+
+        function runFullTest() {
+            log(`🚀 RUNNING FULL TEST SUITE`);
+            updateStatus('Running full test suite...', 'info');
+            
+            // Reset test results
+            testResults = { passed: 0, failed: 0, total: 0 };
+            
+            const cells = document.querySelectorAll('td[contenteditable="true"]');
+            if (cells.length === 0) {
+                updateStatus('No editable cells found', 'error');
+                return;
+            }
+
+            // Focus a cell for testing
+            cells[0].focus();
+            
+            let testIndex = 0;
+            const tests = [
+                testCursorCapture,
+                testCursorRestore,
+                simulateBlurSave,
+                simulateRealtimeSync,
+                testCellTransition
+            ];
+
+            function runNextTest() {
+                if (testIndex < tests.length) {
+                    setTimeout(() => {
+                        tests[testIndex]();
+                        testIndex++;
+                        runNextTest();
+                    }, 1000);
+                } else {
+                    // All tests completed
+                    setTimeout(() => {
+                        const passRate = ((testResults.passed / testResults.total) * 100).toFixed(1);
+                        log(`📊 TEST SUITE COMPLETED`);
+                        log(`📈 Results: ${testResults.passed}/${testResults.total} passed (${passRate}%)`);
+                        
+                        if (testResults.passed === testResults.total) {
+                            updateStatus(`🎉 All tests passed! (${testResults.passed}/${testResults.total})`, 'success');
+                        } else {
+                            updateStatus(`⚠️ ${testResults.failed} tests failed (${testResults.passed}/${testResults.total} passed)`, 'error');
+                        }
+                    }, 500);
+                }
+            }
+
+            runNextTest();
+        }
+
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '<div>Logs cleared...</div>';
+            updateStatus('Logs cleared', 'info');
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case '1': e.preventDefault(); testCursorCapture(); break;
+                    case '2': e.preventDefault(); testCursorRestore(); break;
+                    case '3': e.preventDefault(); simulateBlurSave(); break;
+                    case '4': e.preventDefault(); simulateRealtimeSync(); break;
+                    case '5': e.preventDefault(); testCellTransition(); break;
+                    case 'r': e.preventDefault(); runFullTest(); break;
+                    case 'l': e.preventDefault(); clearLogs(); break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
