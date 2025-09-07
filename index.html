@@ -2567,6 +2567,12 @@
                     // Clear cursor state to prevent restoration
                     cursorState = null;
                 }
+                
+                // Additional check for mobile transition in progress
+                if (isMobile() && typeof window.mobileTransitionInProgress === 'function' && window.mobileTransitionInProgress()) {
+                    console.log('📱 [EXCEL-SAVE] Mobile transition in progress - forcing cursor state to null');
+                    cursorState = null;
+                }
             } else if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
                 // For cells that were just navigated to via Tab, ensure cursor stays at end
                 const currentPosition = getCaretOffsetWithin(activeElement);
@@ -2634,6 +2640,14 @@
                 // Schedule cursor restoration after save with enhanced protection
                 console.log('🔍 [EXCEL-SAVE] Checking cursor state for restoration:', !!cursorState);
                 console.log('🔍 [EXCEL-SAVE] Is mobile device:', isMobile());
+                console.log('🔍 [EXCEL-SAVE] Mobile transition in progress:', typeof window.mobileTransitionInProgress === 'function' ? window.mobileTransitionInProgress() : 'N/A');
+                
+                // Final check: skip restoration on mobile if transition is in progress
+                if (typeof window.shouldSkipCursorRestoration === 'function' && window.shouldSkipCursorRestoration()) {
+                    console.log('📱 [EXCEL-SAVE] Final check: Global mobile check - skipping cursor restoration');
+                    cursorState = null;
+                }
+                
                 if (cursorState) {
                     console.log('✅ [EXCEL-SAVE] Valid cursor state found, proceeding with restoration');
                     console.log('🔍 [EXCEL-SAVE] Restoration details:', {
@@ -5038,6 +5052,7 @@
             let lastFocusedCell = null;
             let lastFocusTime = 0;
             let isMobileRestoration = false;
+            let mobileTransitionInProgress = false;
             
             // Enhanced mobile cell focus handler
             function handleMobileCellFocus(event) {
@@ -5056,6 +5071,15 @@
                     lastFocusTime = currentTime;
                     
                     console.log('📱 [MOBILE CURSOR] New cell focus detected:', cell.getAttribute('data-label'));
+                    
+                    // Record cell change time for global detection
+                    window.lastCellChangeTime = currentTime;
+                    
+                    // Set mobile transition flag to prevent Excel save cursor restoration
+                    mobileTransitionInProgress = true;
+                    setTimeout(() => {
+                        mobileTransitionInProgress = false;
+                    }, 1000);
                     
                     // Always position cursor at end of text on mobile
                     setTimeout(() => {
@@ -5090,6 +5114,9 @@
             // Add event listeners for mobile
             document.addEventListener('focusin', handleMobileCellFocus, true);
             document.addEventListener('focusout', handleMobileCellBlur, true);
+            
+            // Make mobile transition flag globally available
+            window.mobileTransitionInProgress = () => mobileTransitionInProgress;
             
             console.log('📱 [MOBILE CURSOR] Mobile cursor restoration system initialized');
         }
@@ -5137,6 +5164,30 @@
         
         // Initialize mobile cursor restoration
         enhanceMobileCursorRestoration();
+        
+        // Global mobile cursor restoration control
+        window.shouldSkipCursorRestoration = function() {
+            if (!isMobile()) return false;
+            
+            // Skip restoration if mobile transition is in progress
+            if (typeof window.mobileTransitionInProgress === 'function' && window.mobileTransitionInProgress()) {
+                console.log('📱 [GLOBAL] Skipping cursor restoration - mobile transition in progress');
+                return true;
+            }
+            
+            // Skip restoration if we're in the middle of a cell transition
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+                // Check if this is a recent cell change (within last 500ms)
+                const recentChange = Date.now() - (window.lastCellChangeTime || 0) < 500;
+                if (recentChange) {
+                    console.log('📱 [GLOBAL] Skipping cursor restoration - recent cell change detected');
+                    return true;
+                }
+            }
+            
+            return false;
+        };
 
         function getScrollContainer() {
             return document.getElementById('table-container');
