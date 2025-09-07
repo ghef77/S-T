@@ -7466,6 +7466,24 @@
                     console.log('🔄 [TIMESTAMP SYNC] Last sync:', new Date(lastSyncTimestamp).toISOString());
                     console.log('🔄 [TIMESTAMP SYNC] Current:', new Date(currentTimestamp).toISOString());
                     
+                    // ✅ CAPTURE CURSOR POSITION BEFORE SYNC
+                    const activeElement = document.activeElement;
+                    let cursorState = null;
+                    
+                    if (activeElement && activeElement.tagName === 'TD' && activeElement.contentEditable === 'true') {
+                        cursorState = {
+                            element: activeElement,
+                            position: getCaretOffsetWithin(activeElement),
+                            timestamp: Date.now(),
+                            rowIndex: Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr')),
+                            colLabel: activeElement.getAttribute('data-label') || '',
+                            timestampSync: true // Flag to indicate this was captured during timestamp sync
+                        };
+                        console.log('📝 [TIMESTAMP SYNC] Cursor captured before sync:', cursorState.colLabel, 'position:', cursorState.position);
+                    } else {
+                        console.log('⚠️ [TIMESTAMP SYNC] No editable cell focused - cursor restoration not possible');
+                    }
+                    
                     // Update timestamp
                     lastSyncTimestamp = currentTimestamp;
                     
@@ -7473,6 +7491,19 @@
                     if (typeof fetchInitialData === 'function') {
                         await fetchInitialData(true);
                         console.log('✅ [TIMESTAMP SYNC] Data synced successfully');
+                        
+                        // ✅ RESTORE CURSOR POSITION AFTER SYNC
+                        if (cursorState && typeof cursorManager !== 'undefined' && cursorManager.restoreFocus) {
+                            console.log('🔄 [TIMESTAMP SYNC] Restoring cursor position...');
+                            TimerManager.setTimeout(() => {
+                                const restored = cursorManager.restoreFocus(cursorState, 100);
+                                if (restored) {
+                                    console.log('✅ [TIMESTAMP SYNC] Cursor restored successfully');
+                                } else {
+                                    console.log('⚠️ [TIMESTAMP SYNC] Cursor restoration failed');
+                                }
+                            }, 200);
+                        }
                     }
                 } else {
                     console.log('✅ [TIMESTAMP SYNC] No changes detected');
