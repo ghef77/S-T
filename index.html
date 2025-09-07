@@ -2307,6 +2307,19 @@
                     return false;
                 }
                 
+                // CLICK NAVIGATION CONFLICT DETECTION (Safari fix)
+                const now = Date.now();
+                if (window.lastCellClickTime && window.clickedCellLabel) {
+                    const timeSinceClick = now - window.lastCellClickTime;
+                    const restoreLabel = focusState.colLabel || '';
+                    
+                    if (timeSinceClick < 2000 && window.clickedCellLabel !== restoreLabel) {
+                        console.log('🚫 CursorManager: CLICK NAVIGATION CONFLICT - User clicked different cell, skipping restoration');
+                        console.log('🚫 CursorManager: Clicked cell:', window.clickedCellLabel, '| Restore target:', restoreLabel, '| Time since click:', timeSinceClick + 'ms');
+                        return false; // Don't restore, respect user's click navigation
+                    }
+                }
+                
                 // Enhanced mobile cursor restoration
                 if (isMobile() && focusState.mobile) {
                     console.log('📱 CursorManager: Using mobile-specific cursor restoration');
@@ -5898,6 +5911,21 @@
             const selection = window.getSelection();
             selection.removeAllRanges();
             selection.addRange(range);
+          });
+          
+          // Mouse click detection for Safari navigation
+          cell.addEventListener('mousedown', (e) => {
+            // Mark that user is clicking to navigate - this should prevent cursor restoration
+            window.lastCellClickTime = Date.now();
+            window.clickedCellLabel = cell.getAttribute('data-label') || '';
+            console.log('🖱️ [CLICK] Mouse down on cell:', window.clickedCellLabel);
+          });
+          
+          cell.addEventListener('click', (e) => {
+            // Reinforce the click navigation intent
+            window.lastCellClickTime = Date.now();
+            window.clickedCellLabel = cell.getAttribute('data-label') || '';
+            console.log('🖱️ [CLICK] Cell clicked for navigation:', window.clickedCellLabel);
           });
           
           // Optimized double-tap handling for mobile
