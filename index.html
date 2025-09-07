@@ -2530,7 +2530,7 @@
             console.log('🔍 [EXCEL-SAVE] Cell data-label:', cell?.getAttribute('data-label'));
             console.log('🔍 [EXCEL-SAVE] Current active element:', document.activeElement);
             
-            const cursorState = cursorManager.captureFocus(cell, { saveType: 'excel', timestamp: Date.now() });
+            let cursorState = cursorManager.captureFocus(cell, { saveType: 'excel', timestamp: Date.now() });
             
             console.log('🔍 [EXCEL-SAVE] Cursor capture result:', cursorState);
             if (!cursorState) {
