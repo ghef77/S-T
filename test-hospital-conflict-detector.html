@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Hospital PC Sync Conflict Detector</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover {
+            background: #2563eb;
+        }
+        .button.danger {
+            background: #dc2626;
+        }
+        .button.danger:hover {
+            background: #b91c1c;
+        }
+        .button.success {
+            background: #059669;
+        }
+        .button.success:hover {
+            background: #047857;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #dcfce7;
+            color: #166534;
+            border-left: 4px solid #059669;
+        }
+        .status.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border-left: 4px solid #dc2626;
+        }
+        .status.warning {
+            background: #fefce8;
+            color: #a16207;
+            border-left: 4px solid #ca8a04;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .metric {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e40af;
+        }
+        .metric-label {
+            font-size: 12px;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+        .log {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .conflict-queue {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .active-operations {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            padding: 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏥 Hospital PC Sync Conflict Detector Test</h1>
+    
+    <div class="container">
+        <h2>System Status</h2>
+        <div id="system-status" class="status">Loading...</div>
+        <button class="button" onclick="updateSystemStatus()">Refresh Status</button>
+        <button class="button success" onclick="runHealthCheck()">Health Check</button>
+    </div>
+
+    <div class="container">
+        <h2>Performance Metrics</h2>
+        <div class="metrics" id="metrics">
+            <div class="metric">
+                <div class="metric-value" id="conflicts-detected">0</div>
+                <div class="metric-label">Conflicts Detected</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="conflicts-resolved">0</div>
+                <div class="metric-label">Conflicts Resolved</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="success-rate">100%</div>
+                <div class="metric-label">Success Rate</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="avg-resolution">0ms</div>
+                <div class="metric-label">Avg Resolution Time</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Conflict Testing</h2>
+        <button class="button" onclick="simulateRapidEditConflict()">Simulate Rapid Edit Conflict</button>
+        <button class="button" onclick="simulateSessionOverlap()">Simulate Session Overlap</button>
+        <button class="button" onclick="simulateNetworkLatency()">Simulate Network Latency</button>
+        <button class="button" onclick="simulateResourceContention()">Simulate Resource Contention</button>
+        <button class="button danger" onclick="triggerMultipleSnapshots()">Trigger Multiple Snapshots (Should Block)</button>
+    </div>
+
+    <div class="container">
+        <h2>Operation Management</h2>
+        <button class="button" onclick="registerTestOperation()">Register Test Operation</button>
+        <button class="button success" onclick="completeAllOperations()">Complete All Operations</button>
+        <button class="button danger" onclick="forceResolveConflicts()">Force Resolve All Conflicts</button>
+        
+        <div class="active-operations">
+            <h3>Active Operations</h3>
+            <div id="active-operations">No active operations</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Conflict Queue</h2>
+        <div class="conflict-queue">
+            <div id="conflict-queue">No conflicts in queue</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>System Log</h2>
+        <div class="log" id="log">System initializing...</div>
+        <button class="button" onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <!-- Include the Hospital PC Sync Conflict Detector -->
+    <script src="hospital-pc-sync-conflict-detector.js"></script>
+
+    <script>
+        // Test functions and UI management
+        let logLines = [];
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logLines.push(`[${timestamp}] ${message}`);
+            if (logLines.length > 100) logLines = logLines.slice(-50); // Keep last 50 lines
+            document.getElementById('log').innerHTML = logLines.join('<br>');
+            document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            logLines = [];
+            document.getElementById('log').innerHTML = 'Log cleared.';
+        }
+
+        function updateSystemStatus() {
+            if (window.hospitalPCSyncDetector) {
+                const status = window.hospitalPCSyncDetector.getHospitalSyncStatus();
+                const statusEl = document.getElementById('system-status');
+                
+                if (status.isActive && status.currentState === 'idle') {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = `✅ System Active - State: ${status.currentState.toUpperCase()}`;
+                } else if (status.currentState === 'conflict' || status.currentState === 'resolving') {
+                    statusEl.className = 'status warning';
+                    statusEl.textContent = `⚠️ System Active - State: ${status.currentState.toUpperCase()} (${status.queuedConflicts} conflicts)`;
+                } else if (status.currentState === 'error') {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = `❌ System Error - State: ${status.currentState.toUpperCase()}`;
+                } else {
+                    statusEl.className = 'status';
+                    statusEl.textContent = `🔄 System Active - State: ${status.currentState.toUpperCase()}`;
+                }
+
+                // Update metrics
+                document.getElementById('conflicts-detected').textContent = status.performanceMetrics.conflictsDetected;
+                document.getElementById('conflicts-resolved').textContent = status.performanceMetrics.conflictsResolved;
+                document.getElementById('success-rate').textContent = status.performanceMetrics.syncSuccessRate + '%';
+                document.getElementById('avg-resolution').textContent = Math.round(status.performanceMetrics.averageResolutionTime) + 'ms';
+
+                // Update active operations
+                const activeOpsEl = document.getElementById('active-operations');
+                if (status.activeOperations === 0) {
+                    activeOpsEl.textContent = 'No active operations';
+                } else {
+                    activeOpsEl.innerHTML = `<strong>${status.activeOperations}</strong> operations active`;
+                }
+
+                // Update conflict queue
+                const queueEl = document.getElementById('conflict-queue');
+                if (status.queuedConflicts === 0) {
+                    queueEl.textContent = 'No conflicts in queue';
+                } else {
+                    queueEl.innerHTML = `<strong>${status.queuedConflicts}</strong> conflicts queued for resolution`;
+                }
+
+                log(`System status updated: ${status.currentState}, ${status.queuedConflicts} conflicts, ${status.activeOperations} operations`);
+            } else {
+                document.getElementById('system-status').className = 'status error';
+                document.getElementById('system-status').textContent = '❌ Hospital PC Sync Detector not loaded';
+                log('ERROR: Hospital PC Sync Detector not available');
+            }
+        }
+
+        function runHealthCheck() {
+            if (window.hospitalPCSyncDetector) {
+                const health = window.hospitalPCSyncDetector.performHealthCheck();
+                log(`Health check completed: Success rate ${health.syncSuccessRate}%, ${health.queuedConflicts} queued conflicts`);
+                updateSystemStatus();
+            }
+        }
+
+        // Conflict simulation functions
+        function simulateRapidEditConflict() {
+            log('🧪 Simulating rapid edit conflict...');
+            if (window.hospitalPCSyncDetector) {
+                // Register multiple edit operations on same record quickly
+                const recordId = 'patient-123';
+                for (let i = 0; i < 3; i++) {
+                    const opId = `edit-${recordId}-${Date.now()}-${i}`;
+                    window.hospitalPCSyncDetector.registerOperation(opId, 'edit', recordId);
+                    log(`Registered edit operation ${opId} on record ${recordId}`);
+                }
+                updateSystemStatus();
+            }
+        }
+
+        function simulateSessionOverlap() {
+            log('🧪 Simulating session overlap conflict...');
+            // This would be detected automatically by the system
+            log('Session overlap detection is automatic - check logs for detection results');
+        }
+
+        function simulateNetworkLatency() {
+            log('🧪 Simulating network latency conflict...');
+            log('Network latency detection is automatic during ping tests');
+        }
+
+        function simulateResourceContention() {
+            log('🧪 Simulating resource contention...');
+            log('Resource contention detection is automatic based on system metrics');
+        }
+
+        function triggerMultipleSnapshots() {
+            log('🧪 Triggering multiple snapshot operations (should detect conflict)...');
+            if (window.hospitalPCSyncDetector) {
+                // Register multiple snapshot operations
+                for (let i = 0; i < 3; i++) {
+                    const opId = `manual-snapshot-${Date.now()}-${i}`;
+                    window.hospitalPCSyncDetector.registerOperation(opId, 'manual-snapshot');
+                    log(`Registered snapshot operation ${opId}`);
+                }
+                updateSystemStatus();
+            }
+        }
+
+        function registerTestOperation() {
+            if (window.hospitalPCSyncDetector) {
+                const opId = `test-operation-${Date.now()}`;
+                window.hospitalPCSyncDetector.registerOperation(opId, 'test-operation', 'test-record-123');
+                log(`Registered test operation: ${opId}`);
+                updateSystemStatus();
+            }
+        }
+
+        function completeAllOperations() {
+            if (window.hospitalPCSyncDetector) {
+                const operations = Array.from(window.hospitalPCSyncDetector.activeOperations.keys());
+                operations.forEach(opId => {
+                    window.hospitalPCSyncDetector.completeOperation(opId);
+                    log(`Completed operation: ${opId}`);
+                });
+                updateSystemStatus();
+            }
+        }
+
+        function forceResolveConflicts() {
+            log('🚨 Force resolving all conflicts...');
+            if (window.hospitalPCSyncDetector) {
+                window.hospitalPCSyncDetector.forceConflictResolution()
+                    .then(() => {
+                        log('✅ All conflicts force resolved');
+                        updateSystemStatus();
+                    })
+                    .catch(error => {
+                        log(`❌ Error during force resolution: ${error.message}`);
+                    });
+            }
+        }
+
+        // Initialize the test interface
+        window.addEventListener('load', () => {
+            log('Test interface loaded');
+            setTimeout(() => {
+                updateSystemStatus();
+                log('Hospital PC Sync Conflict Detector test interface ready');
+            }, 1000);
+
+            // Update status every 5 seconds
+            setInterval(updateSystemStatus, 5000);
+        });
+
+        // Mock some hospital-specific functions for testing
+        window.showMessage = function(message, type) {
+            log(`[${type.toUpperCase()}] ${message}`);
+        };
+    </script>
+</body>
+</html>
