@@ -2286,7 +2286,8 @@
                     caretOffset,
                     timestamp: Date.now(),
                     element: active,
-                    position: caretOffset
+                    position: caretOffset,
+                    mobile: isMobile() // Add mobile flag for mobile-specific handling
                 };
                 
                 this.lastFocusInfo = focusState;
@@ -2304,6 +2305,12 @@
                 if (this.preventRestore) {
                     console.log('🚫 CursorManager: Restore focus skipped - prevention flag is set');
                     return false;
+                }
+                
+                // Enhanced mobile cursor restoration
+                if (isMobile() && focusState.mobile) {
+                    console.log('📱 CursorManager: Using mobile-specific cursor restoration');
+                    return restoreMobileCursor(focusState, 100);
                 }
                 
                 const attemptKey = `${focusState.rowIndex}-${focusState.cellIndex}`;
@@ -5008,6 +5015,116 @@
                 return false; 
             }
         }
+
+        // Enhanced mobile cursor restoration system
+        function enhanceMobileCursorRestoration() {
+            if (!isMobile()) return;
+            
+            console.log('📱 [MOBILE CURSOR] Initializing enhanced mobile cursor restoration');
+            
+            // Track the last focused cell for mobile
+            let lastFocusedCell = null;
+            let lastFocusTime = 0;
+            let isMobileRestoration = false;
+            
+            // Enhanced mobile cell focus handler
+            function handleMobileCellFocus(event) {
+                const cell = event.target;
+                const currentTime = Date.now();
+                
+                // Skip if this is a restoration event
+                if (isMobileRestoration) {
+                    console.log('📱 [MOBILE CURSOR] Skipping focus handler - restoration in progress');
+                    return;
+                }
+                
+                // If this is a new cell focus (not restoration), update tracking
+                if (cell !== lastFocusedCell && currentTime - lastFocusTime > 100) {
+                    lastFocusedCell = cell;
+                    lastFocusTime = currentTime;
+                    
+                    console.log('📱 [MOBILE CURSOR] New cell focus detected:', cell.getAttribute('data-label'));
+                    
+                    // Always position cursor at end of text on mobile
+                    setTimeout(() => {
+                        if (cell.contentEditable === 'true') {
+                            setCaretAt(cell, cell.textContent.length);
+                            console.log('📱 [MOBILE CURSOR] Cursor positioned at end of text');
+                        }
+                    }, 50);
+                }
+            }
+            
+            // Enhanced mobile cell blur handler
+            function handleMobileCellBlur(event) {
+                const cell = event.target;
+                if (cell.contentEditable === 'true') {
+                    // Capture cursor position for mobile
+                    const cursorState = {
+                        element: cell,
+                        position: getCaretOffsetWithin(cell),
+                        timestamp: Date.now(),
+                        rowIndex: Array.from(cell.closest('tr').parentNode.querySelectorAll('tr')).indexOf(cell.closest('tr')),
+                        colLabel: cell.getAttribute('data-label') || '',
+                        mobile: true // Flag for mobile-specific handling
+                    };
+                    
+                    // Store for potential restoration
+                    window.lastMobileCursorState = cursorState;
+                    console.log('📱 [MOBILE CURSOR] Cursor state captured:', cursorState.colLabel);
+                }
+            }
+            
+            // Add event listeners for mobile
+            document.addEventListener('focusin', handleMobileCellFocus, true);
+            document.addEventListener('focusout', handleMobileCellBlur, true);
+            
+            console.log('📱 [MOBILE CURSOR] Mobile cursor restoration system initialized');
+        }
+        
+        // Enhanced mobile cursor restoration function
+        function restoreMobileCursor(cursorState, timeout = 100) {
+            if (!cursorState || !cursorState.mobile) return false;
+            
+            console.log('📱 [MOBILE CURSOR] Starting mobile cursor restoration');
+            
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    try {
+                        const cell = cursorState.element;
+                        if (cell && cell.contentEditable === 'true') {
+                            // Set restoration flag
+                            window.isMobileRestoration = true;
+                            
+                            // Focus the cell first
+                            cell.focus();
+                            
+                            // For mobile, always position at end of text
+                            setTimeout(() => {
+                                setCaretAt(cell, cell.textContent.length);
+                                console.log('📱 [MOBILE CURSOR] Mobile cursor restored at end of text');
+                                
+                                // Clear restoration flag
+                                setTimeout(() => {
+                                    window.isMobileRestoration = false;
+                                }, 100);
+                                
+                                resolve(true);
+                            }, 50);
+                        } else {
+                            console.log('📱 [MOBILE CURSOR] Cell not found or not editable');
+                            resolve(false);
+                        }
+                    } catch (error) {
+                        console.error('❌ [MOBILE CURSOR] Restoration error:', error);
+                        resolve(false);
+                    }
+                }, timeout);
+            });
+        }
+        
+        // Initialize mobile cursor restoration
+        enhanceMobileCursorRestoration();
 
         function getScrollContainer() {
             return document.getElementById('table-container');
