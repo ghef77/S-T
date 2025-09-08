@@ -2710,11 +2710,15 @@
                 const textLength = (activeElement.textContent || '').length;
                 const positionToUse = (currentPosition === 0 && textLength > 0) ? textLength : currentPosition;
                 
+                const activeTr = activeElement.closest('tr');
+                const activeParentNode = activeTr?.parentNode;
+                const activeRowIndex = activeParentNode ? Array.from(activeParentNode.querySelectorAll('tr')).indexOf(activeTr) : -1;
+                
                 updateGlobalFocusState({
                     element: activeElement,
                     position: positionToUse,
                     timestamp: protectionTimestamp,
-                    rowIndex: Array.from(activeElement.closest('tr').parentNode.querySelectorAll('tr')).indexOf(activeElement.closest('tr')),
+                    rowIndex: activeRowIndex,
                     colLabel: activeElement.getAttribute('data-label') || '',
                     excelSaveProtection: true // Special flag for Excel saves
                 });
@@ -2724,11 +2728,15 @@
                 // Always position cursor at end of text content
                 const textContent = cell.textContent || '';
                 
+                const tr = cell.closest('tr');
+                const parentNode = tr?.parentNode;
+                const rowIndex = parentNode ? Array.from(parentNode.querySelectorAll('tr')).indexOf(tr) : -1;
+                
                 updateGlobalFocusState({
                     element: cell,
                     position: textContent.length, // Place cursor at end
                     timestamp: protectionTimestamp,
-                    rowIndex: Array.from(cell.closest('tr').parentNode.querySelectorAll('tr')).indexOf(cell.closest('tr')),
+                    rowIndex: rowIndex,
                     colLabel: cell.getAttribute('data-label') || '',
                     excelSaveProtection: true // Special flag for Excel saves
                 });
