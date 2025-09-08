@@ -1852,11 +1852,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 
     <!-- Performance Optimizers -->
-    <script src="performance-optimizer.js"></script>
-    <script src="sync-optimizer.js"></script>
-    <script src="emergency-hospital-conflict-detector.js"></script>
-    <script src="timestamp-sync-conflict-fix.js"></script>
-    <script src="immediate-emergency-fix.js"></script>
+    <!-- Scripts externes désactivés - système simplifié -->
+    <!-- <script src="performance-optimizer.js"></script> -->
+    <!-- <script src="sync-optimizer.js"></script> -->
+    <!-- <script src="emergency-hospital-conflict-detector.js"></script> -->
+    <!-- <script src="timestamp-sync-conflict-fix.js"></script> -->
+    <!-- <script src="immediate-emergency-fix.js"></script> -->
 
     <!-- App -->
     <script type="module">
@@ -2203,6 +2204,68 @@
             }
         };
         
+        // Simple Performance Optimizer implementation
+        class PerformanceOptimizer {
+            constructor() {
+                this.operations = new Set();
+                this.history = [];
+            }
+            
+            debounce(func, wait) {
+                let timeout;
+                return function executedFunction(...args) {
+                    const later = () => {
+                        clearTimeout(timeout);
+                        func(...args);
+                    };
+                    clearTimeout(timeout);
+                    timeout = setTimeout(later, wait);
+                };
+            }
+            
+            throttle(func, limit) {
+                let inThrottle;
+                return function(...args) {
+                    if (!inThrottle) {
+                        func.apply(this, args);
+                        inThrottle = true;
+                        setTimeout(() => inThrottle = false, limit);
+                    }
+                };
+            }
+            
+            batchDOMUpdates(callback) {
+                requestAnimationFrame(callback);
+            }
+            
+            queueOperation(operation) {
+                this.operations.add(operation);
+                return () => this.operations.delete(operation);
+            }
+            
+            manageHistory(action) {
+                this.history.push(action);
+                if (this.history.length > 100) {
+                    this.history.shift();
+                }
+            }
+            
+            delegateEvent(element, event, selector, handler) {
+                if (element && element.addEventListener) {
+                    element.addEventListener(event, (e) => {
+                        if (e.target.matches && e.target.matches(selector)) {
+                            handler(e);
+                        }
+                    });
+                }
+            }
+            
+            dispose() {
+                this.operations.clear();
+                this.history = [];
+            }
+        }
+        
         // Initialize Performance Optimizer
         const performanceOptimizer = new PerformanceOptimizer();
         const performanceUtils = {
@@ -2407,6 +2470,59 @@
             }
         }
 
+        // Simple Sync Optimizer implementation
+        class SyncOptimizer {
+            constructor() {
+                this.saveQueue = [];
+                this.processing = false;
+            }
+            
+            async queueSave(operation, type = 'default', priority = 5) {
+                const saveId = Date.now().toString();
+                const saveItem = {
+                    id: saveId,
+                    operation,
+                    type,
+                    priority,
+                    timestamp: Date.now()
+                };
+                
+                this.saveQueue.push(saveItem);
+                this.saveQueue.sort((a, b) => b.priority - a.priority); // Higher priority first
+                
+                if (!this.processing) {
+                    this.processSaveQueue();
+                }
+                
+                return saveId;
+            }
+            
+            async processSaveQueue() {
+                if (this.processing || this.saveQueue.length === 0) {
+                    return;
+                }
+                
+                this.processing = true;
+                
+                while (this.saveQueue.length > 0) {
+                    const saveItem = this.saveQueue.shift();
+                    try {
+                        await saveItem.operation();
+                        console.log(`✅ Save operation ${saveItem.id} completed (${saveItem.type})`);
+                    } catch (error) {
+                        console.error(`❌ Save operation ${saveItem.id} failed:`, error);
+                    }
+                }
+                
+                this.processing = false;
+            }
+            
+            clearQueue() {
+                this.saveQueue = [];
+                this.processing = false;
+            }
+        }
+        
         // Initialize Sync Optimizer
         const syncOptimizer = new SyncOptimizer();
         const cursorManager = new CursorManager();
@@ -2492,7 +2608,9 @@
         // Application state variables
         let isDirty = false;
         let saveTimeout = null;
-        let history = [];
+        // Application history (renamed to avoid conflict with browser history API)
+        window.appHistory = [];
+        window.redoHistory = [];
         let historyDebounceTimeout = null;
         
         // Patient images storage - initialize from localStorage if available
@@ -5621,16 +5739,25 @@
             
             historyDebounceTimeout = setTimeout(() => { 
                 const s = collectTableData(); 
-                const last = history[history.length - 1]; 
+                
+                // Vérification de sécurité pour la variable history
+                if (!window.appHistory) {
+                    window.appHistory = [];
+                }
+                if (!Array.isArray(window.appHistory)) {
+                    window.appHistory = [];
+                }
+                
+                const last = window.appHistory[window.appHistory.length - 1]; 
                 
                 if (!last || generateDataHash(s) !== generateDataHash(last)) { 
-                    history.push(s); 
+                    window.appHistory.push(s); 
                     
                     // Use optimized history management to prevent memory leaks
-                    history = performanceUtils.manageHistory(history, 15); // Increased from 10 to 15
+                    window.appHistory = performanceUtils.manageHistory(window.appHistory, 15); // Increased from 10 to 15
                     
                     // Pushing a new state clears redo stack
-                    redoHistory = [];
+                    window.redoHistory = [];
                     // Also record as an operation if none in progress
                     if (!currentOperation) {
                         const op = {
@@ -9350,17 +9477,9 @@
                 // Créer un client Supabase avec la clé de service pour contourner les politiques RLS
                 console.log('🔑 Création du client Supabase avec la clé de service...');
                 
-                // Utiliser une approche simple et robuste
-                let supabaseService;
-                try {
-                    // Essayer d'importer et créer le client
-                    const { createClient: createClientService } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-                    supabaseService = createClientService(supabaseConfig.supabaseUrl, supabaseConfig.supabaseServiceKey);
-                    console.log('✅ Client Supabase créé avec la clé de service');
-                } catch (error) {
-                    console.error('❌ Erreur lors de la création du client Supabase:', error);
-                    throw new Error(`Impossible de créer le client Supabase: ${error.message}`);
-                }
+                // Utiliser le client Supabase existant (avec clé publique)
+                // Note: Les snapshots utilisent maintenant la clé publique pour la sécurité
+                console.log('✅ Utilisation du client Supabase existant avec clé publique');
                 
                 // 🔧 FIXED: Capturer les données actuellement éditées dans le navigateur
                 console.log('📊 Capture des données actuelles du tableau (état édité)...');
@@ -9375,7 +9494,7 @@
                 } else {
                     // FALLBACK: Si pas de données éditées, récupérer depuis la base
                     console.log('⚠️ Aucune donnée éditée trouvée, récupération depuis la base de données...');
-                    const { data: dbData, error: fetchError } = await supabaseService
+                    const { data: dbData, error: fetchError } = await supabase
                         .from('staffTable')
                         .select('*')
                         .order('No', { ascending: true });
@@ -9435,11 +9554,11 @@
                 
                 console.log(`📊 Création du snapshot manuel: ${tableData.length} lignes, ${(fileSize / 1024).toFixed(2)} KB`);
                 console.log(`📁 Object path: ${objectPath}`);
-                console.log(`🔑 Using service client: ${!!supabaseService}`);
+                console.log(`🔑 Using client: ${!!supabase}`);
                 
                 // Upload vers le stockage avec le client de service
                 console.log(`📤 DEBUT UPLOAD vers table-snapshots...`);
-                const uploadResult = await supabaseService.storage
+                const uploadResult = await supabase.storage
                     .from('table-snapshots')
                     .upload(objectPath, jsonContent, {
                         contentType: 'application/json',
@@ -9457,7 +9576,7 @@
                 console.log(`✅ Upload data:`, uploadResult.data);
                 
                 // Créer l'enregistrement dans l'index avec le client de service
-                const { error: indexError } = await supabaseService
+                const { error: indexError } = await supabase
                     .from('table_snapshots_index')
                     .insert({
                         snapshot_date: dateString,
@@ -9475,7 +9594,7 @@
                 
                 // Log dans le journal de restauration avec le client de service
                 try {
-                    await supabaseService
+                    await supabase
                         .from('snapshot_restore_log')
                         .insert({
                             snapshot_date: dateString,
@@ -9516,6 +9635,10 @@
                 
                 // Retourner l'erreur pour les tests
                 throw error;
+            } finally {
+                // Toujours remettre le flag à false, même en cas d'erreur
+                window.snapshotInProgress = false;
+                console.log('✅ snapshotInProgress remis à false');
             }
         }
         
@@ -10441,13 +10564,12 @@
                     await exitSnapshotMode();
                 }
                 
-                // Créer un client Supabase avec la clé de service pour la suppression
-                const { createClient: createClientService } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-                const supabaseService = createClientService(supabaseConfig.supabaseUrl, supabaseConfig.supabaseServiceKey);
+                // Utiliser le client Supabase existant pour la suppression
+                // Note: Les suppressions utilisent maintenant la clé publique pour la sécurité
                 
                 // 1. Supprimer le fichier du stockage
                 console.log('🗑️ Suppression du fichier du stockage...');
-                const { error: storageError } = await supabaseService.storage
+                const { error: storageError } = await supabase.storage
                     .from('table-snapshots')
                     .remove([objectPath]);
                 
@@ -10460,7 +10582,7 @@
                 
                 // 2. Supprimer l'enregistrement de la base de données
                 console.log('🗑️ Suppression de l\'enregistrement de la base...');
-                const { error: dbError } = await supabaseService
+                const { error: dbError } = await supabase
                     .from('table_snapshots_index')
                     .delete()
                     .eq('id', snapshotId);
@@ -10473,7 +10595,7 @@
                 
                 // 3. Supprimer l'entrée du log de restauration
                 console.log('🗑️ Suppression de l\'entrée du log...');
-                const { error: logError } = await supabaseService
+                const { error: logError } = await supabase
                     .from('snapshot_restore_log')
                     .delete()
                     .eq('snapshot_date', snapshotDate);
@@ -12978,7 +13100,7 @@ ${capacityInfo.needsCleanup ?
         // SUPPORT TACTILE MOBILE - BOUTON +
         // ========================================
         
-        // Gestion des événements tactiles pour mobile - SOLUTION RECOMMANDÉE
+        // Gestion des événements tactiles pour mobile - SOLUTION SIMPLIFIÉE
         function addTouchSupport() {
             // ONLY target the manual snapshot button specifically
             const addButton = document.getElementById('manual-snapshot-btn');
@@ -12986,24 +13108,28 @@ ${capacityInfo.needsCleanup ?
             if (addButton) {
                 console.log('🔍 Bouton snapshot trouvé:', addButton);
                 
-                // Supprimer les anciens événements pour éviter les doublons
-                addButton.removeEventListener('click', handleButtonClick);
-                addButton.removeEventListener('touchstart', handleTouchStart);
-                addButton.removeEventListener('touchend', handleTouchEnd);
+                // Instead of adding event listeners (which get blocked), 
+                // ensure the onclick attribute works properly
+                if (!addButton.onclick) {
+                    addButton.onclick = handleManualSnapshotClick;
+                    console.log('✅ Fonction onclick restaurée pour le bouton snapshot');
+                }
                 
-                // Gestion des clics (PC)
-                addButton.addEventListener('click', handleButtonClick);
+                // Add basic touch feedback without conflicting event listeners
+                addButton.style.touchAction = 'manipulation';
+                addButton.style.webkitTouchCallout = 'none';
+                addButton.style.webkitUserSelect = 'none';
                 
-                // Gestion des événements tactiles (Mobile)
-                addButton.addEventListener('touchstart', handleTouchStart);
-                addButton.addEventListener('touchend', handleTouchEnd);
-                
-                console.log('✅ Événements tactiles ajoutés au bouton snapshot uniquement');
+                console.log('✅ Configuration tactile basique appliquée au bouton snapshot');
             } else {
                 console.log('❌ Bouton snapshot non trouvé');
             }
         }
 
+        // ========================================
+        // SNAPSHOT FUNCTIONS - SIMPLIFIED
+        // ========================================
+        
         // Gestionnaire de clic pour le bouton snapshot
         function handleButtonClick(e) {
             e.preventDefault();
@@ -13574,38 +13700,20 @@ ${capacityInfo.needsCleanup ?
         window.handleVisualViewportChange = handleVisualViewportChange;
         window.initializeViewportAdaptation = initializeViewportAdaptation;
         
-        // Function to handle manual snapshot button clicks
+        // Function to handle manual snapshot button clicks - SIMPLIFIED
         function handleManualSnapshotClick() {
-            // 🏥 HOSPITAL PC CONFLICT PREVENTION
-            const operationId = 'manual-snapshot-' + Date.now();
+            console.log('📸 [SNAPSHOT] Manual snapshot button clicked');
             
-            // Register operation with hospital conflict detector
-            if (window.hospitalPCSyncDetector) {
-                // Check for existing snapshot operations
-                const existingOps = Array.from(window.hospitalPCSyncDetector.activeOperations.entries())
-                    .filter(([id, op]) => op.type === 'manual-snapshot' && Date.now() - op.startTime < 5000);
-                
-                if (existingOps.length > 0) {
-                    console.log('🚨 HOSPITAL CONFLICT: Manual snapshot already in progress, preventing duplicate');
-                    showMessage('⚠️ Création de snapshot déjà en cours - Opération bloquée pour éviter les conflits', 'warning');
-                    return;
-                }
-                
-                // Register this operation
-                window.hospitalPCSyncDetector.registerOperation(operationId, 'manual-snapshot');
-            }
-            
-            const historyBarContainer = document.getElementById('history-bar-container');
-            const manualSnapshotBtn = document.getElementById('manual-snapshot-btn');
-            
-            if (!historyBarContainer || !manualSnapshotBtn) {
-                console.log('⚠️ Manual snapshot button or history container not found');
-                // Complete operation if registered
-                if (window.hospitalPCSyncDetector) {
-                    window.hospitalPCSyncDetector.completeOperation(operationId);
-                }
+            // Simple duplicate prevention
+            if (window.snapshotInProgress) {
+                console.log('⚠️ [SNAPSHOT] Already in progress, skipping');
+                showMessage('⚠️ Création de snapshot déjà en cours', 'warning');
                 return;
             }
+            
+            window.snapshotInProgress = true;
+            
+            const historyBarContainer = document.getElementById('history-bar-container');
             
             // Check if manual snapshot is enabled
             const isHistoryBarVisible = !historyBarContainer.classList.contains('hidden') && 
@@ -13615,10 +13723,7 @@ ${capacityInfo.needsCleanup ?
             if (!isHistoryBarVisible) {
                 console.log('❌ Manual snapshot creation blocked - History bar is not visible');
                 showMessage('❌ Création de snapshot désactivée - Barre d\'historique fermée', 'error');
-                // Complete operation if registered
-                if (window.hospitalPCSyncDetector) {
-                    window.hospitalPCSyncDetector.completeOperation(operationId);
-                }
+                window.snapshotInProgress = false;
                 return;
             }
             
@@ -13626,22 +13731,15 @@ ${capacityInfo.needsCleanup ?
                 // If enabled, proceed with manual snapshot creation
                 console.log('✅ Manual snapshot creation allowed - proceeding...');
                 createManualSnapshot();
-                
-                // Complete operation successfully
-                if (window.hospitalPCSyncDetector) {
-                    setTimeout(() => {
-                        window.hospitalPCSyncDetector.completeOperation(operationId);
-                    }, 1000); // Complete after snapshot creation
-                }
             } catch (error) {
                 console.error('❌ Error during manual snapshot creation:', error);
-                // Complete operation with error
-                if (window.hospitalPCSyncDetector) {
-                    window.hospitalPCSyncDetector.completeOperation(operationId);
-                }
+                window.snapshotInProgress = false;
                 throw error;
             }
         }
+        
+        // Make function globally accessible
+        window.handleManualSnapshotClick = handleManualSnapshotClick;
         
         // Mobile toggle button debugging function
         window.debugToggleButton = function() {
