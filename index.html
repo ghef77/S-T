@@ -1598,6 +1598,43 @@
             box-sizing: border-box !important;
         }
         
+        /* iPad Chrome viewport adaptation classes */
+        .ipad-chrome-viewport-adapt {
+            /* Dynamic sizing based on viewport dimensions */
+            transition: all 0.3s ease-in-out !important;
+        }
+        
+        .ipad-chrome-table-container {
+            position: relative !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            /* Dynamic height will be set via JavaScript */
+        }
+        
+        .ipad-chrome-button-bar {
+            position: relative !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            z-index: 100 !important;
+            /* Dynamic positioning will be set via JavaScript */
+        }
+        
+        .ipad-chrome-status-indicators {
+            position: relative !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            z-index: 99 !important;
+            /* Dynamic positioning will be set via JavaScript */
+        }
+        
+        .ipad-chrome-table-wrapper {
+            width: 100% !important;
+            height: auto !important;
+            overflow: auto !important;
+            box-sizing: border-box !important;
+            /* Dynamic max-height will be set via JavaScript */
+        }
+        
         /* Smart Calendar Styles */
         .month-nav-btn {
             transition: all 0.2s ease-in-out;
@@ -13134,6 +13171,14 @@ ${capacityInfo.needsCleanup ?
         // Ensure button bar is visible on mobile
         ensureMobileButtonVisibility();
         
+        // Initialize iPad Chrome viewport adaptation
+        iPadChromeViewportAdapter.init();
+        
+        // Also run on window load to ensure it works after page reload
+        window.addEventListener('load', () => {
+            iPadChromeViewportAdapter.init();
+        });
+        
         // Debug button bar on mobile
         setTimeout(() => {
             if (window.innerWidth <= 768) {
@@ -13551,6 +13596,202 @@ ${capacityInfo.needsCleanup ?
             console.log('📱 Viewport height updated:', vh, 'px');
         }
         
+        // iPad Chrome viewport detection and adaptation system
+        let iPadChromeViewportAdapter = {
+            isIPadChrome: false,
+            viewportWidth: 0,
+            viewportHeight: 0,
+            isInitialized: false,
+            
+            // Initialize the adapter
+            init() {
+                this.isIPadChrome = /iPad/.test(navigator.userAgent) && /Chrome/.test(navigator.userAgent);
+                this.isMediumScreen = window.innerWidth >= 768 && window.innerWidth <= 1024;
+                
+                if (this.isIPadChrome && this.isMediumScreen) {
+                    console.log('📱 iPad Chrome detected, initializing viewport adaptation');
+                    this.updateViewportDimensions();
+                    this.applyAdaptations();
+                    this.setupEventListeners();
+                    this.isInitialized = true;
+                }
+            },
+            
+            // Update viewport dimensions
+            updateViewportDimensions() {
+                this.viewportWidth = window.innerWidth;
+                this.viewportHeight = window.innerHeight;
+                console.log(`📱 Viewport dimensions: ${this.viewportWidth}x${this.viewportHeight}`);
+            },
+            
+            // Apply viewport adaptations
+            applyAdaptations() {
+                const tableContainer = document.getElementById('table-container');
+                const buttonBar = document.getElementById('button-bar');
+                const statusIndicators = document.querySelector('.flex.items-center.gap-2.mb-1');
+                const tableWrapper = document.querySelector('.overflow-auto');
+                const table = document.getElementById('data-table');
+                
+                if (tableContainer) {
+                    this.adaptTableContainer(tableContainer);
+                }
+                
+                if (buttonBar) {
+                    this.adaptButtonBar(buttonBar);
+                }
+                
+                if (statusIndicators) {
+                    this.adaptStatusIndicators(statusIndicators);
+                }
+                
+                if (tableWrapper) {
+                    this.adaptTableWrapper(tableWrapper);
+                }
+                
+                if (table) {
+                    this.adaptTable(table);
+                }
+                
+                console.log('📱 iPad Chrome viewport adaptations applied');
+            },
+            
+            // Adapt table container
+            adaptTableContainer(container) {
+                container.classList.add('ipad-chrome-viewport-adapt', 'ipad-chrome-table-container');
+                
+                // Calculate available height (viewport - status indicators - button bar - margins)
+                const statusHeight = 60; // Approximate height of status indicators
+                const buttonHeight = 80; // Approximate height of button bar
+                const margins = 40; // Top and bottom margins
+                const availableHeight = this.viewportHeight - statusHeight - buttonHeight - margins;
+                
+                container.style.height = `${Math.max(availableHeight, 400)}px`;
+                container.style.maxHeight = `${availableHeight}px`;
+                container.style.overflow = 'hidden';
+                container.style.position = 'relative';
+                container.style.top = '0';
+                container.style.marginTop = '0.5rem';
+                container.style.paddingTop = '0.5rem';
+            },
+            
+            // Adapt button bar
+            adaptButtonBar(buttonBar) {
+                buttonBar.classList.add('ipad-chrome-viewport-adapt', 'ipad-chrome-button-bar');
+                
+                // Calculate button bar width and positioning
+                const buttonBarWidth = Math.min(this.viewportWidth - 20, 800); // Max width with margins
+                const buttonBarHeight = Math.min(60, this.viewportHeight * 0.08); // 8% of viewport height max
+                
+                buttonBar.style.width = `${buttonBarWidth}px`;
+                buttonBar.style.height = `${buttonBarHeight}px`;
+                buttonBar.style.margin = '0.5rem auto';
+                buttonBar.style.position = 'relative';
+                buttonBar.style.top = '0';
+                buttonBar.style.backgroundColor = 'white';
+                buttonBar.style.border = '1px solid #e5e7eb';
+                buttonBar.style.borderRadius = '8px';
+                buttonBar.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                
+                // Adjust button sizes based on viewport
+                const buttons = buttonBar.querySelectorAll('button');
+                buttons.forEach(button => {
+                    const buttonSize = Math.min(40, this.viewportHeight * 0.05);
+                    button.style.minWidth = `${buttonSize}px`;
+                    button.style.minHeight = `${buttonSize}px`;
+                    button.style.fontSize = `${Math.max(12, this.viewportHeight * 0.015)}px`;
+                });
+            },
+            
+            // Adapt status indicators
+            adaptStatusIndicators(indicators) {
+                indicators.classList.add('ipad-chrome-viewport-adapt', 'ipad-chrome-status-indicators');
+                
+                const indicatorsWidth = Math.min(this.viewportWidth - 20, 400);
+                const indicatorsHeight = Math.min(50, this.viewportHeight * 0.06);
+                
+                indicators.style.width = `${indicatorsWidth}px`;
+                indicators.style.height = `${indicatorsHeight}px`;
+                indicators.style.margin = '0.5rem auto';
+                indicators.style.position = 'relative';
+                indicators.style.top = '0';
+                indicators.style.backgroundColor = 'white';
+                indicators.style.border = '1px solid #e5e7eb';
+                indicators.style.borderRadius = '6px';
+                indicators.style.padding = '0.5rem';
+                
+                // Adjust text size
+                const textElements = indicators.querySelectorAll('span, div');
+                textElements.forEach(element => {
+                    element.style.fontSize = `${Math.max(12, this.viewportHeight * 0.015)}px`;
+                });
+            },
+            
+            // Adapt table wrapper
+            adaptTableWrapper(wrapper) {
+                wrapper.classList.add('ipad-chrome-viewport-adapt', 'ipad-chrome-table-wrapper');
+                
+                // Calculate available height for table
+                const statusHeight = 60;
+                const buttonHeight = 80;
+                const margins = 60;
+                const availableHeight = this.viewportHeight - statusHeight - buttonHeight - margins;
+                
+                wrapper.style.maxHeight = `${Math.max(availableHeight, 300)}px`;
+                wrapper.style.height = `${Math.max(availableHeight, 300)}px`;
+                wrapper.style.width = '100%';
+                wrapper.style.overflow = 'auto';
+                wrapper.style.border = '1px solid #e5e7eb';
+                wrapper.style.borderRadius = '8px';
+                wrapper.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+            },
+            
+            // Adapt table
+            adaptTable(table) {
+                table.classList.add('ipad-chrome-viewport-adapt');
+                
+                // Calculate table width based on viewport
+                const tableWidth = Math.min(this.viewportWidth - 20, 1200);
+                
+                table.style.width = `${tableWidth}px`;
+                table.style.maxWidth = `${tableWidth}px`;
+                table.style.minWidth = `${tableWidth}px`;
+                table.style.margin = '0 auto';
+                
+                // Adjust cell padding based on viewport
+                const cellPadding = Math.max(8, this.viewportWidth * 0.01);
+                const cells = table.querySelectorAll('td, th');
+                cells.forEach(cell => {
+                    cell.style.padding = `${cellPadding}px`;
+                    cell.style.fontSize = `${Math.max(12, this.viewportHeight * 0.015)}px`;
+                });
+            },
+            
+            // Setup event listeners
+            setupEventListeners() {
+                // Resize handler
+                window.addEventListener('resize', () => {
+                    this.updateViewportDimensions();
+                    this.applyAdaptations();
+                });
+                
+                // Orientation change handler
+                window.addEventListener('orientationchange', () => {
+                    setTimeout(() => {
+                        this.updateViewportDimensions();
+                        this.applyAdaptations();
+                    }, 500);
+                });
+                
+                // Visual viewport change handler (for mobile keyboards)
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', () => {
+                        this.updateViewportDimensions();
+                        this.applyAdaptations();
+                    });
+                }
+            }
+        };
+
         // Function to update safe area insets
         function updateSafeAreaInsets() {
             const safeAreaTop = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-top');
