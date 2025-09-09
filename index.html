@@ -13605,6 +13605,9 @@ ${capacityInfo.needsCleanup ?
             keyboardVisible: false,
             originalViewportHeight: 0,
             keyboardHeight: 0,
+            browserBarVisible: true,
+            browserBarHeight: 0,
+            safeAreaTop: 0,
             
             // Initialize the adapter
             init() {
@@ -13625,12 +13628,47 @@ ${capacityInfo.needsCleanup ?
                 this.viewportWidth = window.innerWidth;
                 this.viewportHeight = window.innerHeight;
                 
+                // Detect browser bar and safe areas
+                this.detectBrowserBar();
+                
                 // Detect keyboard appearance
                 this.detectKeyboard();
                 
                 console.log(`📱 Viewport dimensions: ${this.viewportWidth}x${this.viewportHeight}`);
                 if (this.keyboardVisible) {
                     console.log(`⌨️ Keyboard visible, height: ${this.keyboardHeight}px`);
+                }
+                if (this.browserBarVisible) {
+                    console.log(`🌐 Browser bar visible, height: ${this.browserBarHeight}px`);
+                }
+            },
+            
+            // Detect browser bar and safe areas
+            detectBrowserBar() {
+                // Get safe area insets
+                const computedStyle = getComputedStyle(document.documentElement);
+                const safeAreaTop = parseInt(computedStyle.getPropertyValue('--safe-area-top')) || 0;
+                this.safeAreaTop = safeAreaTop;
+                
+                // Detect browser bar by comparing window height with screen height
+                const screenHeight = window.screen.height;
+                const windowHeight = window.innerHeight;
+                const heightDifference = screenHeight - windowHeight;
+                
+                // Browser bar is considered visible if there's a significant height difference
+                // and we're not in fullscreen mode
+                this.browserBarVisible = heightDifference > 50 && heightDifference < 200;
+                this.browserBarHeight = this.browserBarVisible ? heightDifference : 0;
+                
+                // Additional detection using visual viewport if available
+                if (window.visualViewport) {
+                    const visualHeight = window.visualViewport.height;
+                    const visualDifference = windowHeight - visualHeight;
+                    
+                    if (visualDifference > 20) {
+                        this.browserBarVisible = true;
+                        this.browserBarHeight = Math.max(this.browserBarHeight, visualDifference);
+                    }
                 }
             },
             
@@ -13672,8 +13710,13 @@ ${capacityInfo.needsCleanup ?
                 
                 // Make header and buttons sticky/fixed when keyboard appears
                 if (buttonBar) {
+                    // Account for browser bar when keyboard is visible
+                    const browserBarOffset = this.browserBarVisible ? this.browserBarHeight : 0;
+                    const safeAreaOffset = this.safeAreaTop;
+                    const topOffset = Math.max(browserBarOffset, safeAreaOffset) + 5; // 5px margin
+                    
                     buttonBar.style.position = 'fixed';
-                    buttonBar.style.top = '0';
+                    buttonBar.style.top = `${topOffset}px`;
                     buttonBar.style.left = '0';
                     buttonBar.style.right = '0';
                     buttonBar.style.zIndex = '1000';
@@ -13683,8 +13726,14 @@ ${capacityInfo.needsCleanup ?
                 }
                 
                 if (statusIndicators) {
+                    // Position below button bar, accounting for browser bar
+                    const browserBarOffset = this.browserBarVisible ? this.browserBarHeight : 0;
+                    const safeAreaOffset = this.safeAreaTop;
+                    const buttonBarHeight = 60;
+                    const topOffset = Math.max(browserBarOffset, safeAreaOffset) + buttonBarHeight + 10;
+                    
                     statusIndicators.style.position = 'fixed';
-                    statusIndicators.style.top = '60px'; // Below button bar
+                    statusIndicators.style.top = `${topOffset}px`;
                     statusIndicators.style.left = '0';
                     statusIndicators.style.right = '0';
                     statusIndicators.style.zIndex = '999';
@@ -13760,19 +13809,25 @@ ${capacityInfo.needsCleanup ?
             adaptTableContainer(container) {
                 container.classList.add('ipad-chrome-viewport-adapt', 'ipad-chrome-table-container');
                 
-                // Calculate available height (viewport - status indicators - button bar - margins)
+                // Calculate available height accounting for browser bar
+                const browserBarOffset = this.browserBarVisible ? this.browserBarHeight : 0;
+                const safeAreaOffset = this.safeAreaTop;
+                const headerOffset = Math.max(browserBarOffset, safeAreaOffset) + 10;
                 const statusHeight = 60; // Approximate height of status indicators
                 const buttonHeight = 80; // Approximate height of button bar
                 const margins = 40; // Top and bottom margins
-                const availableHeight = this.viewportHeight - statusHeight - buttonHeight - margins;
+                const totalHeaderHeight = headerOffset + statusHeight + buttonHeight + margins;
+                const availableHeight = this.viewportHeight - totalHeaderHeight;
                 
                 container.style.height = `${Math.max(availableHeight, 400)}px`;
                 container.style.maxHeight = `${availableHeight}px`;
                 container.style.overflow = 'hidden';
                 container.style.position = 'relative';
-                container.style.top = '0';
-                container.style.marginTop = '0.5rem';
+                container.style.top = `${totalHeaderHeight}px`;
+                container.style.marginTop = '0';
                 container.style.paddingTop = '0.5rem';
+                
+                console.log(`🌐 Table container positioned with ${totalHeaderHeight}px top offset (browser bar: ${browserBarOffset}px, safe area: ${safeAreaOffset}px)`);
             },
             
             // Adapt button bar
@@ -13783,15 +13838,21 @@ ${capacityInfo.needsCleanup ?
                 const buttonBarWidth = Math.min(this.viewportWidth - 20, 800); // Max width with margins
                 const buttonBarHeight = Math.min(60, this.viewportHeight * 0.08); // 8% of viewport height max
                 
+                // Calculate top position to avoid browser bar
+                const browserBarOffset = this.browserBarVisible ? this.browserBarHeight : 0;
+                const safeAreaOffset = this.safeAreaTop;
+                const totalTopOffset = Math.max(browserBarOffset, safeAreaOffset) + 10; // 10px extra margin
+                
                 buttonBar.style.width = `${buttonBarWidth}px`;
                 buttonBar.style.height = `${buttonBarHeight}px`;
-                buttonBar.style.margin = '0.5rem auto';
+                buttonBar.style.margin = '0 auto';
                 buttonBar.style.position = 'relative';
-                buttonBar.style.top = '0';
+                buttonBar.style.top = `${totalTopOffset}px`;
                 buttonBar.style.backgroundColor = 'white';
                 buttonBar.style.border = '1px solid #e5e7eb';
                 buttonBar.style.borderRadius = '8px';
                 buttonBar.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                buttonBar.style.zIndex = '100';
                 
                 // Adjust button sizes based on viewport
                 const buttons = buttonBar.querySelectorAll('button');
@@ -13801,6 +13862,8 @@ ${capacityInfo.needsCleanup ?
                     button.style.minHeight = `${buttonSize}px`;
                     button.style.fontSize = `${Math.max(12, this.viewportHeight * 0.015)}px`;
                 });
+                
+                console.log(`🌐 Button bar positioned with ${totalTopOffset}px top offset (browser bar: ${browserBarOffset}px, safe area: ${safeAreaOffset}px)`);
             },
             
             // Adapt status indicators
@@ -13810,21 +13873,30 @@ ${capacityInfo.needsCleanup ?
                 const indicatorsWidth = Math.min(this.viewportWidth - 20, 400);
                 const indicatorsHeight = Math.min(50, this.viewportHeight * 0.06);
                 
+                // Calculate top position to avoid browser bar and position below button bar
+                const browserBarOffset = this.browserBarVisible ? this.browserBarHeight : 0;
+                const safeAreaOffset = this.safeAreaTop;
+                const buttonBarHeight = Math.min(60, this.viewportHeight * 0.08);
+                const totalTopOffset = Math.max(browserBarOffset, safeAreaOffset) + buttonBarHeight + 20; // Below button bar
+                
                 indicators.style.width = `${indicatorsWidth}px`;
                 indicators.style.height = `${indicatorsHeight}px`;
-                indicators.style.margin = '0.5rem auto';
+                indicators.style.margin = '0 auto';
                 indicators.style.position = 'relative';
-                indicators.style.top = '0';
+                indicators.style.top = `${totalTopOffset}px`;
                 indicators.style.backgroundColor = 'white';
                 indicators.style.border = '1px solid #e5e7eb';
                 indicators.style.borderRadius = '6px';
                 indicators.style.padding = '0.5rem';
+                indicators.style.zIndex = '99';
                 
                 // Adjust text size
                 const textElements = indicators.querySelectorAll('span, div');
                 textElements.forEach(element => {
                     element.style.fontSize = `${Math.max(12, this.viewportHeight * 0.015)}px`;
                 });
+                
+                console.log(`🌐 Status indicators positioned with ${totalTopOffset}px top offset`);
             },
             
             // Adapt table wrapper
