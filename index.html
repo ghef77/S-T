@@ -13625,6 +13625,9 @@ ${capacityInfo.needsCleanup ?
             safeAreaTop: 0,
             maintenanceInterval: null,
             forceMaintenance: false,
+            isLandscape: false,
+            previousKeyboardState: false,
+            keyboardRemovalScrollTimeout: null,
             
             // Initialize the viewport maintainer
             init() {
@@ -13669,8 +13672,95 @@ ${capacityInfo.needsCleanup ?
                     this.originalViewportHeight = this.viewportHeight;
                 }
                 
+                // Detect landscape mode
+                this.detectLandscapeMode();
+                
                 // Detect keyboard and browser bar
                 this.detectKeyboardAndBrowserBar();
+                
+                // Handle keyboard removal scroll
+                this.handleKeyboardRemovalScroll();
+            },
+            
+            // Detect landscape mode
+            detectLandscapeMode() {
+                const wasLandscape = this.isLandscape;
+                this.isLandscape = this.viewportWidth > this.viewportHeight;
+                
+                if (wasLandscape !== this.isLandscape) {
+                    console.log('🔄 Landscape mode changed:', this.isLandscape ? 'Landscape' : 'Portrait');
+                    this.handleLandscapeChange();
+                }
+            },
+            
+            // Handle landscape mode change
+            handleLandscapeChange() {
+                if (this.isLandscape) {
+                    console.log('📱 Switching to landscape mode - adjusting layout');
+                    this.adaptForLandscape();
+                } else {
+                    console.log('📱 Switching to portrait mode - adjusting layout');
+                    this.adaptForPortrait();
+                }
+            },
+            
+            // Adapt layout for landscape mode
+            adaptForLandscape() {
+                // In landscape, we have more width but less height
+                // Adjust button bar and status indicators to be more compact
+                const buttonBar = document.getElementById('button-bar');
+                if (buttonBar) {
+                    buttonBar.style.height = '50px'; // Smaller height in landscape
+                    buttonBar.style.padding = '5px 10px';
+                }
+                
+                const indicators = document.querySelector('.flex.items-center.gap-2.mb-1');
+                if (indicators) {
+                    indicators.style.height = '40px'; // Smaller height in landscape
+                    indicators.style.padding = '5px 10px';
+                    indicators.style.fontSize = '12px'; // Smaller text
+                }
+                
+                // Adjust table wrapper to use more of the available height
+                const wrapper = document.querySelector('.overflow-auto');
+                if (wrapper) {
+                    const browserBarOffset = this.browserBarVisible ? 60 : 0;
+                    const safeAreaOffset = this.safeAreaTop;
+                    const headerHeight = Math.max(browserBarOffset, safeAreaOffset) + 50 + 40 + 20; // browser bar + button bar + status + margin
+                    const availableHeight = this.viewportHeight - headerHeight;
+                    
+                    wrapper.style.height = `${Math.max(availableHeight, 150)}px`;
+                    wrapper.style.maxHeight = `${Math.max(availableHeight, 150)}px`;
+                }
+            },
+            
+            // Adapt layout for portrait mode
+            adaptForPortrait() {
+                // In portrait, restore normal sizing
+                const buttonBar = document.getElementById('button-bar');
+                if (buttonBar) {
+                    buttonBar.style.height = '60px'; // Normal height in portrait
+                    buttonBar.style.padding = '10px 15px';
+                }
+                
+                const indicators = document.querySelector('.flex.items-center.gap-2.mb-1');
+                if (indicators) {
+                    indicators.style.height = '50px'; // Normal height in portrait
+                    indicators.style.padding = '8px 15px';
+                    indicators.style.fontSize = '14px'; // Normal text size
+                }
+                
+                // Restore normal table wrapper height
+                const wrapper = document.querySelector('.overflow-auto');
+                if (wrapper) {
+                    const browserBarOffset = this.browserBarVisible ? 60 : 0;
+                    const safeAreaOffset = this.safeAreaTop;
+                    const headerHeight = Math.max(browserBarOffset, safeAreaOffset) + 60 + 50 + 30; // browser bar + button bar + status + margin
+                    const availableHeight = this.viewportHeight - headerHeight;
+                    
+                    wrapper.style.height = `${Math.max(availableHeight, 200)}px`;
+                    wrapper.style.maxHeight = `${Math.max(availableHeight, 200)}px`;
+                }
             },
             
             // Detect keyboard and browser bar
@@ -13685,6 +13775,73 @@ ${capacityInfo.needsCleanup ?
                 // Get safe area
                 const computedStyle = getComputedStyle(document.documentElement);
                 this.safeAreaTop = parseInt(computedStyle.getPropertyValue('--safe-area-top')) || 0;
+            },
+            
+            // Handle keyboard removal scroll
+            handleKeyboardRemovalScroll() {
+                // Check if keyboard was just removed
+                if (this.previousKeyboardState && !this.keyboardVisible) {
+                    console.log('⌨️ Keyboard removed - scrolling to show function buttons');
+                    this.scrollToShowFunctionButtons();
+                }
+                
+                // Update previous state
+                this.previousKeyboardState = this.keyboardVisible;
+            },
+            
+            // Scroll to show function buttons when keyboard is removed
+            scrollToShowFunctionButtons() {
+                // Clear any existing timeout
+                if (this.keyboardRemovalScrollTimeout) {
+                    clearTimeout(this.keyboardRemovalScrollTimeout);
+                }
+                
+                // Wait a bit for the viewport to settle after keyboard removal
+                this.keyboardRemovalScrollTimeout = setTimeout(() => {
+                    this.performFunctionButtonScroll();
+                }, 300);
+            },
+            
+            // Perform the actual scroll to show function buttons
+            performFunctionButtonScroll() {
+                try {
+                    // Get the button bar element
+                    const buttonBar = document.getElementById('button-bar');
+                    if (!buttonBar) return;
+                    
+                    // Calculate the scroll position to show the button bar
+                    const buttonBarRect = buttonBar.getBoundingClientRect();
+                    const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
+                    
+                    // Calculate target scroll position to center the button bar in viewport
+                    const targetScrollY = currentScrollY + buttonBarRect.top - (this.viewportHeight / 2) + (buttonBarRect.height / 2);
+                    
+                    // Ensure we don't scroll past the top
+                    const finalScrollY = Math.max(0, targetScrollY);
+                    
+                    console.log('📜 Scrolling to show function buttons:', {
+                        currentScroll: currentScrollY,
+                        targetScroll: finalScrollY,
+                        buttonBarTop: buttonBarRect.top,
+                        viewportHeight: this.viewportHeight
+                    });
+                    
+                    // Perform smooth scroll
+                    window.scrollTo({
+                        top: finalScrollY,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Also ensure the button bar is visible by scrolling it into view
+                    buttonBar.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                        inline: 'nearest'
+                    });
+                    
+                } catch (error) {
+                    console.error('❌ Error scrolling to show function buttons:', error);
+                }
             },
             
             // Maintain all elements in viewport
@@ -13743,13 +13900,18 @@ ${capacityInfo.needsCleanup ?
                 const safeAreaOffset = this.safeAreaTop;
                 const topOffset = Math.max(browserBarOffset, safeAreaOffset) + 5;
                 
+                // Adjust height and padding based on landscape mode
+                const height = this.isLandscape ? '50px' : '60px';
+                const padding = this.isLandscape ? '5px 10px' : '10px 15px';
+                
                 buttonBar.style.cssText = `
                     position: fixed !important;
                     top: ${topOffset}px !important;
                     left: 10px !important;
                     right: 10px !important;
                     width: calc(100vw - 20px) !important;
-                    height: 60px !important;
+                    height: ${height} !important;
+                    padding: ${padding} !important;
                     z-index: 1000 !important;
                     background: white !important;
                     border: 2px solid #e5e7eb !important;
@@ -13769,8 +13931,13 @@ ${capacityInfo.needsCleanup ?
                 
                 const browserBarOffset = this.browserBarVisible ? 60 : 0;
                 const safeAreaOffset = this.safeAreaTop;
-                const buttonBarHeight = 60;
+                const buttonBarHeight = this.isLandscape ? 50 : 60;
                 const topOffset = Math.max(browserBarOffset, safeAreaOffset) + buttonBarHeight + 10;
+                
+                // Adjust height, padding, and font size based on landscape mode
+                const height = this.isLandscape ? '40px' : '50px';
+                const padding = this.isLandscape ? '5px 10px' : '8px 15px';
+                const fontSize = this.isLandscape ? '12px' : '14px';
                 
                 indicators.style.cssText = `
                     position: fixed !important;
@@ -13778,7 +13945,9 @@ ${capacityInfo.needsCleanup ?
                     left: 10px !important;
                     right: 10px !important;
                     width: calc(100vw - 20px) !important;
-                    height: 50px !important;
+                    height: ${height} !important;
+                    padding: ${padding} !important;
+                    font-size: ${fontSize} !important;
                     z-index: 999 !important;
                     background: white !important;
                     border: 1px solid #e5e7eb !important;
@@ -13798,8 +13967,12 @@ ${capacityInfo.needsCleanup ?
                 
                 const browserBarOffset = this.browserBarVisible ? 60 : 0;
                 const safeAreaOffset = this.safeAreaTop;
-                const headerHeight = Math.max(browserBarOffset, safeAreaOffset) + 60 + 50 + 30; // browser bar + button bar + status + margin
+                const buttonBarHeight = this.isLandscape ? 50 : 60;
+                const statusHeight = this.isLandscape ? 40 : 50;
+                const margin = this.isLandscape ? 20 : 30;
+                const headerHeight = Math.max(browserBarOffset, safeAreaOffset) + buttonBarHeight + statusHeight + margin;
                 const availableHeight = this.viewportHeight - headerHeight;
+                const minHeight = this.isLandscape ? 150 : 200;
                 
                 wrapper.style.cssText = `
                     position: fixed !important;
@@ -13807,8 +13980,8 @@ ${capacityInfo.needsCleanup ?
                     left: 10px !important;
                     right: 10px !important;
                     width: calc(100vw - 20px) !important;
-                    height: ${Math.max(availableHeight, 200)}px !important;
-                    max-height: ${Math.max(availableHeight, 200)}px !important;
+                    height: ${Math.max(availableHeight, minHeight)}px !important;
+                    max-height: ${Math.max(availableHeight, minHeight)}px !important;
                     overflow: auto !important;
                     z-index: 5 !important;
                     background: white !important;
@@ -13883,6 +14056,14 @@ ${capacityInfo.needsCleanup ?
                     this.forceViewportState();
                 });
                 
+                // Orientation change handler
+                window.addEventListener('orientationchange', () => {
+                    console.log('🔄 Orientation change detected');
+                    setTimeout(() => {
+                        this.forceViewportState();
+                    }, 100);
+                });
+                
                 // Scroll prevention
                 window.addEventListener('scroll', (e) => {
                     e.preventDefault();
@@ -13915,6 +14096,14 @@ ${capacityInfo.needsCleanup ?
                         this.handleEditableFocus(e);
                     }
                 });
+                
+                // Visual viewport change handler for keyboard detection
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', () => {
+                        console.log('👁️ Visual viewport changed');
+                        this.forceViewportState();
+                    });
+                }
             },
             
             // Handle editable focus with overlay
