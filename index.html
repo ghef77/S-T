@@ -474,6 +474,25 @@
                 word-break: keep-all;
                 hyphens: none;
             }
+            
+            /* Ensure table takes full width on large screens */
+            #table-container {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            
+            .overflow-auto {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            #data-table {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 100% !important;
+            }
         }
         
         /* Snapshot Controls Size Enhancement - 20% larger on all screen sizes */
@@ -938,6 +957,27 @@
             
             #button-bar button:active {
                 transform: scale(1.27) !important;
+            }
+            
+            /* Ensure table takes full width on medium screens */
+            #table-container {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+            }
+            
+            .overflow-auto {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            #data-table {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 100% !important;
             }
         }
         
@@ -1536,7 +1576,27 @@
             to { opacity: 1; }
         }
         
-        /* Table styling - no responsive modifications */
+        /* Table styling - ensure full width on all screen sizes */
+        #table-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        
+        .overflow-auto {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-sizing: border-box !important;
+        }
+        
+        #data-table {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 100% !important;
+            box-sizing: border-box !important;
+        }
         
         /* Smart Calendar Styles */
         .month-nav-btn {
