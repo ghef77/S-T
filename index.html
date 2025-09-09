@@ -1604,6 +1604,19 @@
             transition: all 0.3s ease-in-out !important;
         }
         
+        /* iPad Chrome minimal upper padding */
+        @media screen and (min-width: 768px) and (max-width: 1024px) {
+            body.ipad-chrome-minimal-padding {
+                padding-top: 20px !important;
+                margin-top: 0 !important;
+            }
+            
+            #table-container.ipad-chrome-minimal-padding {
+                margin-top: 0 !important;
+                padding-top: 10px !important;
+            }
+        }
+        
         .ipad-chrome-table-container {
             position: relative !important;
             width: 100% !important;
@@ -13608,6 +13621,8 @@ ${capacityInfo.needsCleanup ?
             browserBarVisible: true,
             browserBarHeight: 0,
             safeAreaTop: 0,
+            keyboardPreventionEnabled: true,
+            minimalPaddingApplied: false,
             
             // Initialize the adapter
             init() {
@@ -13616,11 +13631,195 @@ ${capacityInfo.needsCleanup ?
                 
                 if (this.isIPadChrome && this.isMediumScreen) {
                     console.log('📱 iPad Chrome detected, initializing viewport adaptation');
+                    this.applyMinimalPadding();
+                    this.setupKeyboardPrevention();
                     this.updateViewportDimensions();
                     this.applyAdaptations();
                     this.setupEventListeners();
                     this.isInitialized = true;
                 }
+            },
+            
+            // Apply minimal upper padding for iPad Chrome
+            applyMinimalPadding() {
+                if (!this.minimalPaddingApplied) {
+                    document.body.classList.add('ipad-chrome-minimal-padding');
+                    const tableContainer = document.getElementById('table-container');
+                    if (tableContainer) {
+                        tableContainer.classList.add('ipad-chrome-minimal-padding');
+                    }
+                    this.minimalPaddingApplied = true;
+                    console.log('📱 Minimal upper padding applied for iPad Chrome');
+                }
+            },
+            
+            // Setup keyboard prevention system
+            setupKeyboardPrevention() {
+                if (this.keyboardPreventionEnabled) {
+                    // Prevent default keyboard behavior on editable elements
+                    this.preventKeyboardOnEditableElements();
+                    
+                    // Add custom input handling
+                    this.setupCustomInputHandling();
+                    
+                    console.log('⌨️ Keyboard prevention system enabled for iPad Chrome');
+                }
+            },
+            
+            // Prevent keyboard on editable elements
+            preventKeyboardOnEditableElements() {
+                // Override focus behavior to prevent keyboard
+                const originalAddEventListener = EventTarget.prototype.addEventListener;
+                const self = this;
+                
+                EventTarget.prototype.addEventListener = function(type, listener, options) {
+                    if (type === 'focus' && this.contentEditable === 'true') {
+                        const wrappedListener = function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            self.handleEditableFocus(e);
+                        };
+                        return originalAddEventListener.call(this, type, wrappedListener, options);
+                    }
+                    return originalAddEventListener.call(this, type, listener, options);
+                };
+            },
+            
+            // Handle editable focus without keyboard
+            handleEditableFocus(event) {
+                const element = event.target;
+                console.log('⌨️ Editable element focused, preventing keyboard');
+                
+                // Create a custom input overlay
+                this.createInputOverlay(element);
+            },
+            
+            // Create input overlay for editing without keyboard
+            createInputOverlay(element) {
+                // Remove existing overlay
+                const existingOverlay = document.getElementById('ipad-chrome-input-overlay');
+                if (existingOverlay) {
+                    existingOverlay.remove();
+                }
+                
+                // Create overlay
+                const overlay = document.createElement('div');
+                overlay.id = 'ipad-chrome-input-overlay';
+                overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0,0,0,0.5);
+                    z-index: 10000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+                
+                // Create input container
+                const inputContainer = document.createElement('div');
+                inputContainer.style.cssText = `
+                    background: white;
+                    padding: 20px;
+                    border-radius: 10px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                    width: 90%;
+                    max-width: 400px;
+                `;
+                
+                // Create input field
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = element.textContent || '';
+                input.style.cssText = `
+                    width: 100%;
+                    padding: 10px;
+                    border: 2px solid #e5e7eb;
+                    border-radius: 5px;
+                    font-size: 16px;
+                    margin-bottom: 10px;
+                `;
+                
+                // Create buttons
+                const buttonContainer = document.createElement('div');
+                buttonContainer.style.cssText = `
+                    display: flex;
+                    gap: 10px;
+                    justify-content: flex-end;
+                `;
+                
+                const saveButton = document.createElement('button');
+                saveButton.textContent = 'Save';
+                saveButton.style.cssText = `
+                    padding: 8px 16px;
+                    background: #15803d;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                `;
+                
+                const cancelButton = document.createElement('button');
+                cancelButton.textContent = 'Cancel';
+                cancelButton.style.cssText = `
+                    padding: 8px 16px;
+                    background: #6b7280;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                `;
+                
+                // Event handlers
+                saveButton.onclick = () => {
+                    element.textContent = input.value;
+                    overlay.remove();
+                };
+                
+                cancelButton.onclick = () => {
+                    overlay.remove();
+                };
+                
+                overlay.onclick = (e) => {
+                    if (e.target === overlay) {
+                        overlay.remove();
+                    }
+                };
+                
+                // Assemble overlay
+                buttonContainer.appendChild(cancelButton);
+                buttonContainer.appendChild(saveButton);
+                inputContainer.appendChild(input);
+                inputContainer.appendChild(buttonContainer);
+                overlay.appendChild(inputContainer);
+                
+                document.body.appendChild(overlay);
+                
+                // Focus input
+                setTimeout(() => input.focus(), 100);
+            },
+            
+            // Setup custom input handling
+            setupCustomInputHandling() {
+                // Override touch events on editable elements
+                document.addEventListener('touchstart', (e) => {
+                    if (e.target && e.target.contentEditable === 'true') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.handleEditableFocus(e);
+                    }
+                }, { passive: false });
+                
+                // Override click events on editable elements
+                document.addEventListener('click', (e) => {
+                    if (e.target && e.target.contentEditable === 'true') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.handleEditableFocus(e);
+                    }
+                });
             },
             
             // Update viewport dimensions
