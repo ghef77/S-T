@@ -13184,11 +13184,15 @@ ${capacityInfo.needsCleanup ?
         // Ensure button bar is visible on mobile
         ensureMobileButtonVisibility();
         
-        // Initialize iPad Chrome viewport adaptation
+        // Initialize iPad Chrome viewport maintenance system
+        iPadChromeViewportMaintainer.init();
+        
+        // Initialize iPad Chrome viewport adaptation (fallback)
         iPadChromeViewportAdapter.init();
         
         // Also run on window load to ensure it works after page reload
         window.addEventListener('load', () => {
+            iPadChromeViewportMaintainer.init();
             iPadChromeViewportAdapter.init();
         });
         
@@ -13609,6 +13613,488 @@ ${capacityInfo.needsCleanup ?
             console.log('📱 Viewport height updated:', vh, 'px');
         }
         
+        // iPad Chrome viewport maintenance system - keeps everything in viewport at all times
+        let iPadChromeViewportMaintainer = {
+            isIPadChrome: false,
+            isInitialized: false,
+            viewportWidth: 0,
+            viewportHeight: 0,
+            originalViewportHeight: 0,
+            keyboardVisible: false,
+            browserBarVisible: false,
+            safeAreaTop: 0,
+            maintenanceInterval: null,
+            forceMaintenance: false,
+            
+            // Initialize the viewport maintainer
+            init() {
+                this.isIPadChrome = /iPad/.test(navigator.userAgent) && /Chrome/.test(navigator.userAgent);
+                const isMediumScreen = window.innerWidth >= 768 && window.innerWidth <= 1024;
+                
+                if (this.isIPadChrome && isMediumScreen) {
+                    console.log('📱 iPad Chrome Viewport Maintainer initialized');
+                    this.setupViewportMaintenance();
+                    this.startContinuousMonitoring();
+                    this.isInitialized = true;
+                }
+            },
+            
+            // Setup viewport maintenance system
+            setupViewportMaintenance() {
+                // Force initial viewport state
+                this.forceViewportState();
+                
+                // Setup event listeners
+                this.setupMaintenanceEventListeners();
+                
+                // Setup CSS overrides
+                this.setupCSSOverrides();
+                
+                console.log('🔧 Viewport maintenance system setup complete');
+            },
+            
+            // Force viewport state - keeps everything in viewport
+            forceViewportState() {
+                this.updateViewportDimensions();
+                this.maintainAllElementsInViewport();
+                this.preventViewportDisruption();
+            },
+            
+            // Update viewport dimensions
+            updateViewportDimensions() {
+                this.viewportWidth = window.innerWidth;
+                this.viewportHeight = window.innerHeight;
+                
+                if (this.originalViewportHeight === 0) {
+                    this.originalViewportHeight = this.viewportHeight;
+                }
+                
+                // Detect keyboard and browser bar
+                this.detectKeyboardAndBrowserBar();
+            },
+            
+            // Detect keyboard and browser bar
+            detectKeyboardAndBrowserBar() {
+                const heightDifference = this.originalViewportHeight - this.viewportHeight;
+                this.keyboardVisible = heightDifference > 150;
+                
+                const screenHeight = window.screen.height;
+                const heightDiff = screenHeight - this.viewportHeight;
+                this.browserBarVisible = heightDiff > 50 && heightDiff < 200;
+                
+                // Get safe area
+                const computedStyle = getComputedStyle(document.documentElement);
+                this.safeAreaTop = parseInt(computedStyle.getPropertyValue('--safe-area-top')) || 0;
+            },
+            
+            // Maintain all elements in viewport
+            maintainAllElementsInViewport() {
+                this.maintainBody();
+                this.maintainTableContainer();
+                this.maintainButtonBar();
+                this.maintainStatusIndicators();
+                this.maintainTableWrapper();
+                this.maintainTable();
+            },
+            
+            // Maintain body element
+            maintainBody() {
+                document.body.style.cssText = `
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    overflow-x: hidden !important;
+                    overflow-y: auto !important;
+                    width: 100vw !important;
+                    height: 100vh !important;
+                    position: relative !important;
+                `;
+            },
+            
+            // Maintain table container
+            maintainTableContainer() {
+                const container = document.getElementById('table-container');
+                if (!container) return;
+                
+                const browserBarOffset = this.browserBarVisible ? 60 : 0;
+                const safeAreaOffset = this.safeAreaTop;
+                const topOffset = Math.max(browserBarOffset, safeAreaOffset) + 10;
+                
+                container.style.cssText = `
+                    position: fixed !important;
+                    top: ${topOffset}px !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    width: 100vw !important;
+                    height: calc(100vh - ${topOffset}px) !important;
+                    max-height: calc(100vh - ${topOffset}px) !important;
+                    overflow: hidden !important;
+                    z-index: 10 !important;
+                    background: white !important;
+                    box-sizing: border-box !important;
+                `;
+            },
+            
+            // Maintain button bar
+            maintainButtonBar() {
+                const buttonBar = document.getElementById('button-bar');
+                if (!buttonBar) return;
+                
+                const browserBarOffset = this.browserBarVisible ? 60 : 0;
+                const safeAreaOffset = this.safeAreaTop;
+                const topOffset = Math.max(browserBarOffset, safeAreaOffset) + 5;
+                
+                buttonBar.style.cssText = `
+                    position: fixed !important;
+                    top: ${topOffset}px !important;
+                    left: 10px !important;
+                    right: 10px !important;
+                    width: calc(100vw - 20px) !important;
+                    height: 60px !important;
+                    z-index: 1000 !important;
+                    background: white !important;
+                    border: 2px solid #e5e7eb !important;
+                    border-radius: 8px !important;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    box-sizing: border-box !important;
+                `;
+            },
+            
+            // Maintain status indicators
+            maintainStatusIndicators() {
+                const indicators = document.querySelector('.flex.items-center.gap-2.mb-1');
+                if (!indicators) return;
+                
+                const browserBarOffset = this.browserBarVisible ? 60 : 0;
+                const safeAreaOffset = this.safeAreaTop;
+                const buttonBarHeight = 60;
+                const topOffset = Math.max(browserBarOffset, safeAreaOffset) + buttonBarHeight + 10;
+                
+                indicators.style.cssText = `
+                    position: fixed !important;
+                    top: ${topOffset}px !important;
+                    left: 10px !important;
+                    right: 10px !important;
+                    width: calc(100vw - 20px) !important;
+                    height: 50px !important;
+                    z-index: 999 !important;
+                    background: white !important;
+                    border: 1px solid #e5e7eb !important;
+                    border-radius: 6px !important;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    box-sizing: border-box !important;
+                `;
+            },
+            
+            // Maintain table wrapper
+            maintainTableWrapper() {
+                const wrapper = document.querySelector('.overflow-auto');
+                if (!wrapper) return;
+                
+                const browserBarOffset = this.browserBarVisible ? 60 : 0;
+                const safeAreaOffset = this.safeAreaTop;
+                const headerHeight = Math.max(browserBarOffset, safeAreaOffset) + 60 + 50 + 30; // browser bar + button bar + status + margin
+                const availableHeight = this.viewportHeight - headerHeight;
+                
+                wrapper.style.cssText = `
+                    position: fixed !important;
+                    top: ${headerHeight}px !important;
+                    left: 10px !important;
+                    right: 10px !important;
+                    width: calc(100vw - 20px) !important;
+                    height: ${Math.max(availableHeight, 200)}px !important;
+                    max-height: ${Math.max(availableHeight, 200)}px !important;
+                    overflow: auto !important;
+                    z-index: 5 !important;
+                    background: white !important;
+                    border: 1px solid #e5e7eb !important;
+                    border-radius: 8px !important;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+                    box-sizing: border-box !important;
+                `;
+            },
+            
+            // Maintain table
+            maintainTable() {
+                const table = document.getElementById('data-table');
+                if (!table) return;
+                
+                const tableWidth = Math.min(this.viewportWidth - 40, 1200);
+                
+                table.style.cssText = `
+                    width: ${tableWidth}px !important;
+                    max-width: ${tableWidth}px !important;
+                    min-width: ${tableWidth}px !important;
+                    margin: 0 auto !important;
+                    table-layout: fixed !important;
+                    box-sizing: border-box !important;
+                `;
+                
+                // Adjust cell padding
+                const cellPadding = Math.max(8, this.viewportWidth * 0.01);
+                const cells = table.querySelectorAll('td, th');
+                cells.forEach(cell => {
+                    cell.style.padding = `${cellPadding}px !important`;
+                    cell.style.fontSize = `${Math.max(12, this.viewportHeight * 0.015)}px !important`;
+                    cell.style.boxSizing = 'border-box !important';
+                });
+            },
+            
+            // Prevent viewport disruption
+            preventViewportDisruption() {
+                // Force window scroll to top
+                window.scrollTo(0, 0);
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+                
+                // Prevent any scrolling
+                document.body.style.overflow = 'hidden';
+                document.documentElement.style.overflow = 'hidden';
+                
+                // Lock viewport
+                this.lockViewport();
+            },
+            
+            // Lock viewport to prevent changes
+            lockViewport() {
+                // Prevent zoom
+                const viewport = document.querySelector('meta[name="viewport"]');
+                if (viewport) {
+                    viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+                }
+                
+                // Prevent orientation changes from affecting layout
+                window.addEventListener('orientationchange', () => {
+                    setTimeout(() => {
+                        this.forceViewportState();
+                    }, 100);
+                });
+            },
+            
+            // Setup maintenance event listeners
+            setupMaintenanceEventListeners() {
+                // Resize handler
+                window.addEventListener('resize', () => {
+                    this.forceViewportState();
+                });
+                
+                // Scroll prevention
+                window.addEventListener('scroll', (e) => {
+                    e.preventDefault();
+                    window.scrollTo(0, 0);
+                }, { passive: false });
+                
+                // Touch prevention for scrolling
+                document.addEventListener('touchmove', (e) => {
+                    // Allow scrolling only within table wrapper
+                    const target = e.target.closest('.overflow-auto');
+                    if (!target) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+                
+                // Focus prevention on editable elements
+                document.addEventListener('focusin', (e) => {
+                    if (e.target && e.target.contentEditable === 'true') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.handleEditableFocus(e);
+                    }
+                });
+                
+                // Click prevention on editable elements
+                document.addEventListener('click', (e) => {
+                    if (e.target && e.target.contentEditable === 'true') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.handleEditableFocus(e);
+                    }
+                });
+            },
+            
+            // Handle editable focus with overlay
+            handleEditableFocus(event) {
+                const element = event.target;
+                this.createInputOverlay(element);
+            },
+            
+            // Create input overlay
+            createInputOverlay(element) {
+                // Remove existing overlay
+                const existingOverlay = document.getElementById('ipad-chrome-input-overlay');
+                if (existingOverlay) {
+                    existingOverlay.remove();
+                }
+                
+                // Create overlay
+                const overlay = document.createElement('div');
+                overlay.id = 'ipad-chrome-input-overlay';
+                overlay.style.cssText = `
+                    position: fixed !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    bottom: 0 !important;
+                    background: rgba(0,0,0,0.7) !important;
+                    z-index: 10000 !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                `;
+                
+                // Create input container
+                const inputContainer = document.createElement('div');
+                inputContainer.style.cssText = `
+                    background: white !important;
+                    padding: 20px !important;
+                    border-radius: 10px !important;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
+                    width: 90% !important;
+                    max-width: 400px !important;
+                `;
+                
+                // Create input field
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = element.textContent || '';
+                input.style.cssText = `
+                    width: 100% !important;
+                    padding: 12px !important;
+                    border: 2px solid #e5e7eb !important;
+                    border-radius: 6px !important;
+                    font-size: 16px !important;
+                    margin-bottom: 15px !important;
+                    box-sizing: border-box !important;
+                `;
+                
+                // Create buttons
+                const buttonContainer = document.createElement('div');
+                buttonContainer.style.cssText = `
+                    display: flex !important;
+                    gap: 10px !important;
+                    justify-content: flex-end !important;
+                `;
+                
+                const saveButton = document.createElement('button');
+                saveButton.textContent = 'Save';
+                saveButton.style.cssText = `
+                    padding: 10px 20px !important;
+                    background: #15803d !important;
+                    color: white !important;
+                    border: none !important;
+                    border-radius: 6px !important;
+                    cursor: pointer !important;
+                    font-size: 14px !important;
+                `;
+                
+                const cancelButton = document.createElement('button');
+                cancelButton.textContent = 'Cancel';
+                cancelButton.style.cssText = `
+                    padding: 10px 20px !important;
+                    background: #6b7280 !important;
+                    color: white !important;
+                    border: none !important;
+                    border-radius: 6px !important;
+                    cursor: pointer !important;
+                    font-size: 14px !important;
+                `;
+                
+                // Event handlers
+                saveButton.onclick = () => {
+                    element.textContent = input.value;
+                    overlay.remove();
+                };
+                
+                cancelButton.onclick = () => {
+                    overlay.remove();
+                };
+                
+                overlay.onclick = (e) => {
+                    if (e.target === overlay) {
+                        overlay.remove();
+                    }
+                };
+                
+                // Assemble overlay
+                buttonContainer.appendChild(cancelButton);
+                buttonContainer.appendChild(saveButton);
+                inputContainer.appendChild(input);
+                inputContainer.appendChild(buttonContainer);
+                overlay.appendChild(inputContainer);
+                
+                document.body.appendChild(overlay);
+                
+                // Focus input
+                setTimeout(() => input.focus(), 100);
+            },
+            
+            // Setup CSS overrides
+            setupCSSOverrides() {
+                // Add CSS to prevent any viewport changes
+                const style = document.createElement('style');
+                style.id = 'ipad-chrome-viewport-maintenance';
+                style.textContent = `
+                    @media screen and (min-width: 768px) and (max-width: 1024px) {
+                        html, body {
+                            overflow: hidden !important;
+                            height: 100vh !important;
+                            width: 100vw !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+                        
+                        * {
+                            box-sizing: border-box !important;
+                        }
+                        
+                        #table-container {
+                            position: fixed !important;
+                            top: 0 !important;
+                            left: 0 !important;
+                            right: 0 !important;
+                            width: 100vw !important;
+                            height: 100vh !important;
+                            overflow: hidden !important;
+                            z-index: 10 !important;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            },
+            
+            // Start continuous monitoring
+            startContinuousMonitoring() {
+                // Monitor viewport every 100ms
+                this.maintenanceInterval = setInterval(() => {
+                    this.forceViewportState();
+                }, 100);
+                
+                // Also monitor on various events
+                ['resize', 'orientationchange', 'focusin', 'focusout', 'touchstart', 'touchend'].forEach(event => {
+                    window.addEventListener(event, () => {
+                        setTimeout(() => {
+                            this.forceViewportState();
+                        }, 50);
+                    });
+                });
+                
+                console.log('🔄 Continuous viewport monitoring started');
+            },
+            
+            // Stop monitoring
+            stopMonitoring() {
+                if (this.maintenanceInterval) {
+                    clearInterval(this.maintenanceInterval);
+                    this.maintenanceInterval = null;
+                }
+            }
+        };
+
         // iPad Chrome viewport detection and adaptation system
         let iPadChromeViewportAdapter = {
             isIPadChrome: false,
