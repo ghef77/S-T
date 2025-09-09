@@ -13602,6 +13602,9 @@ ${capacityInfo.needsCleanup ?
             viewportWidth: 0,
             viewportHeight: 0,
             isInitialized: false,
+            keyboardVisible: false,
+            originalViewportHeight: 0,
+            keyboardHeight: 0,
             
             // Initialize the adapter
             init() {
@@ -13621,7 +13624,105 @@ ${capacityInfo.needsCleanup ?
             updateViewportDimensions() {
                 this.viewportWidth = window.innerWidth;
                 this.viewportHeight = window.innerHeight;
+                
+                // Detect keyboard appearance
+                this.detectKeyboard();
+                
                 console.log(`📱 Viewport dimensions: ${this.viewportWidth}x${this.viewportHeight}`);
+                if (this.keyboardVisible) {
+                    console.log(`⌨️ Keyboard visible, height: ${this.keyboardHeight}px`);
+                }
+            },
+            
+            // Detect keyboard appearance
+            detectKeyboard() {
+                if (this.originalViewportHeight === 0) {
+                    this.originalViewportHeight = this.viewportHeight;
+                }
+                
+                const heightDifference = this.originalViewportHeight - this.viewportHeight;
+                const wasKeyboardVisible = this.keyboardVisible;
+                
+                // Keyboard is considered visible if viewport height decreased by more than 150px
+                this.keyboardVisible = heightDifference > 150;
+                this.keyboardHeight = this.keyboardVisible ? heightDifference : 0;
+                
+                // If keyboard state changed, apply keyboard-specific adaptations
+                if (wasKeyboardVisible !== this.keyboardVisible) {
+                    console.log(`⌨️ Keyboard ${this.keyboardVisible ? 'appeared' : 'disappeared'}`);
+                    this.applyKeyboardAdaptations();
+                }
+            },
+            
+            // Apply keyboard-specific adaptations
+            applyKeyboardAdaptations() {
+                if (this.keyboardVisible) {
+                    this.adaptForKeyboard();
+                } else {
+                    this.adaptForNoKeyboard();
+                }
+            },
+            
+            // Adapt layout when keyboard is visible
+            adaptForKeyboard() {
+                const tableContainer = document.getElementById('table-container');
+                const buttonBar = document.getElementById('button-bar');
+                const statusIndicators = document.querySelector('.flex.items-center.gap-2.mb-1');
+                const tableWrapper = document.querySelector('.overflow-auto');
+                
+                // Make header and buttons sticky/fixed when keyboard appears
+                if (buttonBar) {
+                    buttonBar.style.position = 'fixed';
+                    buttonBar.style.top = '0';
+                    buttonBar.style.left = '0';
+                    buttonBar.style.right = '0';
+                    buttonBar.style.zIndex = '1000';
+                    buttonBar.style.backgroundColor = 'white';
+                    buttonBar.style.borderBottom = '2px solid #e5e7eb';
+                    buttonBar.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                }
+                
+                if (statusIndicators) {
+                    statusIndicators.style.position = 'fixed';
+                    statusIndicators.style.top = '60px'; // Below button bar
+                    statusIndicators.style.left = '0';
+                    statusIndicators.style.right = '0';
+                    statusIndicators.style.zIndex = '999';
+                    statusIndicators.style.backgroundColor = 'white';
+                    statusIndicators.style.borderBottom = '1px solid #e5e7eb';
+                    statusIndicators.style.boxShadow = '0 1px 4px rgba(0,0,0,0.1)';
+                }
+                
+                // Adjust table container to account for fixed header
+                if (tableContainer) {
+                    const headerHeight = 120; // Button bar + status indicators
+                    const availableHeight = this.viewportHeight - headerHeight;
+                    
+                    tableContainer.style.position = 'relative';
+                    tableContainer.style.top = `${headerHeight}px`;
+                    tableContainer.style.height = `${Math.max(availableHeight, 200)}px`;
+                    tableContainer.style.maxHeight = `${availableHeight}px`;
+                    tableContainer.style.overflow = 'hidden';
+                }
+                
+                // Adjust table wrapper
+                if (tableWrapper) {
+                    const headerHeight = 120;
+                    const availableHeight = this.viewportHeight - headerHeight - 20; // Extra margin
+                    
+                    tableWrapper.style.maxHeight = `${Math.max(availableHeight, 150)}px`;
+                    tableWrapper.style.height = `${Math.max(availableHeight, 150)}px`;
+                    tableWrapper.style.overflow = 'auto';
+                }
+                
+                console.log('⌨️ Layout adapted for keyboard visibility');
+            },
+            
+            // Adapt layout when keyboard is not visible
+            adaptForNoKeyboard() {
+                // Reset to normal positioning
+                this.applyAdaptations();
+                console.log('⌨️ Layout reset for no keyboard');
             },
             
             // Apply viewport adaptations
@@ -13771,12 +13872,15 @@ ${capacityInfo.needsCleanup ?
                 // Resize handler
                 window.addEventListener('resize', () => {
                     this.updateViewportDimensions();
-                    this.applyAdaptations();
+                    if (!this.keyboardVisible) {
+                        this.applyAdaptations();
+                    }
                 });
                 
                 // Orientation change handler
                 window.addEventListener('orientationchange', () => {
                     setTimeout(() => {
+                        this.originalViewportHeight = 0; // Reset original height
                         this.updateViewportDimensions();
                         this.applyAdaptations();
                     }, 500);
@@ -13786,7 +13890,44 @@ ${capacityInfo.needsCleanup ?
                 if (window.visualViewport) {
                     window.visualViewport.addEventListener('resize', () => {
                         this.updateViewportDimensions();
-                        this.applyAdaptations();
+                    });
+                }
+                
+                // Focus events to detect keyboard appearance
+                document.addEventListener('focusin', (e) => {
+                    if (e.target && (e.target.contentEditable === 'true' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+                        console.log('⌨️ Focus on editable element, keyboard likely appearing');
+                        setTimeout(() => {
+                            this.updateViewportDimensions();
+                        }, 300);
+                    }
+                });
+                
+                document.addEventListener('focusout', (e) => {
+                    if (e.target && (e.target.contentEditable === 'true' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+                        console.log('⌨️ Focus lost on editable element, keyboard likely disappearing');
+                        setTimeout(() => {
+                            this.updateViewportDimensions();
+                        }, 300);
+                    }
+                });
+                
+                // Additional keyboard detection for iPad Chrome
+                if (this.isIPadChrome) {
+                    // Listen for input events that might trigger keyboard
+                    document.addEventListener('input', () => {
+                        setTimeout(() => {
+                            this.updateViewportDimensions();
+                        }, 100);
+                    });
+                    
+                    // Listen for touch events that might trigger keyboard
+                    document.addEventListener('touchstart', (e) => {
+                        if (e.target && (e.target.contentEditable === 'true' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+                            setTimeout(() => {
+                                this.updateViewportDimensions();
+                            }, 200);
+                        }
                     });
                 }
             }
