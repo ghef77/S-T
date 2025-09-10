@@ -892,7 +892,14 @@ class SimpleGallery {
             return;
         }
 
-        const fileNames = Array.from(checkboxes).map(cb => cb.dataset.filename);
+        const fileNames = Array.from(checkboxes).map(cb => cb.dataset.filename).filter(name => name);
+        
+        if (fileNames.length === 0) {
+            this.showMessage('Erreur: Noms de fichiers non trouvés', 'error');
+            return;
+        }
+        
+        console.log('🗑️ Suppression de:', fileNames);
         
         if (!confirm(`Voulez-vous vraiment supprimer ${fileNames.length} image(s) sélectionnée(s)?`)) {
             return;
@@ -901,7 +908,7 @@ class SimpleGallery {
         try {
             this.showLoading(true);
 
-
+            console.log('🔄 Suppression en cours...', fileNames);
             const { error } = await this.serviceSupabase.storage
                 .from(this.bucketName)
                 .remove(fileNames);
@@ -913,15 +920,12 @@ class SimpleGallery {
             // Set timestamp for real-time sync
             this.lastChangeTimestamp = Date.now();
 
-            // Immediately update the gallery to reflect the deletions
-            await this.loadImages();
-            this.forceRefreshDisplay();
-
             this.showMessage(`${fileNames.length} image(s) supprimée(s) avec succès.`, 'success');
 
-            // Effacer la sélection et recharger
+            // Effacer la sélection et recharger une seule fois
             this.clearSelection();
             await this.loadImages();
+            this.forceRefreshDisplay();
 
         } catch (error) {
             console.error('❌ Erreur de suppression en lot:', error);

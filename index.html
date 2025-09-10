@@ -5676,8 +5676,13 @@
             
             if (!targetRow) {
                 const rows = tbody.querySelectorAll('tr');
-                targetRow = rows[info.rowIndex] || null;
-                log(`🔍 focusCellFromInfo: Found row by index: ${!!targetRow}`);
+                // Vérifier la validité de l'index avant d'accéder
+                if (info.rowIndex >= 0 && info.rowIndex < rows.length) {
+                    targetRow = rows[info.rowIndex] || null;
+                    log(`🔍 focusCellFromInfo: Found row by index: ${!!targetRow}`);
+                } else {
+                    log(`🔍 focusCellFromInfo: Row index ${info.rowIndex} invalid (total rows: ${rows.length})`);
+                }
             }
             
             if (!targetRow) {
@@ -5757,6 +5762,13 @@
                 
                 const tbody = document.getElementById('table-body');
                 const totalRows = tbody.querySelectorAll('tr').length;
+                
+                // Vérifier la validité de l'index avant d'accéder à la ligne
+                if (pos.rowIndex >= totalRows || pos.rowIndex < 0) {
+                    log(`❌ RESTORE DEBUG: Row index ${pos.rowIndex} invalid (total rows: ${totalRows})`);
+                    return false;
+                }
+                
                 const row = tbody.querySelectorAll('tr')[pos.rowIndex];
                 
                 if (!row) {
@@ -12232,31 +12244,43 @@
                 
                 window._syncTimer = setInterval(async () => {
                     try {
-                        console.log('🔍 [PERIODIC SYNC] ========== PERIODIC SYNC TRIGGERED ==========');
-                        console.log('🔍 [PERIODIC SYNC] Current active element:', document.activeElement);
-                        console.log('🔍 [PERIODIC SYNC] Active element details:', {
-                            tagName: document.activeElement?.tagName,
-                            contentEditable: document.activeElement?.contentEditable,
-                            dataLabel: document.activeElement?.getAttribute('data-label')
-                        });
+                        // Réduire les logs verbeux
+                        const isDebugMode = false; // Mettre à true pour debug
+                        
+                        if (isDebugMode) {
+                            console.log('🔍 [PERIODIC SYNC] ========== PERIODIC SYNC TRIGGERED ==========');
+                            console.log('🔍 [PERIODIC SYNC] Current active element:', document.activeElement);
+                            console.log('🔍 [PERIODIC SYNC] Active element details:', {
+                                tagName: document.activeElement?.tagName,
+                                contentEditable: document.activeElement?.contentEditable,
+                                dataLabel: document.activeElement?.getAttribute('data-label')
+                            });
+                        }
                         
                         // Enhanced conflict prevention - including cursor restoration
                         if (isTyping || isPerformingUndoRedo || isRestoringCursor) {
-                            console.log('🚫 [PERIODIC SYNC] Blocked - conflict detected:', {
-                                isTyping,
-                                isPerformingUndoRedo, 
-                                isRestoringCursor
-                            });
+                            if (isDebugMode) {
+                                console.log('🚫 [PERIODIC SYNC] Blocked - conflict detected:', {
+                                    isTyping,
+                                    isPerformingUndoRedo, 
+                                    isRestoringCursor
+                                });
+                            }
                             return;
                         }
                         
                         const timeSinceLastEdit = Date.now() - lastEditAt;
-                        console.log('🔍 [PERIODIC SYNC] Time since last edit:', timeSinceLastEdit + 'ms');
-                        console.log('🔍 [PERIODIC SYNC] AUTOSAVE_DELAY_MS:', AUTOSAVE_DELAY_MS);
-                        console.log('🔍 [PERIODIC SYNC] Delay requirement met:', timeSinceLastEdit >= AUTOSAVE_DELAY_MS);
+                        
+                        if (isDebugMode) {
+                            console.log('🔍 [PERIODIC SYNC] Time since last edit:', timeSinceLastEdit + 'ms');
+                            console.log('🔍 [PERIODIC SYNC] AUTOSAVE_DELAY_MS:', AUTOSAVE_DELAY_MS);
+                            console.log('🔍 [PERIODIC SYNC] Delay requirement met:', timeSinceLastEdit >= AUTOSAVE_DELAY_MS);
+                        }
                         
                         if (timeSinceLastEdit < AUTOSAVE_DELAY_MS) {
-                            console.log('🚫 [PERIODIC SYNC] Too soon since last edit, skipping sync');
+                            if (isDebugMode) {
+                                console.log('🚫 [PERIODIC SYNC] Too soon since last edit, skipping sync');
+                            }
                             return;
                         }
                         
@@ -12350,7 +12374,7 @@
                     } finally {
                         isSyncing = false;
                     }
-                }, 500);
+                }, 2000); // Réduire la fréquence de 500ms à 2000ms
                 
                 console.log('✅ Enhanced periodic sync started successfully');
             } catch (error) {
@@ -13231,7 +13255,14 @@ ${capacityInfo.needsCleanup ?
         // ========================================
         
         // Gestion des événements tactiles pour mobile - SOLUTION SIMPLIFIÉE
+        let touchSupportConfigured = false;
+        
         function addTouchSupport() {
+            // Éviter les configurations multiples
+            if (touchSupportConfigured) {
+                return;
+            }
+            
             // ONLY target the manual snapshot button specifically
             const addButton = document.getElementById('manual-snapshot-btn');
             
@@ -13250,6 +13281,7 @@ ${capacityInfo.needsCleanup ?
                 addButton.style.webkitTouchCallout = 'none';
                 addButton.style.webkitUserSelect = 'none';
                 
+                touchSupportConfigured = true;
                 console.log('✅ Configuration tactile basique appliquée au bouton snapshot');
             } else {
                 console.log('❌ Bouton snapshot non trouvé');
