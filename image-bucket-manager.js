@@ -29,10 +29,51 @@ class ImageBucketManager {
 
     async initializeClients() {
         try {
-            const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+            // Wait for Supabase to be initialized globally (from simple-gallery.html)
+            if (!window.supabaseReady || !window.createSupabaseClient) {
+                console.log('⏳ [Image Bucket Manager] Waiting for Supabase initialization...');
+                
+                // Wait for either the event or the global flag
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        window.removeEventListener('supabaseReady', onReady);
+                        reject(new Error('Timeout waiting for Supabase initialization'));
+                    }, 10000); // 10 second timeout
+                    
+                    const onReady = () => {
+                        clearTimeout(timeout);
+                        window.removeEventListener('supabaseReady', onReady);
+                        resolve();
+                    };
+                    
+                    if (window.supabaseReady && window.createSupabaseClient) {
+                        clearTimeout(timeout);
+                        resolve();
+                    } else {
+                        window.addEventListener('supabaseReady', onReady);
+                    }
+                });
+            }
+            
+            // Additional check with retries (fallback if event doesn't fire)
+            let attempts = 0;
+            while ((!window.supabaseReady || !window.createSupabaseClient) && attempts < 100) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
+            if (!window.createSupabaseClient) {
+                throw new Error('Supabase createClient not available after waiting');
+            }
+            
+            const createClient = window.createSupabaseClient;
             
             this.supabase = createClient(this.supabaseUrl, this.supabaseAnonKey);
             this.serviceSupabase = createClient(this.supabaseUrl, this.supabaseServiceKey);
+            
+            if (!this.supabase || !this.serviceSupabase) {
+                throw new Error('Failed to create Supabase clients');
+            }
             
             console.log('✅ Image Bucket Manager initialized');
             
@@ -49,6 +90,15 @@ class ImageBucketManager {
      */
     async getBucketUsage(bucketName) {
         try {
+            // Ensure clients are initialized
+            if (!this.serviceSupabase) {
+                await this.initializeClients();
+            }
+            
+            if (!this.serviceSupabase) {
+                throw new Error('Service Supabase client not initialized');
+            }
+            
             const { data: files, error } = await this.serviceSupabase.storage
                 .from(bucketName)
                 .list('', { limit: 1000 });
@@ -83,6 +133,15 @@ class ImageBucketManager {
      */
     async getImageBuckets() {
         try {
+            // Ensure clients are initialized
+            if (!this.serviceSupabase) {
+                await this.initializeClients();
+            }
+            
+            if (!this.serviceSupabase) {
+                throw new Error('Service Supabase client not initialized');
+            }
+            
             const { data: buckets, error } = await this.serviceSupabase.storage.listBuckets();
             
             if (error) {
@@ -103,10 +162,24 @@ class ImageBucketManager {
     }
 
     /**
+     * Ensure clients are initialized
+     */
+    async ensureInitialized() {
+        if (!this.serviceSupabase || !this.supabase) {
+            await this.initializeClients();
+        }
+        if (!this.serviceSupabase) {
+            throw new Error('Service Supabase client not initialized');
+        }
+    }
+
+    /**
      * Create a new overflow bucket
      */
     async createOverflowBucket() {
         try {
+            await this.ensureInitialized();
+            
             const existingBuckets = await this.getImageBuckets();
             const bucketNumber = existingBuckets.length;
             const newBucketName = `${this.baseBucketName}-${bucketNumber}`;
@@ -205,6 +278,7 @@ ON CONFLICT (name, bucket_id) DO NOTHING;
      */
     async cleanupOldImages() {
         try {
+            await this.ensureInitialized();
             console.log('🧹 Starting automatic image cleanup...');
             
             const imageBuckets = await this.getImageBuckets();
@@ -277,6 +351,7 @@ ON CONFLICT (name, bucket_id) DO NOTHING;
      */
     async cleanupOrphanedAssociations(deletedImageNames) {
         try {
+            await this.ensureInitialized();
             if (!deletedImageNames || deletedImageNames.length === 0) return;
 
             const { error } = await this.serviceSupabase
@@ -351,6 +426,7 @@ ON CONFLICT (name, bucket_id) DO NOTHING;
      */
     async getBucketStatistics() {
         try {
+            await this.ensureInitialized();
             const imageBuckets = await this.getImageBuckets();
             const stats = {
                 buckets: [],

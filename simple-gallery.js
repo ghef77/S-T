@@ -1,7 +1,7 @@
 // Simple Gallery with Supabase Integration - Version Simplifiée et Robuste
 // Galerie d'images simplifiée synchronisée avec Supabase
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+// Use global window.supabase.createClient instead of ES6 import
 
 class SimpleGallery {
     constructor() {
@@ -78,7 +78,49 @@ class SimpleGallery {
 
     async initializeSupabase() {
         try {
-
+            // Wait for Supabase to be initialized (it's loaded asynchronously in index.html)
+            // First, try to wait for the supabaseReady event
+            if (!window.supabaseReady) {
+                console.log('⏳ Waiting for Supabase initialization...');
+                
+                // Wait for either the event or the global flag
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        window.removeEventListener('supabaseReady', onReady);
+                        reject(new Error('Timeout waiting for Supabase initialization'));
+                    }, 10000); // 10 second timeout
+                    
+                    const onReady = () => {
+                        clearTimeout(timeout);
+                        window.removeEventListener('supabaseReady', onReady);
+                        resolve();
+                    };
+                    
+                    if (window.supabaseReady && window.createSupabaseClient) {
+                        clearTimeout(timeout);
+                        resolve();
+                    } else {
+                        window.addEventListener('supabaseReady', onReady);
+                    }
+                });
+            }
+            
+            // Additional check with retries (fallback if event doesn't fire)
+            let attempts = 0;
+            while ((!window.supabaseReady || !window.createSupabaseClient) && attempts < 100) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
+            if (!window.createSupabaseClient) {
+                console.error('❌ Supabase createClient not available after waiting');
+                console.error('   window.supabase:', !!window.supabase);
+                console.error('   window.supabaseReady:', window.supabaseReady);
+                console.error('   window.createSupabaseClient:', !!window.createSupabaseClient);
+                throw new Error('Supabase library not loaded. Please ensure Supabase is initialized in index.html.');
+            }
+            
+            const createClient = window.createSupabaseClient;
             
             // Client avec clé anonyme pour affichage et upload
             this.supabase = createClient(this.supabaseUrl, this.supabaseAnonKey);

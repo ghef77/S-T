@@ -18,7 +18,7 @@
     <meta http-equiv='Permissions-Policy' content='geolocation=(), microphone=(), camera=()'>
     
     <!-- Content Security Policy - Updated to allow required CDN resources -->
-    <meta http-equiv='Content-Security-Policy' content="default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https:; font-src 'self' https: data:;">
+    <meta http-equiv='Content-Security-Policy' content="default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://esm.sh https://unpkg.com https://cdn.skypack.dev; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https:; font-src 'self' https: data:;">
     
     <!-- iOS specific meta tags -->
     <meta name='apple-mobile-web-app-capable' content='yes'>
@@ -39,7 +39,6 @@
     
     <!-- Preload critical resources -->
     <link rel="preload" href="https://cdn.tailwindcss.com" as="script">
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm" as="script">
     
     <!-- Tailwind CSS CDN for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -1960,7 +1959,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-
+    
     <!-- Performance Optimizers -->
     <!-- Scripts externes désactivés - système simplifié -->
     <!-- <script src="performance-optimizer.js"></script> -->
@@ -1986,13 +1985,74 @@
             primaryKeyColumn: 'No' 
         };
 
-        // Initialize Supabase client
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-        const supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
+        // Initialize Supabase client using ES module import
+        let supabase;
+        let createClientFunction;
+        const cdnOptions = [
+            { url: 'https://esm.sh/@supabase/supabase-js@2', name: 'esm.sh' },
+            { url: 'https://unpkg.com/@supabase/supabase-js@2?module', name: 'unpkg.com (ESM)' },
+            { url: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm', name: 'jsdelivr (ESM)' },
+            { url: 'https://cdn.skypack.dev/@supabase/supabase-js@2', name: 'skypack' }
+        ];
+        
+        let lastError = null;
+        for (const cdn of cdnOptions) {
+            try {
+                console.log(`🔄 Trying to load Supabase from ${cdn.name}...`);
+                const supabaseModule = await import(cdn.url);
+                
+                if (!supabaseModule || !supabaseModule.createClient) {
+                    throw new Error(`createClient not found in module from ${cdn.name}`);
+                }
+                
+                createClientFunction = supabaseModule.createClient;
+                supabase = createClientFunction(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
+                
+                if (!supabase) {
+                    throw new Error(`Failed to create client from ${cdn.name}`);
+                }
+                
+                console.log(`✅ Supabase client initialized successfully via ${cdn.name}`);
+                break;
+            } catch (error) {
+                console.error(`❌ Failed to load from ${cdn.name}:`, error.message || error);
+                lastError = error;
+                continue;
+            }
+        }
+        
+        if (!supabase || !createClientFunction) {
+            console.error('❌ Failed to load Supabase from all CDNs');
+            throw new Error(`Supabase library not available. Last error: ${lastError?.message || 'Unknown error'}`);
+        }
         
         // Make Supabase globally available
         window.supabase = supabase;
         window.supabaseConfig = supabaseConfig;
+        window.createSupabaseClient = createClientFunction; // Store createClient function for later use
+        window.supabaseReady = true; // Signal that Supabase is ready
+        
+        // Dispatch custom event for other scripts waiting for Supabase
+        window.dispatchEvent(new CustomEvent('supabaseReady', { detail: { supabase, createClient: createClientFunction } }));
+        console.log('✅ Supabase ready signal sent');
+        
+        // Set flag to fetch data when fetchInitialData becomes available
+        const isLoggedIn = sessionStorage.getItem('isLoggedIn') === '1';
+        if (isLoggedIn) {
+            window.pendingDataFetch = true;
+            console.log('📋 Flag set: Data fetch will happen when fetchInitialData is available');
+            
+            // Try to fetch immediately if function is already available
+            setTimeout(() => {
+                if (typeof fetchInitialData === 'function' && window.pendingDataFetch) {
+                    console.log('🔄 User is logged in, fetching initial data (delayed)...');
+                    window.pendingDataFetch = false;
+                    fetchInitialData(true).catch(error => {
+                        console.error('❌ Failed to fetch initial data:', error);
+                    });
+                }
+            }, 500);
+        }
         
         // Global state management
         const appState = { 
@@ -7051,6 +7111,37 @@
         };
 
         async function fetchInitialData(forceRefresh = false) { 
+            // Clear pending flag if set
+            if (window.pendingDataFetch) {
+                window.pendingDataFetch = false;
+            }
+            
+            // Ensure Supabase is ready before fetching
+            if (!window.supabase || !window.supabaseReady) {
+                console.log('⏳ Waiting for Supabase to be ready before fetching data...');
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        window.removeEventListener('supabaseReady', onReady);
+                        reject(new Error('Timeout waiting for Supabase initialization'));
+                    }, 10000);
+                    
+                    const onReady = () => {
+                        clearTimeout(timeout);
+                        window.removeEventListener('supabaseReady', onReady);
+                        resolve();
+                    };
+                    
+                    if (window.supabaseReady && window.supabase) {
+                        clearTimeout(timeout);
+                        resolve();
+                    } else {
+                        window.addEventListener('supabaseReady', onReady);
+                    }
+                });
+            }
+            
+            console.log('✅ fetchInitialData: Supabase is ready, proceeding with data fetch');
+            
             // 🏥 HOSPITAL PC CONFLICT PREVENTION
             const operationId = 'fetch-data-' + Date.now();
             
@@ -7127,6 +7218,25 @@
                 }
             }
         }
+        
+        // Auto-trigger data fetch if pending and conditions are met
+        (async () => {
+            // Wait a bit for everything to initialize
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Check if we should auto-fetch
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn') === '1';
+            if (isLoggedIn && window.supabaseReady && window.supabase && window.pendingDataFetch) {
+                console.log('🚀 Auto-triggering data fetch (fetchInitialData now available)...');
+                window.pendingDataFetch = false;
+                try {
+                    await fetchInitialData(true);
+                    console.log('✅ Auto-fetch completed successfully');
+                } catch (error) {
+                    console.error('❌ Auto-fetch failed:', error);
+                }
+            }
+        })();
 
         async function syncToMaster(isManualSave = false, pruneMissing = false) {
             // ENHANCED: Block sync during undo/redo operations (except manual saves)
@@ -8292,6 +8402,56 @@
                 
                 // Initialiser complètement l'application après la connexion
                 initializeApp();
+                
+                // Wait for Supabase to be ready and fetch data
+                const loadDataAfterLogin = async () => {
+                    if (!window.supabaseReady || !window.supabase) {
+                        console.log('⏳ Waiting for Supabase before loading table data...');
+                        await new Promise((resolve) => {
+                            const checkSupabase = setInterval(() => {
+                                if (window.supabaseReady && window.supabase) {
+                                    clearInterval(checkSupabase);
+                                    resolve();
+                                }
+                            }, 100);
+                            
+                            setTimeout(() => {
+                                clearInterval(checkSupabase);
+                                resolve();
+                            }, 10000);
+                        });
+                    }
+                    
+                    // Wait for fetchInitialData to be available
+                    let retries = 0;
+                    const maxRetries = 20; // 4 seconds max wait
+                    
+                    while (retries < maxRetries) {
+                        if (typeof fetchInitialData === 'function') {
+                            console.log('🔄 Fetching table data after login...');
+                            try {
+                                await fetchInitialData(true);
+                                console.log('✅ Data fetched successfully after login');
+                                break;
+                            } catch (error) {
+                                console.error('❌ Failed to fetch initial data after login:', error);
+                                break;
+                            }
+                        } else {
+                            console.log(`⏳ Waiting for fetchInitialData function... (${retries + 1}/${maxRetries})`);
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                        }
+                        retries++;
+                    }
+                    
+                    if (retries >= maxRetries && typeof fetchInitialData !== 'function') {
+                        console.error('❌ fetchInitialData function never became available after login');
+                        // Set flag so it will be called when function becomes available
+                        window.pendingDataFetch = true;
+                    }
+                };
+                
+                loadDataAfterLogin();
                 
             } else { 
                 err.textContent = 'Mot de passe incorrect. Le champ est maintenant visible pour faciliter la correction.';
@@ -10139,7 +10299,10 @@
                 let snapshotData;
                 
                 // STEP 1: Create a completely fresh Supabase client for this download
-                const freshSupabase = createClient(
+                if (!window.createSupabaseClient) {
+                    throw new Error('Supabase library not available');
+                }
+                const freshSupabase = window.createSupabaseClient(
                     'https://fiecugxopjxzqfdnaqsu.supabase.co',
                     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw'
                 );
@@ -10372,7 +10535,10 @@
                 let snapshotData;
                 
                 // STEP 1: Create a completely fresh Supabase client for this download
-                const freshSupabase = createClient(
+                if (!window.createSupabaseClient) {
+                    throw new Error('Supabase library not available');
+                }
+                const freshSupabase = window.createSupabaseClient(
                     'https://fiecugxopjxzqfdnaqsu.supabase.co',
                     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpZWN1Z3hvcGp4enFmZG5hcXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDU2NTcsImV4cCI6MjA3MDA4MTY1N30.xd9Thasg4r8Nrwxx5nFwyGB_ufPIvok4XB-78dilpsw'
                 );
@@ -11325,7 +11491,62 @@
                     isViewMode = savedViewMode;
                 }
                 
-                restoreLocalDraft(); 
+                restoreLocalDraft();
+                
+                // Load table data after Supabase is ready
+                const loadDataOnPageLoad = async () => {
+                    // Wait for Supabase to be ready
+                    if (!window.supabaseReady || !window.supabase) {
+                        console.log('⏳ Waiting for Supabase before loading table data on page load...');
+                        await new Promise((resolve) => {
+                            if (window.supabaseReady && window.supabase) {
+                                resolve();
+                                return;
+                            }
+                            
+                            const checkSupabase = setInterval(() => {
+                                if (window.supabaseReady && window.supabase) {
+                                    clearInterval(checkSupabase);
+                                    resolve();
+                                }
+                            }, 100);
+                            
+                            // Timeout after 10 seconds
+                            setTimeout(() => {
+                                clearInterval(checkSupabase);
+                                resolve();
+                            }, 10000);
+                            
+                            // Also listen for the event
+                            const onReady = () => {
+                                clearInterval(checkSupabase);
+                                window.removeEventListener('supabaseReady', onReady);
+                                resolve();
+                            };
+                            window.addEventListener('supabaseReady', onReady);
+                        });
+                    }
+                    
+                    // Fetch data if function is available
+                    if (typeof fetchInitialData === 'function') {
+                        console.log('🔄 Fetching table data on page load...');
+                        await fetchInitialData(true).catch(error => {
+                            console.error('❌ Failed to fetch initial data on page load:', error);
+                        });
+                    } else {
+                        console.warn('⚠️ fetchInitialData function not yet available, will retry...');
+                        // Retry after a short delay
+                        setTimeout(() => {
+                            if (typeof fetchInitialData === 'function') {
+                                fetchInitialData(true).catch(error => {
+                                    console.error('❌ Failed to fetch initial data on retry:', error);
+                                });
+                            }
+                        }, 1000);
+                    }
+                };
+                
+                loadDataOnPageLoad(); 
                 ensureDDNHeader();
                 
                 // Consolidated cursor restoration function
@@ -12977,6 +13198,24 @@ ${capacityInfo.needsCleanup ?
         window.setupMobileViewport = setupMobileViewport;
         window.setupExtendedKeyboardShortcuts = setupExtendedKeyboardShortcuts;
         window.initializeApp = initializeApp;
+        
+        // Auto-initialize app on page load if user is already logged in
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                const isLoggedIn = sessionStorage.getItem('isLoggedIn') === '1';
+                if (isLoggedIn) {
+                    console.log('🔄 Auto-initializing app on page load (user already logged in)...');
+                    initializeApp();
+                }
+            });
+        } else {
+            // DOM already loaded
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn') === '1';
+            if (isLoggedIn) {
+                console.log('🔄 Auto-initializing app immediately (DOM already loaded, user already logged in)...');
+                initializeApp();
+            }
+        }
         window.adaptStatusDisplay = adaptStatusDisplay;
         window.getCurrentStatusType = getCurrentStatusType;
         window.applyDotColor = applyDotColor;

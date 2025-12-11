@@ -10,20 +10,44 @@ const supabaseConfig = {
 };
 
 // Initialize Supabase client - Singleton pattern to avoid multiple instances
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+// Use global window.supabase client instance
 
-// Vérifier si une instance existe déjà
-let supabase;
-if (window.supabase && window.supabase.supabaseUrl === supabaseConfig.supabaseUrl) {
-    console.log('🔄 Réutilisation de l\'instance Supabase existante');
-    supabase = window.supabase;
-} else {
-    console.log('🆕 Création d\'une nouvelle instance Supabase');
-    supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
-    // Exposer le client globalement
-    window.supabase = supabase;
-    window.supabaseConfig = supabaseConfig;
+// Get Supabase client - will wait for initialization if needed
+async function getSupabaseClient() {
+    // Try to get existing client
+    if (window.supabase && typeof window.supabase === 'object' && window.supabase.from) {
+        return window.supabase;
+    }
+    
+    if (window.supabaseClient && typeof window.supabaseClient === 'object' && window.supabaseClient.from) {
+        return window.supabaseClient;
+    }
+    
+    // Wait for Supabase to be initialized (it's loaded asynchronously in index.html)
+    let attempts = 0;
+    while (attempts < 50) { // Wait up to 5 seconds
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (window.supabase && typeof window.supabase === 'object' && window.supabase.from) {
+            return window.supabase;
+        }
+        attempts++;
+    }
+    
+    throw new Error('Supabase client not initialized after waiting');
 }
+
+// Get client synchronously if available, otherwise return null
+function getSupabaseClientSync() {
+    if (window.supabase && typeof window.supabase === 'object' && window.supabase.from) {
+        return window.supabase;
+    }
+    if (window.supabaseClient && typeof window.supabaseClient === 'object' && window.supabaseClient.from) {
+        return window.supabaseClient;
+    }
+    return null;
+}
+
+let supabase = getSupabaseClientSync();
 
 // Variables globales pour la synchronisation en temps réel
 let realtimeSubscription = null;
@@ -32,6 +56,7 @@ let isRealtimeEnabled = true;
 // Fonction pour tester la connexion initiale
 async function testInitialSupabaseConnection() {
     try {
+        const supabase = await getSupabaseClient();
         console.log('🔄 Test de la connexion Supabase principale...');
         const { data, error } = await supabase.from('staffTable').select('count').limit(1);
         
@@ -48,7 +73,9 @@ async function testInitialSupabaseConnection() {
 }
 
 // Configuration de la synchronisation en temps réel
-function setupRealtimeSubscription() {
+async function setupRealtimeSubscription() {
+    const supabase = await getSupabaseClient();
+    
     if (realtimeSubscription) {
         console.log('🔄 Nettoyage de l\'ancienne subscription temps réel...');
         supabase.removeChannel(realtimeSubscription);
@@ -117,8 +144,9 @@ function setupRealtimeSubscription() {
 // Note: handleRealtimeUpdate is now implemented in index.html to avoid conflicts
 
 // Nettoyage de la subscription temps réel
-function cleanupRealtimeSubscription() {
-    if (realtimeSubscription) {
+async function cleanupRealtimeSubscription() {
+    const supabase = getSupabaseClientSync();
+    if (realtimeSubscription && supabase) {
         console.log('🧹 Nettoyage de la subscription temps réel...');
         supabase.removeChannel(realtimeSubscription);
         realtimeSubscription = null;
@@ -171,9 +199,7 @@ function getSyncStatusClasses(type) {
 // Database Operations
 export async function loadFromSupabase() {
     try {
-        if (!supabase) {
-            throw new Error('Supabase client not initialized');
-        }
+        const supabase = await getSupabaseClient();
         
         const { data, error } = await supabase
             .from(supabaseConfig.tableName)
@@ -194,9 +220,7 @@ export async function loadFromSupabase() {
 
 export async function syncToSupabase(data, isManualSave = false) {
     try {
-        if (!supabase) {
-            throw new Error('Supabase client not initialized');
-        }
+        const supabase = await getSupabaseClient();
         
         if (!data || data.length === 0) {
             console.log('⚠️ No data to sync');
@@ -224,9 +248,7 @@ export async function syncToSupabase(data, isManualSave = false) {
 
 async function deleteFromSupabase(keys) {
     try {
-        if (!supabase) {
-            throw new Error('Supabase client not initialized');
-        }
+        const supabase = await getSupabaseClient();
         
         if (!keys || keys.length === 0) {
             console.log('⚠️ No keys to delete');
@@ -255,10 +277,13 @@ async function deleteFromSupabase(keys) {
 
 // Initialisation au chargement de la page
 document.addEventListener('DOMContentLoaded', async () => {
+    // Wait a bit for Supabase to initialize from index.html
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     await testInitialSupabaseConnection();
     
     // Configurer la synchronisation temps réel
-    setupRealtimeSubscription();
+    await setupRealtimeSubscription();
     
     // Expose functions globally for reactivation
     window.setupRealtimeSubscription = setupRealtimeSubscription;
@@ -270,7 +295,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Exporter toutes les fonctions nécessaires
 export { 
-    supabase, 
     supabaseConfig, 
     loadFromSupabase, 
     syncToSupabase, 
@@ -278,5 +302,6 @@ export {
     setupRealtimeSubscription,
     cleanupRealtimeSubscription,
     updateStatus,
-    testInitialSupabaseConnection
+    testInitialSupabaseConnection,
+    getSupabaseClient
 };
